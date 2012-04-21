@@ -1,0 +1,16 @@
+gnunet-server
+-------------
+
+By default, the gnunet-server starts automatically when the system is booted.
+If you prefere to start it manually when you use it, change its configuration
+with:
+
+  # dpkg-reconfigure -plow gnunet-server
+
+In order to start, stop or restart manually the server, use:
+
+  # /etc/init.d/gnunet-server
+
+with the parameter start, stop or restart.
+
+ -- Daniel Baumann <daniel.baumann@progress-technologies.net>  Thu, 13 Aug 2009 17:29:12 +0200

@@ -1,0 +1,42 @@
+#!/usr/bin/make -f
+
+SHELL := sh -e
+
+%:
+	dh ${@} --with autoreconf
+
+override_dh_auto_configure:
+	dh_auto_configure -- --disable-rpath --enable-guile --enable-ipv6 --with-microhttpd=yes
+
+override_dh_auto_test:
+	# Disabling test suite, incomplete
+
+override_dh_auto_install:
+	dh_auto_install
+	
+	# Create config file
+	mkdir -p debian/tmp/etc
+	echo "[PATHS]\nSERVICEHOME = /var/lib/gnunet\n" \
+		> debian/tmp/etc/gnunet.conf
+
+	# Remove gnunet-download-manager.scm extension to match the manpage name
+	mv debian/tmp/usr/bin/gnunet-download-manager.scm \
+		debian/tmp/usr/bin/gnunet-download-manager
+	
+	# Removing useless files
+	rm -f debian/tmp/usr/lib/*.la debian/tmp/usr/lib/gnunet/*.la \
+		debian/tmp/usr/share/doc/gnunet/COPYING \
+		debian/tmp/usr/bin/gnunet-service-template \
+		debian/tmp/usr/bin/gnunet-template
+
+override_dh_install:
+	dh_install -a --fail-missing
+
+override_dh_strip:
+	dh_strip --dbg-package=gnunet-dbg
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf contrib/gnunet_janitor.py contrib/gnunet_pyexpect.py libltdl/ \
+		src/integration-tests/gnunet_pyexpect.py
+

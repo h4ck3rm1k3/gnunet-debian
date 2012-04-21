@@ -1,0 +1,86 @@
+# French translation of gnunet debconf templates.
+# Copyright (C) 2001-2006 Eric Madesclair <eric-m@wanadoo.fr>
+# Copyright (C) 2007 Christian Perrier <bubulle@debian.org>
+# This file is distributed under the same license as the gnunet package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: fr\n"
+"Report-Msgid-Bugs-To: gnunet@packages.debian.org\n"
+"POT-Creation-Date: 2009-08-05 10:52+0200\n"
+"PO-Revision-Date: 2007-06-25 07:38+0200\n"
+"Last-Translator: Christian Perrier <bubulle@debian.org>\n"
+"Language-Team: French <debian-l10n-french@lists.debian.org>\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-1\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.11.4\n"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "GNUnet user:"
+msgstr "Utilisateur GNUnet :"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "Please choose the user that the GNUnet server process will run as."
+msgstr ""
+"Veuillez indiquer l'identifiant qu'utilisera le démon GNUnet pendant son "
+"fonctionnement."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid ""
+"This should be a dedicated account. If the specified account does not "
+"already exist, it will automatically be created, with no login shell."
+msgstr ""
+"Il est conseillé d'utiliser un identifiant dédié. S'il n'existe pas, il "
+"sera créé sans connexion interactive possible (pas de « shell »)."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "GNUnet group:"
+msgstr "Groupe de GNUnet :"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "Please choose the group that the GNUnet server process will run as."
+msgstr ""
+"Veuillez indiquer le groupe sous l'identité duquel s'exécutera le démon "
+"GNUnet."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid ""
+"This should be a dedicated group, not one that already owns data. Only the "
+"members of this group will have access to GNUnet data, and be allowed to "
+"start and stop the GNUnet server."
+msgstr ""
+"Il est conseillé d'utiliser un groupe dédié, qui ne possède pas déjà "
+"de données. Seuls les membres de ce groupe auront accès aux données de "
+"GNUnet et seront autorisés à démarrer et arrêter le serveur GNUnet."
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid "Should the GNUnet server be launched on boot?"
+msgstr "Faut-il lancer le démon GNUnet au démarrage du système ?"
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid ""
+"If you choose this option, a GNUnet server will be launched each time the "
+"system is started. Otherwise, you will need to launch GNUnet each time you "
+"want to use it."
+msgstr ""
+"Si vous choisissez cette option, le serveur GNUnet sera lancé à chaque "
+"démarrage de votre machine. Dans le cas contraire, vous devrez lancer vous-"
+"même GNUnet chaque fois que vous souhaiterez l'utiliser."

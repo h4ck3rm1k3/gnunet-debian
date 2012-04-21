@@ -1,0 +1,10 @@
+/var/log/gnunet-server/gnunet.log {
+	weekly
+	size=100k
+	rotate 7
+	compress
+	copytruncate
+	delaycompress
+	notifempty
+	missingok
+}

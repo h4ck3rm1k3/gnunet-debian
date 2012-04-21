@@ -1,0 +1,26 @@
+Template: gnunet-server/username
+Type: string
+Default: gnunet
+_Description: GNUnet user:
+ Please choose the user that the GNUnet server process will run as.
+ .
+ This should be a dedicated account. If the specified account does not
+ already exist, it will automatically be created, with no login shell.
+
+Template: gnunet-server/groupname
+Type: string
+Default: gnunet
+_Description: GNUnet group:
+ Please choose the group that the GNUnet server process will run as.
+ .
+ This should be a dedicated group, not one that already owns data.
+ Only the members of this group will have access to GNUnet data, and
+ be allowed to start and stop the GNUnet server.
+
+Template: gnunet-server/autostart
+Type: boolean
+Default: true
+_Description: Should the GNUnet server be launched on boot?
+ If you choose this option, a GNUnet server will be launched each time
+ the system is started. Otherwise, you will need to launch
+ GNUnet each time you want to use it.

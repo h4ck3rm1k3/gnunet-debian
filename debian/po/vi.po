@@ -1,0 +1,84 @@
+# Vietnamese translation of gnunet debconf templates.
+# Copyright (C) 2005-2007 Free Software Foundation
+# This file is distributed under the same license as the gnunet package.
+#
+# Clytie Siddall <clytie@riverland.net.au>, 2005-2007
+msgid ""
+msgstr ""
+"Project-Id-Version: gnunet 0.7.1c-2\n"
+"Report-Msgid-Bugs-To: gnunet@packages.debian.org\n"
+"POT-Creation-Date: 2009-08-05 10:52+0200\n"
+"PO-Revision-Date: 2007-06-12 23:28+0930\n"
+"Last-Translator: Clytie Siddall <clytie@riverland.net.au>\n"
+"Language-Team: Vietnamese <vi-VN@googlegroups.com>\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: LocFactoryEditor 1.6.3b1\n"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "GNUnet user:"
+msgstr "Người dùng GNUnet:"
+
+# msgid "Define the user owning the GNUnet server process."
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "Please choose the user that the GNUnet server process will run as."
+msgstr "Hãy chọn người dùng dưới đó tiến trình nền GNUnet sẽ chạy:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid ""
+"This should be a dedicated account. If the specified account does not "
+"already exist, it will automatically be created, with no login shell."
+msgstr ""
+"Đây nên là một tài khoản chuyên dụng. Nếu tài khoản đã ghi rõ chưa tồn tại, "
+"nó tự động được tạo, không có trình bao đăng nhập."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "GNUnet group:"
+msgstr "Nhóm GNUnet:"
+
+# msgid "Define the group owning the GNUnet server process."
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "Please choose the group that the GNUnet server process will run as."
+msgstr "Hãy chọn nhớm dưới đó tiến trình nền GNUnet sẽ chạy:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid ""
+"This should be a dedicated group, not one that already owns data. Only the "
+"members of this group will have access to GNUnet data, and be allowed to "
+"start and stop the GNUnet server."
+msgstr ""
+"Đây nên là một nhóm chuyên dụng, không phải nhóm sở hữu dữ liệu nào. Chỉ "
+"những thành viên của nhóm này có quyền truy cập dữ liệu GNUnet thì có khả "
+"năng khởi chạy và ngừng chạy trình phục vụ GNUnet."
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid "Should the GNUnet server be launched on boot?"
+msgstr "Có nên khởi chạy trình nền GNUnet khi hệ thống khởi động không?"
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid ""
+"If you choose this option, a GNUnet server will be launched each time the "
+"system is started. Otherwise, you will need to launch GNUnet each time you "
+"want to use it."
+msgstr ""
+"Bật tùy chọn này thì trình GNUnet được khởi chạy mỗi lần khởi động hệ thống. "
+"Không thì bạn cần phải tự khởi chạy GNUnet để sử dụng nó."

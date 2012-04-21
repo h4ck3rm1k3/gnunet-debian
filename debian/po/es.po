@@ -1,0 +1,88 @@
+# Spanish translation of gnunet debconf templates.
+# Copyright (C) 2005-2009 Software in the Public Interest
+# This file is distributed under the same license as the gnunet package.
+#
+# * Initial translation:
+#   - César Gómez Martín <cesar.gomez@gmail.com>, 2005
+#
+# * Updates:
+#   - Rudy Godoy Guillén <rudy@stone-head.org>, 2007
+#   - Francisco Javier Cuadrado <fcocuadrado@gmail.com>, 2009
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnunet 0.8.0b-5\n"
+"Report-Msgid-Bugs-To: gnunet@packages.debian.org\n"
+"POT-Creation-Date: 2009-08-05 10:52+0200\n"
+"PO-Revision-Date: 2009-05-06 17:45+0100\n"
+"Last-Translator: Francisco Javier Cuadrado <fcocuadrado@gmail.com>\n"
+"Language-Team: Debian l10n Spanish <debian-l10n-spanish@lists.debian.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "GNUnet user:"
+msgstr "Usuario de GNUnet:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "Please choose the user that the GNUnet server process will run as."
+msgstr ""
+"Indique el usuario al que pertenecerá el proceso del servidor de GNUnet."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid ""
+"This should be a dedicated account. If the specified account does not "
+"already exist, it will automatically be created, with no login shell."
+msgstr ""
+"Se debería tener un usuario dedicado. Si el usuario especificado no existe "
+"todavía, se creará automáticamente, sin consola de identificación."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "GNUnet group:"
+msgstr "Grupo de GNUnet:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "Please choose the group that the GNUnet server process will run as."
+msgstr "Indique el grupo al que pertenecerá el proceso del servidor de GNUnet."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid ""
+"This should be a dedicated group, not one that already owns data. Only the "
+"members of this group will have access to GNUnet data, and be allowed to "
+"start and stop the GNUnet server."
+msgstr ""
+"Se debería tener un grupo dedicado, y que no sea alguno que ya tenga datos. "
+"Sólo los miembros de este grupo tendrán acceso a los datos de GNUnet, y se "
+"les permitirá iniciar y parar el servidor de GNUnet."
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid "Should the GNUnet server be launched on boot?"
+msgstr "¿Se debería ejecutar el servidor de GNUnet en el arranque?"
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid ""
+"If you choose this option, a GNUnet server will be launched each time the "
+"system is started. Otherwise, you will need to launch GNUnet each time you "
+"want to use it."
+msgstr ""
+"Si responde afirmativamente, se iniciará un servidor de GNUnet cada vez que "
+"su máquina arranque. Por el contrario, necesitará ejecutar GNUnet cada vez "
+"que quiera usarlo."

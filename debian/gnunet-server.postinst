@@ -1,0 +1,114 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+case "${1}" in
+	configure)
+		db_version 2.0
+
+		db_get gnunet-server/username
+		_USERNAME="${RET:-gnunet}"
+
+		db_get gnunet-server/groupname
+		_GROUPNAME="${RET:-gnunet}"
+
+		db_get gnunet-server/autostart
+		_AUTOSTART="${RET}" # boolean
+
+		db_stop
+
+		CONFIG_FILE="/etc/default/gnunet-server"
+		
+		# Read default values
+		SERVICEHOME="/var/lib/gnunet"
+		eval $(grep SERVICEHOME /etc/gnunet.conf | tr -d [:blank:])
+
+		# Creating gnunet group if needed
+		if ! getent group ${_GROUPNAME} > /dev/null
+		then
+			echo -n "Creating new GNUnet group ${_GROUPNAME}:"
+			addgroup --quiet --system ${_GROUPNAME}
+			echo " done."
+		fi
+
+		# Creating gnunet user if needed
+		if ! getent passwd ${_USERNAME} > /dev/null
+		then
+			echo -n "Creating new GNUnet user ${_USERNAME}:"
+			adduser --quiet --system --ingroup ${_GROUPNAME} --no-create-home ${_USERNAME}
+			echo " done."
+		fi
+
+		# Add a special secured group
+		GNUNETDNS_GROUP="gnunetdns"
+		
+		# Creating gnunetdns group if needed
+		if ! getent group ${GNUNETDNS_GROUP} > /dev/null
+		then
+			echo -n "Creating new secured GNUnet group ${GNUNETDNS_GROUP}:"
+			addgroup --quiet --system ${GNUNETDNS_GROUP}
+			echo " done."
+		fi
+
+		# Update files and directories permissions.
+		# Assuming default values, this *should* not be changed.
+		echo -n "Updating files and directories permissions:"
+		chown -R ${_USERNAME}:${_GROUPNAME} /var/log/gnunet-server
+		chown -R ${_USERNAME}:${_GROUPNAME} ${SERVICEHOME}
+		# Secure access to the data directory
+		chmod 0700 "${SERVICEHOME}" || true
+		# Restrict access on setuid binaries
+		chgrp ${_GROUPNAME} /usr/bin/gnunet-helper-exit \
+			/usr/bin/gnunet-helper-nat* /usr/bin/gnunet-helper-transport-wlan \
+			/usr/bin/gnunet-helper-vpn
+		chmod 4754 /usr/bin/gnunet-helper-exit \
+			/usr/bin/gnunet-helper-nat* /usr/bin/gnunet-helper-transport-wlan \
+			/usr/bin/gnunet-helper-vpn
+		chgrp ${GNUNETDNS_GROUP} /usr/bin/gnunet-helper-dns
+		chmod 4754 /usr/bin/gnunet-helper-dns
+		chown ${_USERNAME}:${GNUNETDNS_GROUP} /usr/bin/gnunet-service-dns
+		chmod 2754 /usr/bin/gnunet-service-dns
+		echo  " done."
+
+		# Writing new values to configuration file
+		echo -n "Writing new configuration file:"
+		CONFIG_NEW=$(tempfile)
+
+cat > "${CONFIG_NEW}" <<EOF
+# This file controls the behaviour of the GNUnet init script.
+# It will be parsed as a shell script.
+# please do not edit by hand, use 'dpkg-reconfigure gnunet-server'.
+
+GNUNET_USER=${_USERNAME}
+GNUNET_GROUP=${_GROUPNAME}
+GNUNET_AUTOSTART="${_AUTOSTART}"
+EOF
+
+		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
+		echo " done."
+		
+		# Cleaning old config file
+		if dpkg-maintscript-helper supports rm_conffile 2>/dev/null; then
+			dpkg-maintscript-helper rm_conffile /etc/gnunetd.conf 0.9.2-1~ -- "$@"
+		fi
+		
+		# Cleaning
+		rm -f "${CONFIG_NEW}"
+		echo "All done."
+		;;
+
+	abort-upgrade|abort-remove|abort-deconfigure)
+
+		;;
+
+	*)
+		echo "postinst called with unknown argument \`${1}'" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0

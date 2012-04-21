@@ -1,0 +1,37 @@
+#!/bin/sh
+
+set -e
+
+case "${1}" in
+	purge)
+		_USERNAME="gnunet"
+		_GROUPNAME="gnunet"
+		GNUNETDNS_GROUP="gnunetdns"
+
+		if [ -x /usr/sbin/deluser ]
+		then
+			deluser --quiet --system ${_USERNAME}
+		fi
+
+		if [ -x /usr/sbin/delgroup ]
+		then
+			delgroup --quiet --system --only-if-empty ${_GROUPNAME} || true
+			delgroup --quiet --system --only-if-empty ${GNUNETDNS_GROUP} || true
+		fi
+
+		rm -rf /var/log/gnunet-server /etc/default/gnunet-server
+		;;
+
+	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+
+		;;
+
+	*)
+		echo "postrm called with unknown argument \`${1}'" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0

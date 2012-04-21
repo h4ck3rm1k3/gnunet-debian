@@ -1,0 +1,80 @@
+# Czech translation of gnunet debconf templates.
+# Copyright (C) 2007 Miroslav Kure <kurem@debian.cz>
+# This file is distributed under the same license as the gnunet package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnunet\n"
+"Report-Msgid-Bugs-To: gnunet@packages.debian.org\n"
+"POT-Creation-Date: 2009-08-05 10:52+0200\n"
+"PO-Revision-Date: 2007-06-23 12:42+0200\n"
+"Last-Translator: Miroslav Kure <kurem@debian.cz>\n"
+"Language-Team: Czech <debian-l10n-czech@lists.debian.org>\n"
+"Language: cs\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "GNUnet user:"
+msgstr "Uživatel GNUnet:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "Please choose the user that the GNUnet server process will run as."
+msgstr "Zadejte prosím uživatele, pod kterým se bude server GNUnet spouštět."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid ""
+"This should be a dedicated account. If the specified account does not "
+"already exist, it will automatically be created, with no login shell."
+msgstr ""
+"Mělo by jít o dedikovaný účet. Pokud zadaný účet neexistuje, bude "
+"automaticky vytvořen (bez přihlašovacího shellu)."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "GNUnet group:"
+msgstr "Skupina GNUnet:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "Please choose the group that the GNUnet server process will run as."
+msgstr "Zadejte prosím skupinu, pod kterou se bude server GNUnet spouštět."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid ""
+"This should be a dedicated group, not one that already owns data. Only the "
+"members of this group will have access to GNUnet data, and be allowed to "
+"start and stop the GNUnet server."
+msgstr ""
+"Mělo by jít o dedikovanou skupinu různou od té, která již vlastní data. "
+"Pouze členové této skupiny budou mít přístup k datům GNUnetu a budou moci "
+"spouštět a zastavovat server GNUnet."
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid "Should the GNUnet server be launched on boot?"
+msgstr "Má se server GNUnet spouštět při zavádění systému?"
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid ""
+"If you choose this option, a GNUnet server will be launched each time the "
+"system is started. Otherwise, you will need to launch GNUnet each time you "
+"want to use it."
+msgstr ""
+"Zvolíte-li tuto možnost, bude se server GNUnet spouštět při každém zavádění "
+"systému. V opačném případě budete muset GNUnet spouštět ručně pokaždé, kdy "
+"ho budete chtít použít."

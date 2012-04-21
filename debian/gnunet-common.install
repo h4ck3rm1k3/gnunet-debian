@@ -1,0 +1,6 @@
+usr/lib/libgnunetdatastore.so.*
+usr/lib/libgnunetfs.so.*
+usr/lib/libgnunetstatistics.so.*
+usr/lib/libgnunetutil.so.*
+usr/share/locale/*/LC_MESSAGES/gnunet.mo
+usr/share/gnunet/gnunet-logo-color.png

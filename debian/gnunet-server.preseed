@@ -1,0 +1,7 @@
+################################################################################
+## gnunet-server
+
+#gnunet-server gnunet-server/username string gnunet
+#gnunet-server gnunet-server/groupname string gnunet
+#gnunet-server gnunet-server/autostart boolean true
+################################################################################

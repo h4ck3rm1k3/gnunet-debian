@@ -1,0 +1,80 @@
+# Danish translation of gnunet debconf templates.
+# Copyright (C) 2011 Joe Hansen <joedalton2@yahoo.dk>
+# This file is distributed under the same license as the gnunet package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnunet\n"
+"Report-Msgid-Bugs-To: gnunet@packages.debian.org\n"
+"POT-Creation-Date: 2009-08-05 10:52+0200\n"
+"PO-Revision-Date: 2011-07-14 12:42+0000\n"
+"Last-Translator: Joe Hansen <joedalton2@yahoo.dk>\n"
+"Language-Team: Danish <debian-l10n-danish@lists.debian.org>\n"
+"Language: da\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "GNUnet user:"
+msgstr "GNUnet-bruger:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid "Please choose the user that the GNUnet server process will run as."
+msgstr "Vælg venligst brugeren som GNUnet-serverprocessen vil køre som."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:1001
+msgid ""
+"This should be a dedicated account. If the specified account does not "
+"already exist, it will automatically be created, with no login shell."
+msgstr ""
+"Dette bør være en dedikeret konto. Hvis den angivne konto ikke allerede "
+"findes, vil den automatisk blive oprettet, uden en logindskal."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "GNUnet group:"
+msgstr "GNUnet-gruppe:"
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid "Please choose the group that the GNUnet server process will run as."
+msgstr "Vælg venligst gruppen som GNUnet-serverprocessen vil køre som."
+
+#. Type: string
+#. Description
+#: ../gnunet-server.templates:2001
+msgid ""
+"This should be a dedicated group, not one that already owns data. Only the "
+"members of this group will have access to GNUnet data, and be allowed to "
+"start and stop the GNUnet server."
+msgstr ""
+"Dette bør være en dedikeret konto, ikke en som allerede ejer data. Kun "
+"medlemmer af denne gruppe vil have adgang til GNUnet-data, og få tilladelse "
+"til at starte og stoppe GNUnet-serveren."
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid "Should the GNUnet server be launched on boot?"
+msgstr "Skal GNUnet-serveren igangsættes ved opstart?"
+
+#. Type: boolean
+#. Description
+#: ../gnunet-server.templates:3001
+msgid ""
+"If you choose this option, a GNUnet server will be launched each time the "
+"system is started. Otherwise, you will need to launch GNUnet each time you "
+"want to use it."
+msgstr ""
+"Hvis du vælger denne indstilling, vil en GNUnet-server blive igangsat hver "
+"gang systemet startes op. Ellers skal du selv igangsætte GNUnet hver gang, "
+"du ønsker at bruge GNUnet."

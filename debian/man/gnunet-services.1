@@ -1,0 +1,41 @@
+.TH GNUNET\-SERVICES 1 "Jan 4, 2012" "GNUnet"
+
+.SH NAME
+gnunet\-services \- GNUnet services
+
+.SH SYNOPSIS
+.B gnunet\-service-SERVICE
+.RI [ options ]
+
+.B gnunet\-daemon-SERVICE
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBgnunet\-services\fP should not be used by normal users, they should be called by the GNUnet ARM services supervisor automatically.
+
+.SH OPTIONS
+.B
+.IP "\-c FILENAME,  \-\-config=FILENAME"
+Use the configuration file FILENAME.
+.B
+.IP "\-d,  \-\-daemonize"
+Do daemonize (detach from terminal).
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-L LOGLEVEL, \-\-loglevel=LOGLEVEL"
+Use LOGLEVEL for logging.  Valid values are DEBUG, INFO, WARNING and ERROR.
+.B
+.IP "\-l LOGFILE, \-\-logfile=LOGFILE"
+Configure logging to write logs to LOGFILE.
+.B
+.IP "\-v, \-\-version"
+Print GNUnet version number.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <gnunet\-developers@gnu.org>
+
+.SH SEE ALSO
+gnunet\-arm(1)

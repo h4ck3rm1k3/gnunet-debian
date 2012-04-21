@@ -1,0 +1,64 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:		gnunet-server
+# Required-Start:	$syslog $network $local_fs $remote_fs
+# Required-Stop:	$syslog $network $local_fs $remote_fs
+# Should-Start:
+# Should-Stop:
+# Default-Start:	2 3 4 5
+# Default-Stop:		0 1 6
+# Short-Description:	Starts the GNUnet server at boot time.
+# Description:		GNUnet is a secure, trust-based peer-to-peer framework.
+### END INIT INFO
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/bin/gnunet-service-arm
+NAME=gnunet-service-arm
+DESC=GNUnet
+LOGFILE=/var/log/gnunetd/gnunetd.log
+
+test -x "${DAEMON}" || exit 0
+
+set -e
+
+# Get configuration
+if [ -f /etc/default/gnunet-server ]
+then
+	. /etc/default/gnunet-server
+fi
+
+if [ "${GNUNET_AUTOSTART}" != "true" ]
+then
+	exit 0
+fi
+
+case "${1}" in
+	start)
+		echo -n "Starting ${DESC}: "
+		start-stop-daemon --start --chuid ${GNUNET_USER} \
+			--oknodo --quiet --exec ${DAEMON} -- -c \
+			/etc/gnunet.conf -d -l $LOGFILE
+		echo "${NAME}."
+		;;
+
+	stop)
+		echo -n "Stopping ${DESC}: "
+		start-stop-daemon --stop  --retry 15 \
+			--oknodo --quiet --exec ${DAEMON}
+		echo "${NAME}."
+		;;
+
+	restart|force-reload)
+		${0} stop
+		sleep 1
+		${0} start
+		;;
+
+	*)
+		echo "Usage: ${0} {start|stop|restart|force-reload}" >&2
+		exit 1
+		;;
+esac
+
+exit 0

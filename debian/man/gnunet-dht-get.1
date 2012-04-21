@@ -1,0 +1,47 @@
+.TH GNUNET\-DHT\-GET 1 "Jan 4, 2012" "GNUnet"
+
+.SH NAME
+gnunet\-dht\-get \- issue a GET request to the GNUnet DHT, prints results.
+
+.SH SYNOPSIS
+.B gnunet\-dht\-get
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBgnunet\-dht\-get\fP issue a GET request to the GNUnet DHT and prints results.
+
+.SH OPTIONS
+.B
+.IP "\-c FILENAME,  \-\-config=FILENAME"
+Use the configuration file FILENAME.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-k KEY, \-\-key=KEY"
+The query key.
+.B
+.IP "\-L LOGLEVEL, \-\-loglevel=LOGLEVEL"
+Use LOGLEVEL for logging.  Valid values are DEBUG, INFO, WARNING and ERROR.
+.B
+.IP "\-l LOGFILE, \-\-logfile=LOGFILE"
+Configure logging to write logs to LOGFILE.
+.B
+.IP "\-r LEVEL, \-\-replication=LEVEL"
+How many parallel requests (replicas) to create.
+.B
+.IP "\-T TIMEOUT, \-\-timeout=TIMEOUT"
+How long to execute this query before giving up?
+.B
+.IP "\-t TYPE, \-\-type=TYPE"
+The type of data to look for.
+.B
+.IP "\-V, \-\-verbose"
+Be verbose (print progress information).
+.B
+.IP "\-v, \-\-version"
+Print GNUnet version number.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <gnunet\-developers@gnu.org>
