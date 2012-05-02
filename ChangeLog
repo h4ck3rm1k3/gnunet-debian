@@ -1,0 +1,1655 @@
+2012-02-28 17:29  grothoff
+
+	* [r20121] src/util/os_priority.c: LRN: Apparently cleanup is not
+	  for W32
+
+2012-02-28 17:28  grothoff
+
+	* [r20120] po/de.po, po/es.po, po/sv.po, po/vi.po, po/zh_CN.po,
+	  src/util/os_priority.c: LRN: W32 pipe name generation needs
+	  random
+
+2012-02-28 10:54  grothoff
+
+	* [r20112] po/de.po, po/es.po, po/sv.po, po/vi.po, po/zh_CN.po:
+	  releasing GNUnet 0.9.2
+
+2012-02-28 09:32  grothoff
+
+	* [r20097] configure.ac, src/Makefile.am: add gns
+
+2012-02-28 09:08  schanzen
+
+	* [r20093] src/gns/plugin_block_gns.c: -fix
+
+2012-02-27 20:00  wachs
+
+	* [r20087] configure.ac: enabling libglpk detection
+
+2012-02-27 11:00  grothoff
+
+	* [r20060] src/arm/arm_api.c, src/arm/do_start_process.c,
+	  src/arm/gnunet-service-arm.c,
+	  src/ats/test_ats_api_bandwidth_consumption.c,
+	  src/ats/test_ats_api_scheduling.c, src/chat/test_chat.c,
+	  src/chat/test_chat_private.c, src/core/test_core_api.c,
+	  src/core/test_core_api_reliability.c,
+	  src/core/test_core_api_send_to_self.c,
+	  src/core/test_core_api_start_only.c,
+	  src/core/test_core_defaults.conf,
+	  src/core/test_core_quota_compliance.c,
+	  src/datastore/perf_datastore_api.c,
+	  src/datastore/test_datastore_api.c,
+	  src/datastore/test_datastore_api_management.c,
+	  src/datastore/test_defaults.conf, src/dht/test_dht_api.c,
+	  src/fs/test_fs_defaults.conf, src/fs/test_fs_download.c,
+	  src/fs/test_fs_download_indexed.c,
+	  src/fs/test_fs_download_persistence.c,
+	  src/fs/test_fs_list_indexed.c, src/fs/test_fs_namespace.c,
+	  src/fs/test_fs_namespace_list_updateable.c,
+	  src/fs/test_fs_publish.c, src/fs/test_fs_publish_persistence.c,
+	  src/fs/test_fs_search.c, src/fs/test_fs_search_persistence.c,
+	  src/fs/test_fs_start_stop.c, src/fs/test_fs_unindex.c,
+	  src/fs/test_fs_unindex_persistence.c,
+	  src/hostlist/test_gnunet_daemon_hostlist.c,
+	  src/hostlist/test_gnunet_daemon_hostlist_learning.c,
+	  src/hostlist/test_gnunet_daemon_hostlist_reconnect.c,
+	  src/hostlist/test_hostlist_defaults.conf,
+	  src/include/gnunet_disk_lib.h, src/include/gnunet_os_lib.h,
+	  src/include/platform.h, src/mesh/test_mesh_api.c,
+	  src/mesh/test_mesh_local_1.c, src/mesh/test_mesh_local_2.c,
+	  src/namestore/test_namestore_api.c, src/nat/nat.c,
+	  src/nat/nat_mini.c, src/nat/test_nat_test.c,
+	  src/nse/test_nse_api.c, src/peerinfo/test_peerinfo_api.c,
+	  src/statistics/test_statistics_api.c,
+	  src/statistics/test_statistics_api_loop.c,
+	  src/statistics/test_statistics_api_watch.c,
+	  src/stream/test_stream_local.c,
+	  src/stream/test_stream_local_halfclose.c,
+	  src/testing/test_testing_defaults.conf, src/testing/testing.c,
+	  src/testing/testing_group.c,
+	  src/transport/gnunet-transport-certificate-creation.c,
+	  src/transport/gnunet-transport-connect-running-peers.c,
+	  src/transport/gnunet-transport.c,
+	  src/transport/plugin_transport_http_server.c,
+	  src/transport/plugin_transport_wlan.c,
+	  src/transport/transport-testing.c, src/util/crypto_random.c,
+	  src/util/disk.c, src/util/helper.c, src/util/os_priority.c,
+	  src/util/scheduler.c,
+	  src/util/test_common_logging_runtime_loglevels.c,
+	  src/util/test_os_start_process.c, src/util/test_resolver_api.c,
+	  src/util/test_strings.c, src/vpn/test_gnunet_vpn.c: enabling use
+	  of pipes for signal communication also on UNIX to enable future
+	  integration with Java services
+
+2012-02-27 10:54  wachs
+
+	* [r20059] src/transport/test_transport_api.c: adding error
+	  messages
+
+2012-02-25 19:08  grothoff
+
+	* [r20026] doc/man/gnunet-directory.1, doc/man/gnunet-download.1,
+	  doc/man/gnunet-nat-server.1, doc/man/gnunet-pseudonym.1,
+	  doc/man/gnunet-publish.1, doc/man/gnunet-search.1,
+	  doc/man/gnunet-vpn.1: Igor/CG: various minor updates to man pages
+
+2012-02-24 06:54  grothoff
+
+	* [r19998] src/include/winproc.h, src/util/os_network.c:
+	  bratao/LRN: Use-bigger-buffer-for-EnumNICs3_results
+
+2012-02-23 18:09  wachs
+
+	* [r19993] src/transport/gnunet-service-transport_validation.c: not
+	  an error: plugin can return NULL (e.g. for IPv6 address when does
+	  not support IPv6)
+
+2012-02-23 18:08  wachs
+
+	* [r19992] src/transport/plugin_transport_unix.c: improved
+	  rescheduling
+	  improved recv error handling
+
+2012-02-23 17:35  wachs
+
+	* [r19983] src/transport/plugin_transport_udp.c,
+	  src/transport/plugin_transport_udp.h: splitted ipv4 and ipv6
+	  socket select scheduling
+	  removed looping for write select
+	  improved ipv4/v6 en/disabling
+	  session management
+
+2012-02-23 16:41  grothoff
+
+	* [r19979] AUTHORS, src/include/gnunet_common.h,
+	  src/include/gnunet_crypto_lib.h, src/include/gnunet_server_lib.h,
+	  src/util/common_logging.c, src/util/crypto_hash.c,
+	  src/util/server.c: TG: attached are the following patches for
+	  GNUnet:
+	  
+	  - 1: added GNUNET_i2s_full - full variant of GNUNET_i2s
+	  - 2: GNUNET_CRYPTO_hash_from_string2 with additional length
+	  parameter,
+	  useful to prevent an additional strlen call when the caller
+	  already knows
+	  the length
+	  - 3: custom mst callbacks for the server, enables using the
+	  server with a
+	  custom parser
+	  - 4: added GNUNET_SERVER_client_set_finish_pending_write -
+	  enables changing the
+	  server behavior to finish pending writes when closing the
+	  connection
+	  
+	  Best regards,
+	  Gabor Adam Toth
+
+2012-02-23 16:01  wachs
+
+	* [r19975] src/transport/plugin_transport_unix.c: fix to the 100%
+	  CPU load problem
+
+2012-02-23 15:34  wachs
+
+	* [r19974] src/transport/gnunet-service-transport_neighbours.c:
+	  fix: ats suggested address for unknown plugin
+
+2012-02-23 14:40  wachs
+
+	* [r19968] src/ats/Makefile.am,
+	  src/ats/gnunet-service-ats_addresses_mlp.c,
+	  src/ats/gnunet-service-ats_addresses_mlp.h,
+	  src/ats/test_ats_api.conf, src/ats/test_ats_mlp.c: averaging fast
+	  changing quality values
+
+2012-02-23 10:28  wachs
+
+	* [r19962] src/transport/plugin_transport_udp.c: fix for mantis bug
+	  0002154:
+	  change order of calls:
+	  - discard unsend messages
+	  - call transmit send continuation
+	  - call session_end
+
+2012-02-23 10:18  wachs
+
+	* [r19961] src/transport/plugin_transport_udp.c: fix to use correct
+	  queue
+
+2012-02-22 18:34  grothoff
+
+	* [r19949] src/fs/fs_api.c, src/fs/fs_dirmetascan.c,
+	  src/fs/fs_file_information.c, src/fs/fs_publish.c,
+	  src/fs/fs_sharetree.c, src/fs/gnunet-helper-fs-publish.c,
+	  src/fs/gnunet-publish.c: LRN: two directory patches change the
+	  way "is_directory" is evaluated.
+	  Now it must be GNUNET_YES for the execution flow to switch to a
+	  branch
+	  where something is considered to be a directory.
+	  The reason for that is that some functions might return
+	  GNUNET_SYSERR
+	  when asked whether something is a directory or not. Checking this
+	  value as "!= GNUNET_NO" will produce positive result, even though
+	  it's
+	  not a directory.
+
+2012-02-22 12:43  wachs
+
+	* [r19932] src/transport/gnunet-service-transport_validation.c: fix
+	  coverity 10138
+
+2012-02-22 10:10  harsha
+
+	* [r19915] src/stream/stream_api.c: added ack sending
+
+2012-02-21 19:08  grothoff
+
+	* [r19906] src/util/os_priority.c: LRN:
+	  Escape-trailing-slash-when-spawning-W32-process:
+
+2012-02-21 10:12  schanzen
+
+	* [r19881] src/gns/gnunet-service-gns.c,
+	  src/gns/namestore_stub_api.c: Better logging
+	  modified ns stub
+
+2012-02-20 14:28  schanzen
+
+	* [r19868] src/gns/Makefile.am, src/gns/gns_api.c,
+	  src/gns/gnunet-service-gns.c, src/gns/namestore_stub_api.c,
+	  src/include/gnunet_gns_service.h,
+	  src/include/gnunet_namestore_service.h: namestore stub api added
+	  fixes to namestore api
+
+2012-02-20 12:08  grothoff
+
+	* [r19864] src/fs/gnunet-helper-fs-publish.c: LRN:
+	  Do-partial-serialization-in-fs-publish-helper:
+
+2012-02-20 09:09  grothoff
+
+	* [r19859] src/fs/fs_sharetree.c: LRN:
+	  Iterate-over-a-copy-of-ksk-when-removing-items
+
+2012-02-20 09:09  grothoff
+
+	* [r19858] src/fs/gnunet-service-fs_put.c: LRN: check for tc being
+	  NULL
+
+2012-02-18 19:03  grothoff
+
+	* [r19844] src/fs/Makefile.am, src/fs/fs_api.h,
+	  src/fs/fs_list_indexed.c, src/fs/fs_namespace.c,
+	  src/fs/fs_namespace_advertise.c, src/fs/fs_publish.c,
+	  src/fs/fs_publish_ksk.c, src/fs/fs_tree.c, src/fs/gnunet-fs.c,
+	  src/fs/gnunet-publish.c, src/include/gnunet_fs_service.h: make
+	  all (?) asynchronously operating FS operations actually
+	  cancel-able
+
+2012-02-18 15:16  grothoff
+
+	* [r19837] src/fs/fs_namespace.c, src/include/gnunet_fs_service.h:
+	  add GNUNET_FS_namespace_dup API call
+
+2012-02-18 13:50  grothoff
+
+	* [r19836] src/util/disk.c: LRN: don't free memory on the stack
+
+2012-02-16 14:29  wachs
+
+	* [r19820] src/transport/gnunet-service-transport_neighbours.c: fix
+	  for fast reconnect: send ack after fast reconnect even when we
+	  are already connected since other peer waits for it
+
+2012-02-16 14:28  wachs
+
+	* [r19819] src/transport/test_transport_api_restart_1peer.c: fix
+	  test for peer restart
+
+2012-02-16 12:58  grothoff
+
+	* [r19817] src/fs/gnunet-helper-fs-publish.c: LRN: Use binary mode
+	  on W32 (lol -CG)
+
+2012-02-15 13:39  schanzen
+
+	* [r19812] src/gns/gns_api.c, src/gns/gnunet-gns-add.c,
+	  src/gns/gnunet-gns-lookup.c, src/gns/gnunet-service-gns.c,
+	  src/include/gnunet_gns_service.h: Added preliminary API and stubs
+	  for GNS
+
+2012-02-15 09:49  wachs
+
+	* [r19811] src/transport/gnunet-service-transport_neighbours.c: fix
+	  for Assertion failed at gnunet-service-ats_addresses.c:587
+
+2012-02-13 16:36  wachs
+
+	* [r19795] src/include/gnunet_transport_plugin.h: changes in
+	  includes
+
+2012-02-13 16:02  wachs
+
+	* [r19791] src/transport/gnunet-service-transport_neighbours.c,
+	  src/transport/gnunet-service-transport_validation.c,
+	  src/transport/plugin_transport_http.c,
+	  src/transport/plugin_transport_tcp.c,
+	  src/transport/plugin_transport_template.c,
+	  src/transport/plugin_transport_udp.c,
+	  src/transport/plugin_transport_unix.c,
+	  src/transport/plugin_transport_wlan.c: removing legacy send
+	  functions from plugins and renaming new send function
+
+2012-02-13 15:38  wachs
+
+	* [r19790] src/transport/gnunet-service-transport_validation.c,
+	  src/transport/plugin_transport_http.h: new sending in validation
+
+2012-02-13 13:27  wachs
+
+	* [r19777] src/transport/plugin_transport_tcp.c: fix access before
+	  null check
+
+2012-02-13 12:22  wachs
+
+	* [r19775] src/transport/gnunet-service-transport_neighbours.c:
+	  removing old send code from neighbours
+
+2012-02-13 11:57  wachs
+
+	* [r19771] src/transport/Makefile.am,
+	  src/transport/gnunet-service-transport_neighbours.c,
+	  src/transport/plugin_transport_udp.c,
+	  src/transport/plugin_transport_udp.h,
+	  src/transport/plugin_transport_udp_broadcasting.c,
+	  src/transport/plugin_transport_udp_new.h,
+	  src/transport/plugin_transport_udp_new_broadcasting.c: adding
+	  rewritten udp plugin
+
+2012-02-13 10:58  wachs
+
+	* [r19770] src/ats/gnunet-service-ats_math.c,
+	  src/ats/gnunet-service-ats_math.h: removing backup ATS code
+
+2012-02-08 15:23  bartpolot
+
+	* [r19733] src/mesh/gnunet-service-mesh.c, src/mesh/mesh_api.c,
+	  src/mesh/test_mesh_small.c: Attemp to fix ctrl-c crashes -
+	  disconnect from services before calling daemons_stop, since the
+	  cfg is free'd in the latter.
+
+2012-02-06 09:34  grothoff
+
+	* [r19707] doc/man/gnunet-transport.1,
+	  src/transport/gnunet-transport.c: adding -m option to
+	  gnunet-transport to enable monitor mode (see #1972)
+
+2012-02-01 17:37  bartpolot
+
+	* [r19608] src/include/gnunet_common.h: Let the compiler not
+	  include debug strings in binary when make is not configured with
+	  verbose
+
+2012-02-01 17:08  wachs
+
+	* [r19603] src/transport/Makefile.am,
+	  src/transport/gnunet-service-transport_blacklist.c,
+	  src/transport/test_transport_api_blacklisting.c,
+	  src/transport/transport_api_blacklist.c: fixing and testing
+	  blacklisting api and service
+
+2012-02-01 15:00  wachs
+
+	* [r19598] src/transport/test_transport_api_blacklisting.c:
+	  improved blacklisting test
+
+2012-02-01 14:59  wachs
+
+	* [r19597] src/transport/transport_api_blacklist.c: fix 2 crashes
+	  in blacklisting api
+	  - client transmit handle was not sent to NULL after sending
+	  - BlacklistMessage was not checked for NULL
+
+2012-02-01 13:26  wachs
+
+	* [r19596] src/transport/transport_api_blacklist.c: fix segfault:
+	  api never saved callback and callback_cls
+
+2012-02-01 09:04  wachs
+
+	* [r19591] src/transport/gnunet-service-transport_blacklist.c:
+	  added assertion (which is successfully failing ;-) )
+
+2012-01-31 13:46  wachs
+
+	* [r19571] src/transport/plugin_transport_wlan.c: session based
+	  sending for wlan
+
+2012-01-31 13:12  wachs
+
+	* [r19568] src/util/os_network.c: ifconfig parsing
+	  Shum's patch
+	  bugs fixed in patch:
+	  - IPv4 loopback address was not included: added line 179
+	  - stack allocated strings were not zeroed out, so last value was
+	  used if value was not included in current line
+	  - IPv4 netmask was passed as broadcast address (patch line 81)
+	  - IPv4 netmask was passed as IPv6 netmask, caused invalid address
+	  conversion (patch line 113)
+	  
+
+2012-01-31 13:04  wachs
+
+	* [r19567] src/util/test_os_network.c: adding verbose message
+
+2012-01-31 08:25  wachs
+
+	* [r19563] src/ats/ats_api_scheduling.c, src/hello/address.c,
+	  src/include/gnunet_ats_service.h: fixing const api and add check
+	  to address
+
+2012-01-31 08:19  wachs
+
+	* [r19562] src/transport/test_transport_api.c: fix assertion
+
+2012-01-30 16:38  wachs
+
+	* [r19543] src/transport/test_transport_api.c: variable message
+	  size
+
+2012-01-27 15:51  wachs
+
+	* [r19486] src/transport/plugin_transport_unix.c: implemented
+	  sessions
+
+2012-01-27 14:30  wachs
+
+	* [r19485] src/transport/plugin_transport_unix.c: removing retry
+	  code
+	  removing unused structs
+	  removing UDP Address structs
+	  fixed PrettyPrinter (printed UDP addresses???)
+
+2012-01-27 13:48  wachs
+
+	* [r19484] src/transport/plugin_transport_unix.c: complete select
+	  write implementation
+
+2012-01-27 13:21  wachs
+
+	* [r19483] src/transport/test_transport_api.c: fix memory leaks
+
+2012-01-26 14:53  wachs
+
+	* [r19440] src/transport/gnunet-service-transport_neighbours.c:
+	  fixing mantis 2101
+
+2012-01-26 14:09  wachs
+
+	* [r19437] src/transport/gnunet-service-transport_neighbours.c,
+	  src/transport/plugin_transport_http.c,
+	  src/transport/plugin_transport_http_server.c: implemented session
+	  based sending in transport service (coexisting with old code)
+
+2012-01-26 14:01  bartpolot
+
+	* [r19436] src/mesh/gnunet-service-mesh.c: Workaround for #2104,
+	  initialize local tid when local type destination connects after
+	  tunnel connect request by origin
+
+2012-01-26 13:23  wachs
+
+	* [r19435] src/ats/ats_api.c,
+	  src/ats/gnunet-service-ats_addresses_mlp.c: cppcheck
+
+2012-01-25 14:22  wachs
+
+	* [r19389] src/ats/gnunet-service-ats_scheduling.c: clang: mem
+	  access if plugin_name_length == 0
+
+2012-01-25 13:56  wachs
+
+	* [r19387] src/transport/plugin_transport_tcp.c: coverity 10054
+
+2012-01-25 13:55  wachs
+
+	* [r19386] src/transport/plugin_transport_http_client.c: coverity
+	  10048
+
+2012-01-24 20:28  grothoff
+
+	* [r19359] src/vpn: ign
+
+2012-01-24 01:32  bartpolot
+
+	* [r19334] src/mesh/gnunet-service-mesh.c: Changed incoming tunnel
+	  notification to delay until relvant traffic is received from
+	  remote peer. Allowed several remote clients for each tunnel.
+
+2012-01-23 15:45  wachs
+
+	* [r19331] src/ats/gnunet-service-ats_addresses.c: fixing mantis
+	  2098:
+	  ats did not lookup addresses correctly
+	  ats overwrote existing session when updating addresses
+
+2012-01-23 15:43  wachs
+
+	* [r19330] src/transport/gnunet-service-transport_neighbours.c:
+	  fixing: mantis 0002098: transport did not propagate session to
+	  ats
+
+2012-01-23 14:54  grothoff
+
+	* [r19329] src/include/gnunet_common.h: use noreturn macro for
+	  GNUNET_abort to help gcc and others
+
+2012-01-23 09:14  grothoff
+
+	* [r19322] src/util/win.cc: It-might-be-NULL
+
+2012-01-20 15:41  bartpolot
+
+	* [r19283] src/include/gnunet_mesh_service.h: Reflected changes in
+	  r19282.
+
+2012-01-20 15:40  bartpolot
+
+	* [r19282] src/mesh/mesh_api.c: Don't call cleaner on tunnels
+	  explicity destroyed. Updated and improved documentation.
+
+2012-01-20 12:49  bartpolot
+
+	* [r19280] src/mesh/gnunet-service-mesh.c: Fixed bug with remote
+	  tunnel traffic reception
+
+2012-01-20 12:48  bartpolot
+
+	* [r19279] src/mesh/mesh_api.c: Added more debug info
+
+2012-01-19 23:17  bartpolot
+
+	* [r19274] src/mesh/gnunet-service-mesh.c: Added TTL and MID
+	  initialization to tunnel refresh packets.
+
+2012-01-19 23:00  bartpolot
+
+	* [r19273] src/mesh/gnunet-service-mesh.c: Fixed #2088, don't call
+	  receive_done on traffic not generated by client. Improved debug
+	  output.
+
+2012-01-19 22:39  bartpolot
+
+	* [r19272] src/mesh/gnunet-service-mesh.c: Fixed #2087, wrong local
+	  tunnel number sent when multiple clients are subscribed to one
+	  type message on same peer and one clientis owner of the tunnel
+	  and the other is target
+
+2012-01-19 22:13  bartpolot
+
+	* [r19271] src/mesh/mesh_api.c: Fixed a memory leak on disconnect,
+	  double peer_rc decrease on tunnel destroy, adjusted backoff,
+	  completed doxygen
+
+2012-01-19 15:20  bartpolot
+
+	* [r19260] src/mesh/gnunet-service-mesh.c: Fixed client disconnect
+	  bug, delimited debug messages.
+
+2012-01-19 14:33  bartpolot
+
+	* [r19258] src/mesh/mesh_api.c: Fixed a peer_rc bug.
+
+2012-01-19 11:06  bartpolot
+
+	* [r19253] src/mesh/gnunet-service-mesh.c: Fixed an assert error
+	  when a client disconnects with open tunnels and without doing
+	  MESH_disconnect
+
+2012-01-19 10:58  bartpolot
+
+	* [r19252] src/mesh/mesh_api.c: Improved debug message
+
+2012-01-18 19:28  grothoff
+
+	* [r19248] src/include/gnunet_testing_lib.h,
+	  src/testing/Makefile.am, src/testing/helper.c: implementing
+	  GNUNET_TESTING_get_peer_identity (addressing #2083)
+
+2012-01-18 15:10  bartpolot
+
+	* [r19244] src/mesh/gnunet-service-mesh.c: Fixed client shutdown
+	  case, various minor fixes
+
+2012-01-18 12:47  bartpolot
+
+	* [r19233] src/mesh/gnunet-service-mesh.c: Implemented workaround
+	  for #2071
+
+2012-01-18 11:27  bartpolot
+
+	* [r19228] src/mesh/gnunet-service-mesh.c: Allowed client to send
+	  again
+
+2012-01-18 11:17  bartpolot
+
+	* [r19227] src/mesh/gnunet-service-mesh.c: Fixed a bug when a
+	  multicast packet is delivered exclusively to local clients
+
+2012-01-17 19:45  bartpolot
+
+	* [r19217] src/mesh/mesh_api.c: Added debug info for #2071
+
+2012-01-17 17:29  bartpolot
+
+	* [r19208] src/mesh/gnunet-service-mesh.c: Fixed #2070 and
+	  simplified data transmission unicast/multicast handling
+
+2012-01-17 16:17  bartpolot
+
+	* [r19206] src/mesh/gnunet-service-mesh.c: Temporal workaround for
+	  #2070
+
+2012-01-17 16:13  bartpolot
+
+	* [r19204] src/mesh/gnunet-service-mesh.c: Temporl workaround for
+	  #2070
+
+2012-01-17 15:36  bartpolot
+
+	* [r19196] src/mesh/mesh_api.c: Fixed queue bug
+
+2012-01-16 21:11  grothoff
+
+	* [r19181] src/pt/gnunet-daemon-pt.c: implemented new protocol
+	  translation daemon (#2063)
+
+2012-01-16 17:17  harsha
+
+	* [r19176] src/stream/test_stream_local.c,
+	  src/stream/test_stream_local_halfclose.c: refined test cases
+
+2012-01-15 23:40  grothoff
+
+	* [r19169] doc/man/Makefile.am, doc/man/gnunet-download-manager.1,
+	  src/fs/Makefile.am, src/fs/gnunet-download-manager.scm: adding
+	  Ludo's gnunet-download-manager.scm back to SVN HEAD
+
+2012-01-14 23:18  grothoff
+
+	* [r19146] src/arm/gnunet-service-arm.c, src/fs/fs_dirmetascan.c,
+	  src/include/gnunet_disk_lib.h, src/nat/nat.c, src/nat/nat_mini.c,
+	  src/testing/testing.c, src/transport/plugin_transport_wlan.c,
+	  src/util/disk.c, src/util/helper.c, src/util/os_priority.c,
+	  src/util/scheduler.c,
+	  src/util/test_common_logging_runtime_loglevels.c,
+	  src/util/test_os_start_process.c, src/util/test_scheduler.c: LRN:
+	  enable more fine-grained control over blocking/non-blocking pipe
+	  operation
+
+2012-01-14 20:58  grothoff
+
+	* [r19141] src/exit/exit.conf, src/exit/gnunet-daemon-exit.c,
+	  src/exit/gnunet-helper-exit.c: changing exit helper code to
+	  automatically do the network configuration for an exit node (by
+	  running sysctl/iptables commands as necessary)
+
+2012-01-14 15:24  grothoff
+
+	* [r19135] src/fs/Makefile.am, src/include/gnunet_fs_service.h:
+	  LRN: new threaded directory metadata scanner
+
+2012-01-14 15:20  grothoff
+
+	* [r19134] src/fs/fs_uri.c: LRN: skip short keywords when
+	  generating keywords automatically from metadata
+
+2012-01-14 15:20  grothoff
+
+	* [r19133] src/include/gnunet_disk_lib.h, src/util/disk.c: LRN: new
+	  pipe creation function GNUNET_DISK_pipe_from_fd to wrap existing
+	  file descriptor pair
+
+2012-01-14 15:17  grothoff
+
+	* [r19131] src/include/gnunet_strings_lib.h, src/util/strings.c:
+	  LRN: add function GNUNET_STRINGS_get_short_name to get basename
+
+2012-01-13 22:14  harsha
+
+	* [r19130] src/stream/test_stream_local.c: added half-closed
+	  shutdown test
+
+2012-01-13 22:10  grothoff
+
+	* [r19129] configure.ac, src/dht/dht.conf.in, src/dns/Makefile.am,
+	  src/dns/dns.conf.in, src/dv/dv.conf.in,
+	  src/transport/transport.conf.in, src/util/service.c,
+	  src/vpn/vpn.conf.in: improving code and build system to be in
+	  line with gnunet access control model for services as described
+	  at https://gnunet.org/gnunet-access-control-model
+
+2012-01-13 21:33  harsha
+
+	* [r19128] src/stream/test_stream_local.c: added shutdown call in
+	  testcase
+
+2012-01-13 21:33  harsha
+
+	* [r19127] src/include/gnunet_stream_lib.h: removed ambigious
+	  description
+
+2012-01-13 18:10  harsha
+
+	* [r19126] src/stream/stream_protocol.h,
+	  src/stream/test_stream_local.c,
+	  src/stream/test_stream_local.conf: test case for stream API
+
+2012-01-13 17:41  harsha
+
+	* [r19125] src/include/gnunet_stream_lib.h: generic type for read
+	  data
+
+2012-01-13 17:04  grothoff
+
+	* [r19123] configure.ac, src/arm/Makefile.am, src/arm/arm.conf,
+	  src/arm/arm.conf.in, src/ats/Makefile.am, src/ats/ats.conf,
+	  src/ats/ats.conf.in, src/chat/Makefile.am, src/chat/chat.conf,
+	  src/chat/chat.conf.in, src/core/Makefile.am, src/core/core.conf,
+	  src/core/core.conf.in, src/datastore/Makefile.am,
+	  src/datastore/datastore.conf, src/datastore/datastore.conf.in,
+	  src/dht/Makefile.am, src/dht/dht.conf, src/dht/dht.conf.in,
+	  src/dns/Makefile.am, src/dns/dns.conf, src/dns/dns.conf.in,
+	  src/dv/Makefile.am, src/dv/dv.conf, src/dv/dv.conf.in,
+	  src/exit/exit.conf, src/fs/Makefile.am, src/fs/fs.conf,
+	  src/fs/fs.conf.in, src/mesh/Makefile.am, src/mesh/mesh.conf,
+	  src/mesh/mesh.conf.in, src/nse/Makefile.am, src/nse/nse.conf,
+	  src/nse/nse.conf.in, src/peerinfo/Makefile.am,
+	  src/peerinfo/peerinfo.conf, src/peerinfo/peerinfo.conf.in,
+	  src/statistics/Makefile.am, src/statistics/statistics.conf,
+	  src/statistics/statistics.conf.in, src/transport/Makefile.am,
+	  src/transport/transport.conf, src/transport/transport.conf.in,
+	  src/util/Makefile.am, src/util/client.c, src/util/resolver.conf,
+	  src/util/resolver.conf.in, src/vpn/Makefile.am, src/vpn/vpn.conf,
+	  src/vpn/vpn.conf.in: change default configurations on systems
+	  with UNIX domain sockets to NOT specify any port for TCP-based
+	  IPC (and interpret that as no TCP-based IPC desired), as we can
+	  and want to use UNIX domain sockets in this case by default
+
+2012-01-12 09:26  wachs
+
+	* [r19101] src/vpn/gnunet-service-vpn.c: fix compile errors
+
+2012-01-11 21:11  grothoff
+
+	* [r19093] src/fs/fs_api.c, src/fs/fs_api.h, src/fs/fs_publish.c:
+	  fixing bug to ensure that we properly descend into deep
+	  directories for the various publish start/stop/suspend/resume
+	  event callbacks
+
+2012-01-11 13:18  wachs
+
+	* [r19085] src/ats/ats.conf,
+	  src/ats/gnunet-service-ats_addresses.c: mlp configuration
+
+2012-01-11 12:41  wachs
+
+	* [r19084] src/ats/Makefile.am: adding glpk to the makefile
+
+2012-01-10 23:18  harsha
+
+	* [r19082] src/stream/stream_protocol.h: stream P2P protocol
+	  message specification
+
+2012-01-10 16:06  wachs
+
+	* [r19078] src/vpn/vpn.conf: fix: wrong binary and duplicate unix
+	  path
+
+2012-01-10 15:54  wachs
+
+	* [r19077] src/integration-tests/confs/c_bootstrap_server.conf,
+	  src/integration-tests/confs/c_nat_client.conf,
+	  src/integration-tests/confs/c_no_nat_client.conf: added section
+	  to solve vpn conflicts
+
+2012-01-09 16:38  grothoff
+
+	* [r19069] src/include/gnunet_disk_lib.h, src/util/disk.c: LRN:
+	  make disk iterator start return GNUNET_SYSERR if run on empty
+	  directory
+
+2012-01-05 21:04  grothoff
+
+	* [r19023] src/exit/Makefile.am: fix
+
+2012-01-05 20:58  bartpolot
+
+	* [r19021] src/dht, src/dht/Makefile.am, src/dht/dht_api.c,
+	  src/dht/test_dht_monitor.c: Added testcase for DHT monitoring.
+
+2012-01-05 20:18  grothoff
+
+	* [r19017] src/include/gnunet_crypto_lib.h, src/util/crypto_crc.c:
+	  fix crc16 prototypes
+
+2012-01-04 20:00  bartpolot
+
+	* [r18989] src/dht/dht.h, src/dht/dht_api.c,
+	  src/dht/gnunet-service-dht_clients.c,
+	  src/dht/gnunet-service-dht_clients.h,
+	  src/dht/gnunet-service-dht_neighbours.c,
+	  src/include/gnunet_dht_service.h, src/include/gnunet_protocols.h:
+	  New DHT-monitor functionality
+
+2012-01-04 15:48  grothoff
+
+	* [r18988] doc/man/Makefile.am, doc/man/gnunet-monkey.1: move
+	  monkey man page to monkey
+
+2012-01-04 14:20  grothoff
+
+	* [r18982] src/dns/dnsparser.c, src/dns/gnunet-dns-monitor.c,
+	  src/dns/gnunet-service-dns_new.c: adding missing file
+
+2012-01-02 12:23  grothoff
+
+	* [r18937] src/dns/Makefile.am, src/dns/gnunet-helper-dns.c: DNS
+	  helper for DNS redesign
+
+2012-01-02 10:22  grothoff
+
+	* [r18929] src/include/gnunet_crypto_lib.h, src/util/crypto_crc.c:
+	  adding crc16 to gnunet_crypto_lib.h
+
+2012-01-02 09:26  grothoff
+
+	* [r18924] src/include/Makefile.am,
+	  src/include/gnunet_helper_lib.h, src/util/Makefile.am,
+	  src/util/helper.c: adding new GNUNET_HELPER_ API for
+	  communication with (SUID) helper binaries via stdin/stdout using
+	  standard GNUNET messages
+
+2012-01-02 08:24  grothoff
+
+	* [r18923] src/include/gnunet_os_lib.h, src/util/os_priority.c:
+	  adding GNUNET_OS_start_process_vap function
+
+2012-01-02 03:51  grothoff
+
+	* [r18912] src/dns/gnunet-helper-hijack-dns.c: dns hijacker code
+	  review
+
+2012-01-01 23:39  grothoff
+
+	* [r18908] src/dns/Makefile.am, src/dns/dns_api.c,
+	  src/include/gnunet_dns_service.h, src/vpn/Makefile.am,
+	  src/vpn/gnunet-daemon-vpn-dns.c, src/vpn/gnunet-daemon-vpn-dns.h,
+	  src/vpn/gnunet-daemon-vpn-helper.c, src/vpn/gnunet-daemon-vpn.c,
+	  src/vpn/gnunet-daemon-vpn.h: first quick hack to extract an
+	  initial DNS service API
+
+2012-01-01 21:12  grothoff
+
+	* [r18889] src/arm/gnunet-service-arm.c, src/chat/gnunet-chat.c,
+	  src/datastore/gnunet-service-datastore.c, src/fs/fs_api.c,
+	  src/fs/gnunet-service-fs_cp.c,
+	  src/include/gnunet_scheduler_lib.h, src/nse/gnunet-service-nse.c,
+	  src/peerinfo/gnunet-service-peerinfo.c, src/util/crypto_hash.c,
+	  src/util/scheduler.c: changing scheduler priorities to revert to
+	  DEFAULT instead of inheriting parent-task priority unless
+	  something else is explicitly specified
+
+2011-12-30 22:25  grothoff
+
+	* [r18853] src/fs/Makefile.am, src/fs/fs_uri.c: LRN: normalize
+	  keywords (decapitalize, split) using libunistring - #2052
+
+2011-12-26 19:31  grothoff
+
+	* [r18828] src/fs/fs_misc.c, src/include/gnunet_fs_service.h,
+	  src/util/os_network.c: adding GNUNET_FS_time_to_year function to
+	  FS API
+
+2011-12-25 20:45  grothoff
+
+	* [r18815] src/fs/gnunet-service-fs_cp.h,
+	  src/fs/gnunet-service-fs_pr.c: fixing migration stop delay
+	  calculation, largely by first calculating datastore load
+	  correctly and then by better distinguishing between datastore
+	  full, datastore timeout and success and finally by adding
+	  per-peer tracking of the current block interval to adjust to
+	  repeated undesireable behavior. See #2029.
+
+2011-12-23 20:13  wachs
+
+	* [r18794] src/ats/Makefile.am: missing file
+
+2011-12-22 14:15  wachs
+
+	* [r18756] src/transport/gnunet-transport.c: include plugin in
+	  gnunet-transport output
+
+2011-12-21 18:03  bartpolot
+
+	* [r18754] src/nse/gnunet-nse-profiler.c,
+	  src/nse/gnunet-service-nse.c: Added statistic reading to NSE,
+	  fixed some minor bugs
+
+2011-12-21 16:39  wachs
+
+	* [r18751] src/vpn/gnunet-helper-vpn.c: fix compile error
+
+2011-12-21 14:33  wachs
+
+	* [r18742] src/transport/plugin_transport_http.c: fixed assertion
+	  in gnunet-service resolver
+	  improved address printing for IPv6 addresses, especially if
+	  reverse lookup is not successful
+
+2011-12-21 12:39  wachs
+
+	* [r18735] src/transport/plugin_transport_udp.c: fixed assertion:
+	  wrong return value
+
+2011-12-21 09:56  grothoff
+
+	* [r18732] contrib/report.sh: add version reporting for MHD to
+	  report.sh
+
+2011-12-21 09:40  grothoff
+
+	* [r18730] src/arm/arm.h,
+	  src/ats-test/test_transport_ats_multiple_peers.c, src/ats/ats.h,
+	  src/chat/chat.h, src/core/core.h,
+	  src/core/gnunet-service-core_kx.c, src/datastore/datastore.h,
+	  src/dht/dht.h, src/dht/gnunet-service-dht_neighbours.c,
+	  src/dv/dv.h, src/dv/test_transport_api_dv.c,
+	  src/fragmentation/fragmentation.h, src/fs/fs.h,
+	  src/fs/gnunet-service-fs.h, src/hello/hello.c,
+	  src/hostlist/gnunet-daemon-hostlist.c, src/include/block_dns.h,
+	  src/include/block_fs.h, src/include/gnunet_ats_service.h,
+	  src/include/gnunet_bandwidth_lib.h, src/include/gnunet_common.h,
+	  src/include/gnunet_crypto_lib.h, src/include/gnunet_time_lib.h,
+	  src/mesh/mesh.h, src/mesh/mesh_protocol.h, src/nat/nat.h,
+	  src/nse/gnunet-service-nse.c, src/nse/nse.h,
+	  src/peerinfo/peerinfo.h, src/statistics/statistics.h,
+	  src/testing/test_testing_large_topology.c,
+	  src/testing/test_testing_topology.c,
+	  src/testing/test_testing_topology_blacklist.c,
+	  src/testing/test_testing_topology_churn.c,
+	  src/transport/gnunet-helper-transport-wlan.c,
+	  src/transport/gnunet-service-transport_neighbours.c,
+	  src/transport/gnunet-service-transport_validation.c,
+	  src/transport/gnunet-transport-wlan-sender.c,
+	  src/transport/plugin_transport_http.h,
+	  src/transport/plugin_transport_smtp.c,
+	  src/transport/plugin_transport_tcp.c,
+	  src/transport/plugin_transport_udp.c,
+	  src/transport/plugin_transport_udp_new.c,
+	  src/transport/plugin_transport_unix.c,
+	  src/transport/plugin_transport_wlan.c,
+	  src/transport/plugin_transport_wlan.h,
+	  src/transport/test_quota_compliance.c,
+	  src/transport/test_transport_api_reliability.c,
+	  src/transport/test_transport_api_unreliability.c,
+	  src/transport/test_transport_api_unreliability_constant.c,
+	  src/transport/transport.h, src/util/crypto_ksk.c,
+	  src/util/crypto_rsa.c, src/util/resolver.h,
+	  src/vpn/gnunet-service-dns-p.h, src/vpn/gnunet-service-dns.c,
+	  src/vpn/gnunet-vpn-packet.h: fixing 2012: network structure
+	  alignment now forced to be correct even on W32 using #pragma pack
+	  from gcc 4.x
+
+2011-12-20 16:41  wachs
+
+	* [r18726] src/transport/gnunet-service-transport_neighbours.c: fix
+	  for mantis 1959
+	  compare addresses and only mark address when addresses match
+
+2011-12-20 16:01  wachs
+
+	* [r18723] src/transport/gnunet-service-transport_clients.c: fix
+	  for mantis #2008
+
+2011-12-20 15:48  wachs
+
+	* [r18722] src/transport/transport_api.c: Improvement in reconnect:
+	  first disconnect, then destroy neighbours
+
+2011-12-20 12:58  wachs
+
+	* [r18719] src/include/gnunet_transport_plugin.h,
+	  src/transport/plugin_transport_tcp.c: first changes for new
+	  plugin api
+
+2011-12-20 09:20  grothoff
+
+	* [r18714] AUTHORS, configure.ac, src/dht/test_dht_2dtorus.conf:
+	  Adding optional compiler and linker hardening options as per
+	  suggestion from Jacob
+
+2011-12-19 23:24  grothoff
+
+	* [r18710] src/dht/test_dht_2dtorus.conf: do not run with full on
+	  NSE during testing
+
+2011-12-19 21:26  grothoff
+
+	* [r18704] src/include/gnunet_statistics_service.h,
+	  src/statistics/statistics_api.c: implement watch_cancel function
+
+2011-12-19 17:15  grothoff
+
+	* [r18698] src/fs/fs_api.c, src/fs/fs_api.h, src/fs/fs_search.c:
+	  improving results seen communication to consider which exact
+	  keywords a particular result has been seen for so far
+
+2011-12-19 17:10  wachs
+
+	* [r18697] src/integration-tests/Makefile.am,
+	  src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in: a new
+	  nat disconnect test
+
+2011-12-19 16:31  grothoff
+
+	* [r18696] src/transport/gnunet-service-transport_neighbours.c:
+	  fixing #2014
+
+2011-12-19 15:59  grothoff
+
+	* [r18693] src/fs/gnunet-service-fs_pr.c: limit lifetime of
+	  migrated content to at most 1 year
+
+2011-12-19 15:52  grothoff
+
+	* [r18692] src/fs/gnunet-service-fs_cp.c,
+	  src/fs/gnunet-service-fs_cp.h, src/fs/gnunet-service-fs_pr.c:
+	  block data migration based on lowest discarded expiration of
+	  content in the datastore to avoid wasting bandwidth on migrating
+	  content that is just instantly discarded again anyway
+
+2011-12-19 15:02  wachs
+
+	* [r18691] src/integration-tests/test_integration_clique.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in,
+	  src/integration-tests/test_integration_restart.py.in: fixing some
+	  timeouts
+
+2011-12-19 14:26  wachs
+
+	* [r18690] src/ats/ats_api_scheduling.c:
+
+2011-12-19 14:25  wachs
+
+	* [r18689] src/ats/ats_api_scheduling.c,
+	  src/transport/gnunet-service-transport_neighbours.c: fixes for
+	  mantis #1988
+	  and cleanup
+
+2011-12-19 14:10  grothoff
+
+	* [r18688] src/fs/gnunet-service-fs_cp.c,
+	  src/fs/gnunet-service-fs_pr.c, src/fs/gnunet-service-fs_pr.h:
+	  actually limit FS memory consumption by limiting how many
+	  requests we track from other peers (respective GSF-option had not
+	  been set; new code also inverts the meaning of the bit, so it
+	  does not have to be set for peers but rather is now set for
+	  clients to excempt them from the limitation)
+
+2011-12-19 13:54  grothoff
+
+	* [r18686] src/datastore/datastore.h,
+	  src/datastore/datastore_api.c,
+	  src/datastore/perf_datastore_api.c,
+	  src/datastore/test_datastore_api.c,
+	  src/datastore/test_datastore_api_management.c,
+	  src/fs/fs_namespace.c, src/fs/fs_publish.c, src/fs/fs_unindex.c,
+	  src/fs/gnunet-service-fs_indexing.c,
+	  src/fs/gnunet-service-fs_pr.c,
+	  src/include/gnunet_datastore_service.h: adding min_expiration
+	  argument to GNUNET_DATASTORE_ContinuationWithStatus callback to
+	  communicate which content has a chance of being stored in the
+	  medium term
+
+2011-12-19 13:08  wachs
+
+	* [r18684] src/hostlist/test_gnunet_daemon_hostlist.c: added LRN's
+	  patch from mantis bug 1998
+
+2011-12-19 12:12  wachs
+
+	* [r18682] src/include/gnunet_ats_service.h,
+	  src/transport/plugin_transport_wlan.c: additional network type
+	  for WLAN
+
+2011-12-19 12:08  wachs
+
+	* [r18681] src/ats/ats_api_scheduling.c: checked mantis #0002016
+	  and added additional assertion
+
+2011-12-19 10:59  grothoff
+
+	* [r18680] src/nat/gnunet-helper-nat-server.c: Jacob Appelbaum
+	  reviewed gnunet-helper-nat-server and affirms that the code
+	  'seems fine'
+
+2011-12-19 09:32  grothoff
+
+	* [r18678] src/datastore/gnunet-service-datastore.c: fixing
+	  calculation of Bloom filter size that was too large by 1024x
+	  because it was not adjusted when the unit for the quota was
+	  changed from kb to bytes
+
+2011-12-17 18:32  grothoff
+
+	* [r18662] contrib/apparmor,
+	  contrib/apparmor/usr.bin.gnunet-helper-nat-server: adding
+	  apparmor profile for gnunet-helper-nat-server from Jacob
+
+2011-12-16 22:42  grothoff
+
+	* [r18653] src/datastore/plugin_datastore_sqlite.c: implementing
+	  get_keys API for sqlite datastore plugin (#2013)
+
+2011-12-16 22:19  grothoff
+
+	* [r18652] src/statistics/statistics_api.c,
+	  src/statistics/test_statistics_api_watch.c: code cleanup, also
+	  trying to fix #2011
+
+2011-12-16 22:13  grothoff
+
+	* [r18650] src/nat/gnunet-helper-nat-client.c: really minimizing
+	  gnunet-helper-nat-client code running with root rights
+
+2011-12-16 22:04  grothoff
+
+	* [r18649] src/nat/gnunet-helper-nat-server-windows.c,
+	  src/nat/gnunet-helper-nat-server.c: really minimizing code
+	  running with root rights
+
+2011-12-16 21:19  grothoff
+
+	* [r18647] src/util/container_bloomfilter.c: cleaning up
+	  bloomfilter code and disk file size tests
+
+2011-12-16 17:15  wachs
+
+	* [r18635] src/integration-tests/confs/c_nat_client.conf,
+	  src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_clique_nat.py.in:
+
+2011-12-16 16:27  wachs
+
+	* [r18634] src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_clique_nat.py.in:
+	  improvements and fixes
+
+2011-12-16 16:12  wachs
+
+	* [r18633] src/integration-tests/confs/c_nat_client.conf,
+	  src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_clique_nat.py.in: fix
+
+2011-12-16 14:49  wachs
+
+	* [r18632] src/integration-tests/Makefile.am,
+	  src/integration-tests/confs/c_nat_client.conf,
+	  src/integration-tests/test_integration_clique_nat.py.in: adding
+	  nat clique test
+
+2011-12-16 14:03  wachs
+
+	* [r18631] src/integration-tests/gnunet_testing.py.in: improved
+	  statisc output
+
+2011-12-16 13:43  wachs
+
+	* [r18630] src/integration-tests/test_integration_restart.py.in:
+	  new test: connect after peer restart?
+
+2011-12-16 13:43  wachs
+
+	* [r18629] src/integration-tests/Makefile.am,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in,
+	  src/integration-tests/test_integration_clique.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in:
+
+2011-12-16 12:25  wachs
+
+	* [r18627] src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in,
+	  src/integration-tests/test_integration_clique.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in: added
+	  support for interupting a test
+
+2011-12-16 11:19  grothoff
+
+	* [r18625] src/nat/gnunet-helper-nat-client.c,
+	  src/nat/gnunet-helper-nat-server.c: additional stylistic changes
+	  to gnunet-helper-nat-client anticipating next round of
+	  suggestions from Jacob Applebaum
+
+2011-12-16 11:16  grothoff
+
+	* [r18624] configure.ac, src/nat/gnunet-helper-nat-server.c: some
+	  very minor stylistic changes to gnunet-helper-nat-server based on
+	  suggestions from Jacob Applebaum
+
+2011-12-15 17:03  wachs
+
+	* [r18620] src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in,
+	  src/integration-tests/test_integration_clique.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in: improved
+	  tests
+
+2011-12-15 15:56  wachs
+
+	* [r18617] src/integration-tests/Makefile.am,
+	  src/integration-tests/gnunet_testing.py.in,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in,
+	  src/integration-tests/test_integration_clique.py.in: improved
+	  test framework
+
+2011-12-15 15:20  wachs
+
+	* [r18615] src/integration-tests/gnunet_testing.py.in: added
+	  improved check management
+
+2011-12-15 14:56  grothoff
+
+	* [r18614] src/fs/gnunet-service-fs_cp.c,
+	  src/fs/gnunet-service-fs_pr.c: use better heuristic to deal with
+	  datastore put failures; log migration stop message transmissions
+
+2011-12-15 14:55  grothoff
+
+	* [r18613] src/datastore/gnunet-service-datastore.c,
+	  src/include/gnunet_datastore_plugin.h: adding support for
+	  detection quota changes / missing bloomfilter files and
+	  reconstruction/recovery code
+
+2011-12-15 14:21  wachs
+
+	* [r18603] src/integration-tests/gnunet_testing.py.in: peer get
+	  automatically stopped
+
+2011-12-15 14:09  wachs
+
+	* [r18602] src/integration-tests/gnunet_testing.py.in: improved
+	  peer management
+
+2011-12-15 12:44  grothoff
+
+	* [r18601] src/util/container_bloomfilter.c: only try to read bf
+	  from disk if we didn't just create the file
+
+2011-12-15 12:41  grothoff
+
+	* [r18600] src/datastore/datastore.conf: store Bloomfilter with
+	  rest of datastore data
+
+2011-12-15 12:40  grothoff
+
+	* [r18599] src/include/gnunet_disk_lib.h,
+	  src/util/container_bloomfilter.c, src/util/disk.c: extra error
+	  checking in Bloom filter to check that the size of the file on
+	  disk corresponds to the expected size for the given filter
+
+2011-12-15 09:51  wachs
+
+	* [r18597] README: added python remark to hacking This line, and
+	  those below, will be ignored
+	  --
+	  
+	  M README
+
+2011-12-15 09:46  wachs
+
+	* [r18596] configure.ac: Python version required to run tests is >=
+	  2.6
+
+2011-12-14 13:32  wachs
+
+	* [r18590] src/include/gnunet_ats_service.h,
+	  src/transport/gnunet-service-transport.c,
+	  src/transport/plugin_transport_http.c,
+	  src/transport/plugin_transport_udp.c,
+	  src/transport/plugin_transport_unix.c: wan/lan detection in
+	  plugins
+
+2011-12-14 13:31  wachs
+
+	* [r18589] src/ats/ats_api_scheduling.c: adding detection for
+	  AF_UNIX
+
+2011-12-14 10:25  wachs
+
+	* [r18588] src/transport/plugin_transport_http.c,
+	  src/transport/plugin_transport_http.h,
+	  src/transport/plugin_transport_http_server.c,
+	  src/transport/plugin_transport_tcp.c: WAN/LAN for HTTP/S
+
+2011-12-14 08:53  wachs
+
+	* [r18587] src/include/gnunet_transport_plugin.h,
+	  src/transport/gnunet-service-transport.c,
+	  src/transport/gnunet-service-transport_plugins.c,
+	  src/transport/gnunet-service-transport_plugins.h,
+	  src/transport/plugin_transport_tcp.c: removing ats functions from
+	  plugins, instead provide callback function
+
+2011-12-14 08:52  wachs
+
+	* [r18586] src/ats/ats_api_scheduling.c:
+
+2011-12-13 16:26  wachs
+
+	* [r18578] src/include/gnunet_transport_plugin.h: missing
+
+2011-12-13 16:20  wachs
+
+	* [r18577] src/transport/gnunet-service-transport.c,
+	  src/transport/gnunet-service-transport_plugins.c,
+	  src/transport/plugin_transport_tcp.c: changes:
+	  changed order of startup since ats is now required for plugins
+	  transport provides ATS handles for plugins
+	  network detection for tcp
+
+2011-12-13 15:19  wachs
+
+	* [r18576] src/transport/plugin_transport_wlan.c: address type in
+	  WLAN
+
+2011-12-13 15:15  wachs
+
+	* [r18575] src/transport/plugin_transport_unix.c: added ATS
+	  addresstype information to unix
+
+2011-12-13 15:13  wachs
+
+	* [r18574] src/ats/ats_api_scheduling.c,
+	  src/ats/gnunet-service-ats_addresses.c: fixing crash 0002007
+	  adding network information to addresses
+
+2011-12-13 15:02  wachs
+
+	* [r18573] src/util/os_network.c: LRN's patch argument order
+
+2011-12-13 14:36  grothoff
+
+	* [r18572] src/fs/gnunet-service-fs.c,
+	  src/fs/gnunet-service-fs_lc.c, src/fs/gnunet-service-fs_pr.h:
+	  trying to fix #2000
+
+2011-12-13 12:31  wachs
+
+	* [r18566] src/ats/Makefile.am, src/ats/ats_api_scheduling.c,
+	  src/ats/gnunet-service-ats_addresses.c,
+	  src/ats/gnunet-service-ats_addresses.h,
+	  src/include/gnunet_ats_service.h: move code from service to api
+	  fix bug
+	  add test
+
+2011-12-12 17:11  wachs
+
+	* [r18562] src/ats/gnunet-service-ats_addresses.c,
+	  src/include/gnunet_ats_service.h: WAN/LAN detection
+	  Mantis 1991
+
+2011-12-12 13:58  wachs
+
+	* [r18560] src/ats/gnunet-service-ats_addresses.c,
+	  src/ats/gnunet-service-ats_addresses.h: IPv4 check implemented
+	  TODO: IPv6
+
+2011-12-12 12:52  wachs
+
+	* [r18559] src/ats/gnunet-service-ats_addresses.c,
+	  src/ats/gnunet-service-ats_addresses.h: WAN/LAN detection
+
+2011-12-12 12:05  wachs
+
+	* [r18558] src/Makefile.am,
+	  src/integration-tests/test_integration_clique.py.in: including
+	  integration tests in checks
+
+2011-12-11 15:39  grothoff
+
+	* [r18556] src/transport, src/transport/Makefile.am,
+	  src/transport/gnunet-helper-transport-wlan-dummy.c,
+	  src/transport/gnunet-helper-transport-wlan.c,
+	  src/transport/gnunet-transport-wlan-helper-dummy.c,
+	  src/transport/gnunet-transport-wlan-helper.c,
+	  src/transport/gnunet-transport-wlan-sender.c,
+	  src/transport/plugin_transport_wlan.c: renaming WLAN helper
+	  process to gnunet-helper-transport-wlan in order to satisfy
+	  naming conventions
+
+2011-12-10 13:49  harsha
+
+	* [r18543] src/include/gnunet_stream_lib.h: syntax
+
+2011-12-09 17:31  wachs
+
+	* [r18541] src/integration-tests/Makefile.am,
+	  src/integration-tests/confs/c_no_nat_client_2.conf,
+	  src/integration-tests/hostkeys/0002-hostkey,
+	  src/integration-tests/hostkeys/0003-hostkey,
+	  src/integration-tests/hostkeys/0004-hostkey,
+	  src/integration-tests/hostkeys/0005-hostkey,
+	  src/integration-tests/hostkeys/0006-hostkey,
+	  src/integration-tests/hostkeys/0007-hostkey,
+	  src/integration-tests/hostkeys/0008-hostkey,
+	  src/integration-tests/hostkeys/0009-hostkey,
+	  src/integration-tests/test_integration_clique.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in: clique
+
+2011-12-09 16:18  wachs
+
+	* [r18534] src/integration-tests/Makefile.am,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in,
+	  src/integration-tests/test_integration_disconnect.py.in:
+	  disconnect test
+
+2011-12-09 16:09  grothoff
+
+	* [r18533] src/statistics/statistics_api.c: fix crash
+
+2011-12-09 15:57  harsha
+
+	* [r18532] src/include/gnunet_stream_lib.h: fixed missing doc
+	  comment
+
+2011-12-09 15:55  harsha
+
+	* [r18531] src/include/gnunet_stream_lib.h, src/stream,
+	  src/stream/README: added API definitions for stream library
+
+2011-12-09 15:19  wachs
+
+	* [r18530]
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in:
+	  added core sessions
+
+2011-12-09 14:48  wachs
+
+	* [r18528] src/integration-tests/confs/c_bootstrap_server.conf,
+	  src/integration-tests/confs/c_no_nat_client.conf,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in:
+	  first test ready
+
+2011-12-09 12:41  wachs
+
+	* [r18526]
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in:
+	  test now checks if boths transports are connecting
+
+2011-12-09 10:40  wachs
+
+	* [r18525] src/statistics/gnunet-statistics.c: added quiet mode
+	  just printing the value
+
+2011-12-08 16:16  wachs
+
+	* [r18517] src/integration-tests/Makefile.am,
+	  src/integration-tests/confs,
+	  src/integration-tests/confs/c_bootstrap_server.conf,
+	  src/integration-tests/confs/c_nat_client.conf,
+	  src/integration-tests/confs/c_no_nat_client.conf,
+	  src/integration-tests/test_integration_bootstrap_and_connect.py.in,
+	  src/integration-tests/test_integration_clique.py.in: step by step
+
+2011-12-08 15:45  grothoff
+
+	* [r18515] doc/man/gnunet-arm.1, po/POTFILES.in,
+	  src/arm/Makefile.am, src/arm/arm.h, src/arm/arm_api.c,
+	  src/arm/do_start_process.c, src/arm/gnunet-arm.c,
+	  src/arm/gnunet-service-arm.c, src/arm/mockup-service.c,
+	  src/arm/test_arm_api.c, src/arm/test_exponential_backoff.c,
+	  src/arm/test_gnunet_arm.sh,
+	  src/arm/test_gnunet_service_manager.c,
+	  src/include/gnunet_arm_service.h, src/include/gnunet_protocols.h:
+	  major rewrite of ARM service and a bit of the ARM IPC to take
+	  advantage of the simplifications possible now that we no longer
+	  intercept traffic; the new code in particular is better at
+	  communicating what exactly ARM was doing in response to requests.
+	  A major change is that gnunet-arm -i/-k now only impacts if a
+	  service is running by-default, on-demand starting is no longer
+	  impacted, option -t from gnunet-arm was removed
+
+2011-12-08 15:32  wachs
+
+	* [r18512] src/testing/gnunet-testing.c: modified to create cfg
+	  with default without template
+
+2011-12-08 13:43  wachs
+
+	* [r18511] src/testing/gnunet-testing.c: added option to specify
+	  hostkey file
+
+2011-12-08 13:16  wachs
+
+	* [r18510] configure.ac, src/integration-tests,
+	  src/integration-tests/Makefile.am,
+	  src/integration-tests/test_integration_clique.py.in: basics for
+	  integration tests
+
+2011-12-08 13:04  wachs
+
+	* [r18509] src/testing/Makefile.am: space after backslash
+
+2011-12-08 12:42  grothoff
+
+	* [r18506] src/nse/gnunet-service-nse.c: add statistic to track
+	  estimated network diameter
+
+2011-12-08 12:38  grothoff
+
+	* [r18505] src/nse/gnunet-service-nse.c: fixing issue with sending
+	  back size estimate messages to peers that already have good
+	  estimate information
+
+2011-12-07 17:02  wachs
+
+	* [r18497] src/testing/gnunet-testing.c: added hostkey generation
+	  functionality
+
+2011-12-07 15:34  wachs
+
+	* [r18496] src/include/gnunet_testing_lib.h,
+	  src/testing/gnunet-testing.c, src/testing/testing_group.c:
+
+2011-12-07 15:33  bartpolot
+
+	* [r18495] src/nse/nse_api.c: Made sure that NSE never returns
+	  invalid standard deviation values
+
+2011-12-07 13:23  wachs
+
+	* [r18492] src/testing/gnunet-testing.c:
+
+2011-12-07 12:42  wachs
+
+	* [r18491] src/include/gnunet_getopt_lib.h,
+	  src/util/getopt_helpers.c: fixed docu
+
+2011-12-07 12:28  wachs
+
+	* [r18490] src/testing/Makefile.am, src/testing/gnunet-testing.c:
+	  testing cmd line tool
+
+2011-12-06 20:20  grothoff
+
+	* [r18484] src/arm/gnunet-service-arm_interceptor.c: removing ARM
+	  interceptor connection forwarding post-accept code, now using
+	  lsocks everywhere
+
+2011-12-06 20:07  grothoff
+
+	* [r18479] src/include/gnunet_common.h,
+	  src/include/gnunet_network_lib.h,
+	  src/include/gnunet_server_lib.h, src/transport/Makefile.am,
+	  src/transport/gnunet-transport-wlan-helper.c,
+	  src/util/pseudonym.c: eliminating last dependency on util code
+	  from wlan helper by inlining
+
+2011-12-06 19:06  grothoff
+
+	* [r18476] src/util/common_logging.c: LRN: correct behaviour when
+	  logfile does not exist
+
+2011-12-06 18:06  grothoff
+
+	* [r18475] src/arm/gnunet-service-arm_interceptor.c: fix compile
+
+2011-12-06 18:06  grothoff
+
+	* [r18474] src/util/common_logging.c: LRN: Ensure that GTK can then
+	  do the internal call write(2, message, strlen
+	  (message)); successfully by default.
+
+2011-12-06 17:58  grothoff
+
+	* [r18473] src/arm/do_start_process.c,
+	  src/arm/gnunet-service-arm.c, src/arm/gnunet-service-arm.h,
+	  src/arm/gnunet-service-arm_interceptor.c,
+	  src/include/gnunet_network_lib.h, src/include/gnunet_os_lib.h,
+	  src/include/platform.h, src/util/network.c,
+	  src/util/os_priority.c, src/util/service.c: Implement passing
+	  sockets in IPC on W32 (#1975)
+
+2011-12-06 14:55  wachs
+
+	* [r18463] src/include/gnunet_common.h,
+	  src/transport/gnunet-transport-wlan-helper.c,
+	  src/transport/gnunet_wlan_sender.c,
+	  src/transport/plugin_transport_wlan.c: adding GNUnet endian
+	  operations
+
+2011-12-06 14:19  wachs
+
+	* [r18461] src/transport/gnunet_wlan_sender.c: timestamp not
+	  supported on fedora core 8
+
+2011-12-06 14:13  grothoff
+
+	* [r18460] src/datastore/gnunet-service-datastore.c,
+	  src/util/common_allocation.c, src/util/container_bloomfilter.c:
+	  Fixing #1976 by allowing allocations between INT_MAX and SIZE_MAX
+	  and at the same time limiting BF size for datastore to 2 GB. Also
+	  fixing infinite loop when creating BFs of sizes between 2-4 GB
+
+2011-12-06 13:54  grothoff
+
+	* [r18456] src/arm/gnunet-service-arm_interceptor.c,
+	  src/include/gnunet_common.h, src/util/common_endian.c: use
+	  uint64_t instead of long long for GNUNET_ntohll/GNUNET_htonll
+
+2011-12-06 13:35  bartpolot
+
+	* [r18451] src/include/platform.h: Removed legacy code
+
+2011-12-06 12:49  grothoff
+
+	* [r18445] src/include/platform.h, src/include/winproc.h,
+	  src/nat/gnunet-helper-nat-client-windows.c,
+	  src/nat/gnunet-helper-nat-server-windows.c: LRN: Fixing Mantis
+	  #1974: On W32 winsock2.h defines FD_SETSIZE (if it was not
+	  defined before inclusion of the header) to 64, which means that
+	  it's not possible to select on more than 64 sockets at once. This
+	  might work during the tests, but in the wild people might want to
+	  have more than 60 connections, at least in the transport service.
+	  The patch attached should increase the limit to 1024.
+
+2011-12-06 09:44  grothoff
+
+	* [r18432] README: fix
+
+2011-12-06 01:56  grothoff
+
+	* [r18431] contrib/Makefile.am: distfix
+
+2011-12-01 09:17  grothoff
+
+	* [r18412] src/datastore/perf_plugin_datastore.c,
+	  src/util/winproc.c: LRN: Adding vectored exception handling for
+	  W32 (#1965)
+	  
+	  Whenever an exception occurs, and the process is not being
+	  debugged, it will run a debugger specified by GNUNET_DEBUGGER
+	  environment variable, and wait for it to attach.
+	  The net effect is the same as using JIT debugging (AeDebug), but
+	  without the stack being broken by SEH (because VEH has a priority
+	  over SEH), which allows for fuller backtraces for any exception,
+	  not just for GNUNET_abort() calls.
+
+2011-11-30 15:21  grothoff
+
+	* [r18410] Makefile.am, configure.ac, po/de.po, po/es.po, po/sv.po,
+	  po/vi.po, po/zh_CN.po: releasing GNUnet 0.9.0
+
