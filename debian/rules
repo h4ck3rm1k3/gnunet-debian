@@ -32,6 +32,9 @@ override_dh_auto_install:
 override_dh_install:
 	dh_install -a --fail-missing
 
+override_dh_installdocs:
+	dh_installdocs --link-doc=gnunet-common
+
 override_dh_strip:
 	dh_strip --dbg-package=gnunet-dbg
 
