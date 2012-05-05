@@ -55,7 +55,7 @@ case "${1}" in
 		# Update files and directories permissions.
 		# Assuming default values, this *should* not be changed.
 		echo -n "Updating files and directories permissions:"
-		chown -R ${_USERNAME}:${_GROUPNAME} /var/log/gnunet-server
+		chown -R ${_USERNAME}:${_GROUPNAME} /var/log/gnunetd
 		chown -R ${_USERNAME}:${_GROUPNAME} ${SERVICEHOME}
 		# Secure access to the data directory
 		chmod 0700 "${SERVICEHOME}" || true
