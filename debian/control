@@ -60,9 +60,8 @@ Section: debug
 Priority: extra
 Architecture: any
 Depends:
- ${misc:Depends}, gnunet-client (= ${binary:Version}),
- gnunet-common (= ${binary:Version}), gnunet-dev (= ${binary:Version}),
- gnunet-server (= ${binary:Version})
+ gnunet-common (= ${binary:Version}) | gnunet-server (= ${binary:Version}) |
+ gnunet-client (= ${binary:Version}), ${misc:Depends}
 Description: secure, trust-based peer-to-peer framework (debug)
  GNUnet is a peer-to-peer framework which focuses on providing security. All
  link-to-link messages in the network are confidential and authenticated. The

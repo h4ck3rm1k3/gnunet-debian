@@ -47,8 +47,10 @@ gnunet (0.9.2-1) unstable; urgency=low
     + use debconf to determine which user and group to delete.
     + remove /var/lib/gnunet on purge.
     + remove /etc/default/gnunet-server on purge (Closes: #668766).
+  * Make gnunet-dbg dependencies alternatives as it provides debugging
+    symbol for all of them.
 
- -- Bertrand Marc <beberking@gmail.com>  Sat, 21 Apr 2012 11:41:52 +0200
+ -- Bertrand Marc <beberking@gmail.com>  Sun, 06 May 2012 00:28:20 +0200
 
 gnunet (0.8.1b-8) unstable; urgency=low
 
