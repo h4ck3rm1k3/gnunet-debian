@@ -8,6 +8,20 @@ case "${1}" in
 		_GROUPNAME="gnunet"
 		GNUNETDNS_GROUP="gnunetdns"
 
+		for i in /usr/bin/gnunet-helper-exit \
+			/usr/bin/gnunet-helper-nat-client \
+			/usr/bin/gnunet-helper-nat-server \
+			/usr/bin/gnunet-helper-transport-wlan \
+			/usr/bin/gnunet-helper-vpn \
+			/usr/bin/gnunet-helper-dns \
+			/usr/bin/gnunet-service-dns
+		do
+			if dpkg-statoverride --list $i >/dev/null 2>&1
+			then
+				dpkg-statoverride --remove $i
+			fi
+		done
+
 		if [ -x /usr/sbin/deluser ]
 		then
 			deluser --quiet --system ${_USERNAME}

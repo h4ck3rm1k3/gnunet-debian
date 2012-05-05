@@ -60,16 +60,26 @@ case "${1}" in
 		# Secure access to the data directory
 		chmod 0700 "${SERVICEHOME}" || true
 		# Restrict access on setuid binaries
-		chgrp ${_GROUPNAME} /usr/bin/gnunet-helper-exit \
-			/usr/bin/gnunet-helper-nat* /usr/bin/gnunet-helper-transport-wlan \
+		for i in /usr/bin/gnunet-helper-exit \
+			/usr/bin/gnunet-helper-nat-client \
+			/usr/bin/gnunet-helper-nat-server \
+			/usr/bin/gnunet-helper-transport-wlan \
 			/usr/bin/gnunet-helper-vpn
-		chmod 4754 /usr/bin/gnunet-helper-exit \
-			/usr/bin/gnunet-helper-nat* /usr/bin/gnunet-helper-transport-wlan \
-			/usr/bin/gnunet-helper-vpn
-		chgrp ${GNUNETDNS_GROUP} /usr/bin/gnunet-helper-dns
-		chmod 4754 /usr/bin/gnunet-helper-dns
-		chown ${_USERNAME}:${GNUNETDNS_GROUP} /usr/bin/gnunet-service-dns
-		chmod 2754 /usr/bin/gnunet-service-dns
+		do
+			# only do something when no setting exists
+			if ! dpkg-statoverride --list $i >/dev/null 2>&1
+			then
+				dpkg-statoverride --update --add root ${_GROUPNAME} 4754 $i
+			fi
+		done
+		if ! dpkg-statoverride --list /usr/bin/gnunet-helper-dns >/dev/null 2>&1
+		then
+			dpkg-statoverride --update --add root ${GNUNETDNS_GROUP} 4754 /usr/bin/gnunet-helper-dns
+		fi
+		if ! dpkg-statoverride --list /usr/bin/gnunet-service-dns >/dev/null 2>&1
+		then
+			dpkg-statoverride --update --add ${_USERNAME} ${GNUNETDNS_GROUP} 2754 /usr/bin/gnunet-service-dns
+		fi
 		echo  " done."
 
 		# Writing new values to configuration file
