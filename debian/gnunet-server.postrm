@@ -4,8 +4,21 @@ set -e
 
 case "${1}" in
 	purge)
-		_USERNAME="gnunet"
-		_GROUPNAME="gnunet"
+		if [ -e /usr/share/debconf/confmodule ]
+		then
+			. /usr/share/debconf/confmodule
+			db_version 2.0
+
+			db_get gnunet-server/username
+			_USERNAME="${RET:-gnunet}"
+
+			db_get gnunet-server/groupname
+			_GROUPNAME="${RET:-gnunet}"
+		else
+			_USERNAME="gnunet"
+			_GROUPNAME="gnunet"
+		fi
+
 		GNUNETDNS_GROUP="gnunetdns"
 
 		for i in /usr/bin/gnunet-helper-exit \
