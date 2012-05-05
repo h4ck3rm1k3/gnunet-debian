@@ -10,6 +10,8 @@ Build-Depends:
  libsqlite3-dev (>=3.0), libpq-dev (>=8.3), guile-1.8-dev, libglpk-dev (>=4.32)
 Build-Conflicts: autoconf2.13, automake1.4
 Standards-Version: 3.9.3
+Vcs-Git: git://git.debian.org/git/users/bbk-guest/gnunet.git
+Vcs-browser: http://git.debian.org/?p=users/bbk-guest/gnunet.git
 Homepage: http://www.gnunet.org/
 
 Package: gnunet
