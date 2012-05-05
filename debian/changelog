@@ -8,6 +8,7 @@ gnunet (0.9.2-1) unstable; urgency=low
     + depends on libunistring-dev.
     + depends on libltdl-dev instead of libltdl3-dev.
     + no need to depend on libgtk anymore.
+    + gnunet-server suggests miniupnpc.
   * debian/rules:
     + no need to define LOGFILE and PIDFILE.
     + create a minimal conf file.
@@ -26,14 +27,26 @@ gnunet (0.9.2-1) unstable; urgency=low
     + define the logfile at run time.
   * Use a secured group gnunetdns for SUID binaries and change permissions
     accordingly, see https://gnunet.org/gnunet-access-control-model
+  * gnunet-server.postinst, gnunet-server.postrm: use dpkg-statoverride to set
+    and remove setuid permissions.
   * Remove properly the old incompatible /etc/gnunetd.conf, use
     /etc/gnunet.conf instead.
   * Add minimal (generic) man pages when information is available.
   * Remove dpkg options for compression.
-  * debian/control: gnunet-server suggests miniupnpc.
   * gnunet-server.docs: add README.mysql and README.postgres.
-  * Remove /etc/default/gnunet-server on purge (Closes: #668766).
   * debian/rules: remove template binaries after dh_install.
+  * debian/copyright:
+    + use copyright format 1.0.
+    + mention AUTHORS and translators.
+    + use GPL-3+ when possible.
+    + add a paragraph for two files distributed under MIT/X11.
+  * Use dh_installdocs --link-doc to avoid redundancy.
+  * Remove unused debian/gnunet-dev.lintian-overrides.
+  * debian/control: add Vcs-git and Vcs-browser fields.
+  * gnunet-server.postrm:
+    + use debconf to determine which user and group to delete.
+    + remove /var/lib/gnunet on purge.
+    + remove /etc/default/gnunet-server on purge (Closes: #668766).
 
  -- Bertrand Marc <beberking@gmail.com>  Sat, 21 Apr 2012 11:41:52 +0200
 
