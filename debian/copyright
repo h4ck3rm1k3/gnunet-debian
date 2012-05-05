@@ -8,15 +8,40 @@ Copyright:
  (C) 2001-2010 Christian Grothoff <christian@grothoff.org>
  (C) 2005-2008 Nils Durner <durner@gnunet.org>
  (C) Michael John Wensley <michael@wensley.org.uk>
-License: GPL-3
+License: GPL-3+
+Comment: Many contributors are mentioned in AUTHORS
+
+Files: src/util/crypto_hkdf.c src/util/test_crypto_hkdf.c
+Copyright: 2010 Nils Durner <durner@gnunet.org>
+License: MIT/X11
 
 Files: debian/*
 Copyright: 
  (C) 2012 Bertrand Marc <beberking@gmail.com>
  (C) 2007-2012 Daniel Baumann <daniel.baumann@progress-technologies.net>
-License: GPL-2+
+License: GPL-3+
 
-License: GPL-3
+Files: debian/po/*
+Copyright:
+ (C) 2007 Miroslav Kure <kurem@debian.cz>
+ (C) 2011 Joe Hansen <joedalton2@yahoo.dk>
+ (C) 2007 Helge Kreutzmann <debian@helgefjell.de>
+ (C) 2005-2009 Software in the Public Interest
+ (C) 2007 Esko Arajärvi <edu@iki.fi>
+ (C) 2001-2006 Eric Madesclair <eric-m@wanadoo.fr>
+ (C) 2007 Christian Perrier <bubulle@debian.org>
+ (C) 2007 Jacobo Tarrio <jtarrio@debian.org>
+ (C) 2012 gnunet package copyright holder.
+ (C) 2009 Hideki Yamane <henrich@debian.or.jp>
+ (C) 2007 Bart Cornelis <cobaco@skolelinux.no>
+ (C) 2005 Guilherme de S. Pastore <gpastore@colband.com.br>
+ (C) 2006-2007 Rui Branco <ruipb@debianpt.org>
+ (C) 2007 Yuri Kozlov <kozlov.y@gmail.com>
+ (C) 2007 Daniel Nylander <po@danielnylander.se>
+ (C) 2005-2007 Clytie Siddall <clytie@riverland.net.au>
+License: GPL-3+
+
+License: GPL-3+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
@@ -33,20 +58,21 @@ License: GPL-3
  The complete text of the GNU General Public License
  can be found in /usr/share/common-licenses/GPL-3 file.
 
-License: GPL-2+
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- as published by the Free Software Foundation; either version 2
- of the License, or (at your option) any later version.
+License: MIT/X11
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
  .
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- GNU General Public License for more details.
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
  .
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- .
- The complete text of the GNU General Public License
- can be found in /usr/share/common-licenses/GPL-2 file.
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
