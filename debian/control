@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends:
  debhelper (>= 9), po-debconf, gettext, dh-autoreconf, autopoint, autoconf (>=2.59),
- automake (>=1.11.1), libextractor-dev (>=0.6.1), libmicrohttpd-dev (>=0.9.18),
+ automake (>=1.11.1), libextractor-dev (>=1:0.6.3), libmicrohttpd-dev (>=0.9.18),
  libgcrypt11-dev (>=1.2), libcurl4-gnutls-dev (>=7.21.0),
  libunistring-dev  (>=0.9.2), libltdl-dev (>=2.2), libmysqlclient-dev (>=5.1),
  libsqlite3-dev (>=3.0), libpq-dev (>=8.3), guile-1.8-dev, libglpk-dev (>=4.32)
