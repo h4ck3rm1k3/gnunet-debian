@@ -77,8 +77,8 @@ Depends:
  ${misc:Depends}, ${shlibs:Depends}, gnunet-common (= ${binary:Version}),
  adduser, gettext, netbase
 Suggests: miniupnpc
-Breaks: gnunet-fuse (<<0.9)
-Replaces: gnunet-fuse (<<0.9)
+Breaks: gnunet-fuse (<<0.9), gnunet-client (<<0.9)
+Replaces: gnunet-fuse (<<0.9), gnunet-client (<<0.9)
 Description: secure, trust-based peer-to-peer framework (server)
  GNUnet is a peer-to-peer framework which focuses on providing security. All
  link-to-link messages in the network are confidential and authenticated. The
