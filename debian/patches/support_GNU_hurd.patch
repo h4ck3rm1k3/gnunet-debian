@@ -1,0 +1,44 @@
+--- a/configure.ac
++++ b/configure.ac
+@@ -159,6 +159,11 @@
+      DLLDIR=bin
+      UNIXONLY=""
+      ;;
++gnu*)
++     AC_DEFINE_UNQUOTED(GNU,1,[This is a GNU system])
++     build_target="gnu"
++     UNIXONLY="#"
++     ;;
+ *)
+      AC_MSG_RESULT(Unrecognised OS $host_os)
+      AC_DEFINE_UNQUOTED(OTHEROS,1,[Some strange OS])
+@@ -180,6 +185,7 @@
+ AM_CONDITIONAL(XFREEBSD, test "$build_target" = "freebsd")
+ AM_CONDITIONAL(OPENBSD, test "$build_target" = "openbsd")
+ AM_CONDITIONAL(LINUX, test "$build_target" = "linux")
++AM_CONDITIONAL(GNU, test "$build_target" = "gnu")
+ 
+ AC_MSG_RESULT([$build_target])
+ AC_SUBST(build_target)
+--- a/src/include/platform.h
++++ b/src/include/platform.h
+@@ -146,7 +146,7 @@
+ #include <semaphore.h>
+ #include <net/if.h>
+ #endif
+-#ifdef LINUX
++#if defined(LINUX) || defined(GNU)
+ #include <net/if.h>
+ #endif
+ #ifdef SOLARIS
+--- a/src/util/disk.c
++++ b/src/util/disk.c
+@@ -51,7 +51,7 @@
+ 
+ 
+ 
+-#if defined(LINUX) || defined(CYGWIN)
++#if defined(LINUX) || defined(CYGWIN) || defined(GNU)
+ #include <sys/vfs.h>
+ #else
+ #if defined(SOMEBSD) || defined(DARWIN)
