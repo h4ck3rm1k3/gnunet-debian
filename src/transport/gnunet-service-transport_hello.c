@@ -162,18 +162,18 @@ refresh_hello_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   gc.expiration =
       GNUNET_TIME_relative_to_absolute
       (GNUNET_CONSTANTS_HELLO_ADDRESS_EXPIRATION);
+
   GNUNET_free (our_hello);
   our_hello = GNUNET_HELLO_create (&GST_my_public_key, &address_generator, &gc);
-#if DEBUG_TRANSPORT
+  GNUNET_assert (NULL != our_hello);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG | GNUNET_ERROR_TYPE_BULK,
               "Refreshed my `%s', new size is %d\n", "HELLO",
               GNUNET_HELLO_size (our_hello));
-#endif
   GNUNET_STATISTICS_update (GST_stats, gettext_noop ("# refreshed my HELLO"), 1,
                             GNUNET_NO);
   if (NULL != hello_cb)
     hello_cb (hello_cb_cls, GST_hello_get ());
-  GNUNET_PEERINFO_add_peer (GST_peerinfo, our_hello);
+  GNUNET_PEERINFO_add_peer (GST_peerinfo, our_hello, NULL, NULL);
   hello_task =
       GNUNET_SCHEDULER_add_delayed (HELLO_REFRESH_PERIOD, &refresh_hello_task,
                                     NULL);
@@ -206,6 +206,7 @@ GST_hello_start (GST_HelloCallback cb, void *cb_cls)
   hello_cb = cb;
   hello_cb_cls = cb_cls;
   our_hello = GNUNET_HELLO_create (&GST_my_public_key, NULL, NULL);
+  GNUNET_assert (NULL != our_hello);
   refresh_hello ();
 }
 
@@ -255,13 +256,11 @@ GST_hello_modify_addresses (int addremove,
 {
   struct OwnAddressList *al;
 
-#if DEBUG_TRANSPORT
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              (add_remove ==
-               GNUNET_YES) ? "Adding `%s':%s to the set of our addresses\n" :
-              "Removing `%s':%s from the set of our addresses\n",
-              GST_plugins_a2s (address), p->short_name);
-#endif
+              (addremove ==
+               GNUNET_YES) ? "Adding `%s' to the set of our addresses\n" :
+              "Removing `%s' from the set of our addresses\n",
+              GST_plugins_a2s (address));
   GNUNET_assert (address != NULL);
   if (GNUNET_NO == addremove)
   {

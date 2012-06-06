@@ -1,6 +1,6 @@
 /*
      This file is part of GNUnet.
-     (C) 2001, 2002, 2004, 2005, 2007, 2009, 2010 Christian Grothoff (and other contributing authors)
+     (C) 2001, 2002, 2004, 2005, 2007, 2009, 2010, 2012 Christian Grothoff (and other contributing authors)
 
      GNUnet is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -31,37 +31,35 @@
 #include "gnunet_time_lib.h"
 #include "peerinfo.h"
 
-#define LOG(kind,...) GNUNET_log_from (kind, "nse-api",__VA_ARGS__)
-
-/**
- * Function to call after transmission has succeeded.
- *
- * @param cls closure
- * @param success GNUNET_OK if transmission worked, GNUNET_SYSERR on error
- */
-typedef void (*TransmissionContinuation) (void *cls, int success);
+#define LOG(kind,...) GNUNET_log_from (kind, "peerinfo-api",__VA_ARGS__)
 
 
 /**
- * Entry in the transmission queue to PEERINFO service.
+ * Entry in the transmission queue to PEERINFO service.  We use
+ * the same structure for queueing 'iteration' requests and
+ * actual 'add' messages.
  */
-struct TransmissionQueueEntry
+struct GNUNET_PEERINFO_AddContext
 {
   /**
    * This is a linked list.
    */
-  struct TransmissionQueueEntry *next;
+  struct GNUNET_PEERINFO_AddContext *next;
 
   /**
    * This is a linked list.
    */
-  struct TransmissionQueueEntry *prev;
+  struct GNUNET_PEERINFO_AddContext *prev;
 
   /**
-   * Function to call after request has been transmitted, or NULL (in which
-   * case we must consider sending the next entry immediately).
+   * Handle to the PEERINFO service.
    */
-  TransmissionContinuation cont;
+  struct GNUNET_PEERINFO_Handle *h;
+
+  /**
+   * Function to call after request has been transmitted, or NULL.
+   */
+  GNUNET_PEERINFO_Continuation cont;
 
   /**
    * Closure for 'cont'.
@@ -69,15 +67,73 @@ struct TransmissionQueueEntry
   void *cont_cls;
 
   /**
+   * Number of bytes of the request message (follows after this struct).
+   */
+  size_t size;
+
+};
+
+
+/**
+ * Context for an iteration request.
+ */
+struct GNUNET_PEERINFO_IteratorContext
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct GNUNET_PEERINFO_IteratorContext *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct GNUNET_PEERINFO_IteratorContext *prev;
+
+  /**
+   * Handle to the PEERINFO service.
+   */
+  struct GNUNET_PEERINFO_Handle *h;
+
+  /**
+   * Function to call with the results.
+   */
+  GNUNET_PEERINFO_Processor callback;
+
+  /**
+   * Closure for 'callback'.
+   */
+  void *callback_cls;
+
+  /**
+   * Our entry in the transmission queue.
+   */
+  struct GNUNET_PEERINFO_AddContext *ac;
+
+  /**
+   * Task responsible for timeout.
+   */
+  GNUNET_SCHEDULER_TaskIdentifier timeout_task;
+
+  /**
    * Timeout for the operation.
    */
   struct GNUNET_TIME_Absolute timeout;
 
   /**
-   * Number of bytes of the request message (follows after this struct).
+   * Peer we are interested in (only valid if iteration was restricted to one peer).
    */
-  size_t size;
+  struct GNUNET_PeerIdentity peer;
 
+  /**
+   * Is 'peer' set?
+   */
+  int have_peer;
+
+  /**
+   * Are we now receiving?
+   */
+  int in_receive;
 };
 
 
@@ -99,17 +155,27 @@ struct GNUNET_PEERINFO_Handle
   /**
    * Head of transmission queue.
    */
-  struct TransmissionQueueEntry *tq_head;
+  struct GNUNET_PEERINFO_AddContext *ac_head;
 
   /**
    * Tail of transmission queue.
    */
-  struct TransmissionQueueEntry *tq_tail;
+  struct GNUNET_PEERINFO_AddContext *ac_tail;
 
   /**
    * Handle for the current transmission request, or NULL if none is pending.
    */
   struct GNUNET_CLIENT_TransmitHandle *th;
+
+  /**
+   * Head of iterator DLL.
+   */
+  struct GNUNET_PEERINFO_IteratorContext *ic_head;
+
+  /**
+   * Tail of iterator DLL.
+   */
+  struct GNUNET_PEERINFO_IteratorContext *ic_tail;
 
   /**
    * ID for a reconnect task.
@@ -135,12 +201,12 @@ struct GNUNET_PEERINFO_Handle
 struct GNUNET_PEERINFO_Handle *
 GNUNET_PEERINFO_connect (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  struct GNUNET_PEERINFO_Handle *ret;
+  struct GNUNET_PEERINFO_Handle *h;
 
-  ret = GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_Handle));
-  ret->client = GNUNET_CLIENT_connect ("peerinfo", cfg);
-  ret->cfg = cfg;
-  return ret;
+  h = GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_Handle));
+  h->client = GNUNET_CLIENT_connect ("peerinfo", cfg);
+  h->cfg = cfg;
+  return h;
 }
 
 
@@ -156,23 +222,30 @@ GNUNET_PEERINFO_connect (const struct GNUNET_CONFIGURATION_Handle *cfg)
 void
 GNUNET_PEERINFO_disconnect (struct GNUNET_PEERINFO_Handle *h)
 {
-  struct TransmissionQueueEntry *tqe;
+  struct GNUNET_PEERINFO_AddContext *ac;
+  struct GNUNET_PEERINFO_IteratorContext *ic;
 
-  while (NULL != (tqe = h->tq_head))
+  while (NULL != (ic = h->ic_head))
   {
-    GNUNET_CONTAINER_DLL_remove (h->tq_head, h->tq_tail, tqe);
-    if (tqe->cont != NULL)
-      tqe->cont (tqe->cont_cls, GNUNET_SYSERR);
-    GNUNET_free (tqe);
+    GNUNET_break (GNUNET_YES == ic->in_receive);
+    ic->in_receive = GNUNET_NO;
+    GNUNET_PEERINFO_iterate_cancel (ic);
   }
-  if (h->th != NULL)
+  while (NULL != (ac = h->ac_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (h->ac_head, h->ac_tail, ac);
+    if (NULL != ac->cont)
+      ac->cont (ac->cont_cls, _("aborted due to explicit disconnect request"));
+    GNUNET_free (ac);
+  }
+  if (NULL != h->th)
   {
     GNUNET_CLIENT_notify_transmit_ready_cancel (h->th);
     h->th = NULL;
   }
   if (NULL != h->client)
   {
-    GNUNET_CLIENT_disconnect (h->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (h->client);
     h->client = NULL;
   }
   if (GNUNET_SCHEDULER_NO_TASK != h->r_task)
@@ -202,6 +275,7 @@ trigger_transmit (struct GNUNET_PEERINFO_Handle *h);
 static void
 reconnect (struct GNUNET_PEERINFO_Handle *h);
 
+
 /**
  * Task scheduled to re-try connecting to the peerinfo service.
  *
@@ -226,7 +300,7 @@ reconnect_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 static void
 reconnect (struct GNUNET_PEERINFO_Handle *h)
 {
-  if (h->r_task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != h->r_task)
   {
     GNUNET_SCHEDULER_cancel (h->r_task);
     h->r_task = GNUNET_SCHEDULER_NO_TASK;
@@ -238,9 +312,10 @@ reconnect (struct GNUNET_PEERINFO_Handle *h)
   }
   if (NULL != h->client)
   {
-    GNUNET_CLIENT_disconnect (h->client, GNUNET_SYSERR);
+    GNUNET_CLIENT_disconnect (h->client);
     h->client = NULL;
   }
+  h->in_receive = GNUNET_NO;
   h->client = GNUNET_CLIENT_connect ("peerinfo", h->cfg);
   if (NULL == h->client)
   {
@@ -266,38 +341,39 @@ static size_t
 do_transmit (void *cls, size_t size, void *buf)
 {
   struct GNUNET_PEERINFO_Handle *h = cls;
-  struct TransmissionQueueEntry *tqe = h->tq_head;
+  struct GNUNET_PEERINFO_AddContext *ac = h->ac_head;
   size_t ret;
 
   h->th = NULL;
-  if (tqe == NULL)
-    return 0;
-  if (buf == NULL)
+  if (NULL == ac)
+    return 0; /* request was cancelled in the meantime */
+  if (NULL == buf)
   {
-#if DEBUG_PEERINFO
+    /* peerinfo service died */
     LOG (GNUNET_ERROR_TYPE_DEBUG | GNUNET_ERROR_TYPE_BULK,
-         _("Failed to transmit message to `%s' service.\n"), "PEERINFO");
-#endif
-    GNUNET_CONTAINER_DLL_remove (h->tq_head, h->tq_tail, tqe);
+         "Failed to transmit message to `%s' service.\n", "PEERINFO");
+    GNUNET_CONTAINER_DLL_remove (h->ac_head, h->ac_tail, ac);
     reconnect (h);
-    if (tqe->cont != NULL)
-      tqe->cont (tqe->cont_cls, GNUNET_SYSERR);
-    GNUNET_free (tqe);
+    if (NULL != ac->cont)
+      ac->cont (ac->cont_cls, _("failed to transmit request (service down?)"));
+    GNUNET_free (ac);
     return 0;
   }
-  ret = tqe->size;
-  GNUNET_assert (size >= ret);
-  memcpy (buf, &tqe[1], ret);
-#if DEBUG_PEERINFO
+  ret = ac->size;
+  if (size < ret)
+  {
+    /* change in head of queue (i.e. cancel + add), try again */
+    trigger_transmit (h);
+    return 0;
+  }
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Transmitting request of size %u to `%s' service.\n", ret, "PEERINFO");
-#endif
-  GNUNET_CONTAINER_DLL_remove (h->tq_head, h->tq_tail, tqe);
-  if (tqe->cont != NULL)
-    tqe->cont (tqe->cont_cls, GNUNET_OK);
-  else
-    trigger_transmit (h);
-  GNUNET_free (tqe);
+  memcpy (buf, &ac[1], ret);
+  GNUNET_CONTAINER_DLL_remove (h->ac_head, h->ac_tail, ac);
+  trigger_transmit (h);
+  if (NULL != ac->cont)
+    ac->cont (ac->cont_cls, NULL);
+  GNUNET_free (ac);
   return ret;
 }
 
@@ -311,24 +387,25 @@ do_transmit (void *cls, size_t size, void *buf)
 static void
 trigger_transmit (struct GNUNET_PEERINFO_Handle *h)
 {
-  struct TransmissionQueueEntry *tqe;
+  struct GNUNET_PEERINFO_AddContext *ac;
 
-  if (NULL == (tqe = h->tq_head))
-    return;
-  if (h->th != NULL)
-    return;
-  if (h->in_receive == GNUNET_YES)
-    return;
+  if (NULL == (ac = h->ac_head))
+    return; /* no requests queued */
+  if (NULL != h->th)
+    return; /* request already pending */
+  if (GNUNET_YES == h->in_receive)
+    return; /* still reading replies from last request */
   if (NULL == h->client)
   {
+    /* disconnected, try to reconnect */
     reconnect (h);
     return;
   }
   h->th =
-      GNUNET_CLIENT_notify_transmit_ready (h->client, tqe->size,
-                                           GNUNET_TIME_absolute_get_remaining
-                                           (tqe->timeout), GNUNET_YES,
-                                           &do_transmit, h);
+    GNUNET_CLIENT_notify_transmit_ready (h->client, ac->size,
+					 GNUNET_TIME_UNIT_FOREVER_REL,
+					 GNUNET_YES,
+					 &do_transmit, h);
 }
 
 
@@ -342,76 +419,61 @@ trigger_transmit (struct GNUNET_PEERINFO_Handle *h)
  *
  * @param h handle to the peerinfo service
  * @param hello the verified (!) HELLO message
+ * @param cont continuation to call when done, NULL is allowed
+ * @param cont_cls closure for 'cont'
+ * @return handle to cancel add operation; all pending
+ *         'add' operations will be cancelled automatically
+ *        on disconnect, so it is not necessary to keep this
+ *        handle (unless 'cont' is NULL and at some point
+ *        calling 'cont' must be prevented)
  */
-void
+struct GNUNET_PEERINFO_AddContext *
 GNUNET_PEERINFO_add_peer (struct GNUNET_PEERINFO_Handle *h,
-                          const struct GNUNET_HELLO_Message *hello)
+                          const struct GNUNET_HELLO_Message *hello,
+			  GNUNET_PEERINFO_Continuation cont,
+			  void *cont_cls)
 {
   uint16_t hs = GNUNET_HELLO_size (hello);
-  struct TransmissionQueueEntry *tqe;
-
-#if DEBUG_PEERINFO
+  struct GNUNET_PEERINFO_AddContext *ac;
   struct GNUNET_PeerIdentity peer;
 
   GNUNET_assert (GNUNET_OK == GNUNET_HELLO_get_id (hello, &peer));
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Adding peer `%s' to PEERINFO database (%u bytes of `%s')\n",
        GNUNET_i2s (&peer), hs, "HELLO");
-#endif
-  tqe = GNUNET_malloc (sizeof (struct TransmissionQueueEntry) + hs);
-  tqe->size = hs;
-  tqe->timeout = GNUNET_TIME_UNIT_FOREVER_ABS;
-  memcpy (&tqe[1], hello, hs);
-  GNUNET_CONTAINER_DLL_insert_after (h->tq_head, h->tq_tail, h->tq_tail, tqe);
+  ac = GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_AddContext) + hs);
+  ac->h = h;
+  ac->size = hs;
+  ac->cont = cont;
+  ac->cont_cls = cont_cls;
+  memcpy (&ac[1], hello, hs);
+  GNUNET_CONTAINER_DLL_insert_tail (h->ac_head, h->ac_tail, ac);
   trigger_transmit (h);
+  return ac;
 }
 
 
 /**
- * Context for an iteration request.
+ * Cancel pending 'add' operation.  Must only be called before
+ * either 'cont' or 'GNUNET_PEERINFO_disconnect' are invoked.
+ *
+ * @param ac handle for the add operation to cancel
  */
-struct GNUNET_PEERINFO_IteratorContext
+void 
+GNUNET_PEERINFO_add_peer_cancel (struct GNUNET_PEERINFO_AddContext *ac)
 {
-  /**
-   * Handle to the PEERINFO service.
-   */
-  struct GNUNET_PEERINFO_Handle *h;
+  struct GNUNET_PEERINFO_Handle *h = ac->h;
 
-  /**
-   * Function to call with the results.
-   */
-  GNUNET_PEERINFO_Processor callback;
-
-  /**
-   * Closure for 'callback'.
-   */
-  void *callback_cls;
-
-  /**
-   * Our entry in the transmission queue.
-   */
-  struct TransmissionQueueEntry *tqe;
-
-  /**
-   * Task responsible for timeout.
-   */
-  GNUNET_SCHEDULER_TaskIdentifier timeout_task;
-
-  /**
-   * Timeout for the operation.
-   */
-  struct GNUNET_TIME_Absolute timeout;
-
-  /**
-   * Are we now receiving?
-   */
-  int in_receive;
-};
+  GNUNET_CONTAINER_DLL_remove (h->ac_head, h->ac_tail, ac);
+  GNUNET_free (ac);
+}
 
 
 /**
- * Type of a function to call when we receive a message
- * from the service.
+ * Type of a function to call when we receive a message from the
+ * service.  Call the iterator with the result and (if applicable)
+ * continue to receive more messages or trigger processing the next
+ * event (if applicable).
  *
  * @param cls closure
  * @param msg message received, NULL on timeout or fatal error
@@ -419,81 +481,125 @@ struct GNUNET_PEERINFO_IteratorContext
 static void
 peerinfo_handler (void *cls, const struct GNUNET_MessageHeader *msg)
 {
-  struct GNUNET_PEERINFO_IteratorContext *ic = cls;
+  struct GNUNET_PEERINFO_Handle *h = cls;
+  struct GNUNET_PEERINFO_IteratorContext *ic = h->ic_head;
   const struct InfoMessage *im;
   const struct GNUNET_HELLO_Message *hello;
+  GNUNET_PEERINFO_Processor cb;
+  struct GNUNET_PeerIdentity id;
+  void *cb_cls;
   uint16_t ms;
 
-  ic->h->in_receive = GNUNET_NO;
-  if (msg == NULL)
+  GNUNET_assert (NULL != ic);
+  h->in_receive = GNUNET_NO;
+  ic->in_receive = GNUNET_NO;
+  cb = ic->callback;
+  cb_cls = ic->callback_cls;
+  if (NULL == msg)
   {
-    reconnect (ic->h);
-    if (ic->timeout_task != GNUNET_SCHEDULER_NO_TASK)
-      GNUNET_SCHEDULER_cancel (ic->timeout_task);
-    if (ic->callback != NULL)
-      ic->callback (ic->callback_cls, NULL, NULL,
-                    _("Failed to receive response from `PEERINFO' service."));
-    GNUNET_free (ic);
+    /* peerinfo service died, signal error */
+    GNUNET_PEERINFO_iterate_cancel (ic);
+    reconnect (h);
+    if (NULL != cb)
+      cb (cb_cls, NULL, NULL,
+	  _("Failed to receive response from `PEERINFO' service."));
     return;
   }
-  if (ntohs (msg->type) == GNUNET_MESSAGE_TYPE_PEERINFO_INFO_END)
+
+  if (GNUNET_MESSAGE_TYPE_PEERINFO_INFO_END == ntohs (msg->type))
   {
-#if DEBUG_PEERINFO
+    /* normal end of list of peers, signal end, process next pending request */
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Received end of list of peers from `%s' service\n", "PEERINFO");
-#endif
-    trigger_transmit (ic->h);
-    if (ic->timeout_task != GNUNET_SCHEDULER_NO_TASK)
-      GNUNET_SCHEDULER_cancel (ic->timeout_task);
-    if (ic->callback != NULL)
-      ic->callback (ic->callback_cls, NULL, NULL, NULL);
-    GNUNET_free (ic);
+    GNUNET_PEERINFO_iterate_cancel (ic);   
+    trigger_transmit (h);
+    if (NULL != cb)
+      cb (cb_cls, NULL, NULL, NULL);
     return;
   }
+
   ms = ntohs (msg->size);
   if ((ms < sizeof (struct InfoMessage)) ||
       (ntohs (msg->type) != GNUNET_MESSAGE_TYPE_PEERINFO_INFO))
   {
+    /* malformed message */
     GNUNET_break (0);
-    reconnect (ic->h);
-    if (ic->timeout_task != GNUNET_SCHEDULER_NO_TASK)
-      GNUNET_SCHEDULER_cancel (ic->timeout_task);
-    if (ic->callback != NULL)
-      ic->callback (ic->callback_cls, NULL, NULL,
-                    _("Received invalid message from `PEERINFO' service.\n"));
-    GNUNET_free (ic);
+    GNUNET_PEERINFO_iterate_cancel (ic);
+    reconnect (h);
+    if (NULL != cb)
+      cb (cb_cls, NULL, NULL,
+	  _("Received invalid message from `PEERINFO' service."));
     return;
   }
   im = (const struct InfoMessage *) msg;
   GNUNET_break (0 == ntohl (im->reserved));
+  if ( (GNUNET_YES == ic->have_peer) &&
+       (0 != memcmp (&ic->peer, &im->peer, sizeof (struct GNUNET_PeerIdentity))) )
+  {
+    /* bogus message (from a different iteration call?); out of sequence! */
+    LOG (GNUNET_ERROR_TYPE_ERROR,
+         "Received HELLO for peer `%s', expected peer `%s'\n",
+	 GNUNET_h2s (&im->peer.hashPubKey),
+	 GNUNET_i2s (&ic->peer));
+    
+    GNUNET_break (0);
+    GNUNET_PEERINFO_iterate_cancel (ic);
+    reconnect (h);
+    if (NULL != cb)      
+      cb (cb_cls, NULL, NULL,
+	  _("Received invalid message from `PEERINFO' service."));
+    return;
+  }
   hello = NULL;
   if (ms > sizeof (struct InfoMessage) + sizeof (struct GNUNET_MessageHeader))
   {
     hello = (const struct GNUNET_HELLO_Message *) &im[1];
     if (ms != sizeof (struct InfoMessage) + GNUNET_HELLO_size (hello))
     {
+      /* malformed message */
       GNUNET_break (0);
-      reconnect (ic->h);
-      if (ic->timeout_task != GNUNET_SCHEDULER_NO_TASK)
-        GNUNET_SCHEDULER_cancel (ic->timeout_task);
-      if (ic->callback != NULL)
-        ic->callback (ic->callback_cls, NULL, NULL,
-                      _("Received invalid message from `PEERINFO' service.\n"));
-      GNUNET_free (ic);
+      GNUNET_PEERINFO_iterate_cancel (ic);
+      reconnect (h);
+      if (NULL != cb)      
+        cb (cb_cls, NULL, NULL,
+	    _("Received invalid message from `PEERINFO' service."));
+      return;
+    }
+    if (GNUNET_OK != GNUNET_HELLO_get_id (hello, &id))
+    {
+      /* malformed message */
+      GNUNET_break (0);
+      GNUNET_PEERINFO_iterate_cancel (ic);
+      reconnect (h);
+      if (NULL != cb)      
+        cb (cb_cls, NULL, NULL,
+	    _("Received invalid message from `PEERINFO' service."));
+      return;
+    }
+    if (0 != memcmp (&im->peer, &id, sizeof (struct GNUNET_PeerIdentity)))
+    {
+      /* malformed message */
+      GNUNET_break (0);
+      GNUNET_PEERINFO_iterate_cancel (ic);
+      reconnect (h);
+      if (NULL != cb)      
+        cb (cb_cls, NULL, NULL,
+	    _("Received invalid message from `PEERINFO' service."));
       return;
     }
   }
-#if DEBUG_PEERINFO
+
+  /* normal data message */
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Received %u bytes of `%s' information about peer `%s' from `%s' service\n",
        (hello == NULL) ? 0 : (unsigned int) GNUNET_HELLO_size (hello), "HELLO",
        GNUNET_i2s (&im->peer), "PEERINFO");
-#endif
-  ic->h->in_receive = GNUNET_YES;
-  if (ic->callback != NULL)
-    ic->callback (ic->callback_cls, &im->peer, hello, NULL);
-  GNUNET_CLIENT_receive (ic->h->client, &peerinfo_handler, ic,
+  h->in_receive = GNUNET_YES;
+  ic->in_receive = GNUNET_YES;
+  GNUNET_CLIENT_receive (h->client, &peerinfo_handler, h,
                          GNUNET_TIME_absolute_get_remaining (ic->timeout));
+  if (NULL != cb)
+    cb (cb_cls, &im->peer, hello, NULL);
 }
 
 
@@ -502,37 +608,36 @@ peerinfo_handler (void *cls, const struct GNUNET_MessageHeader *msg)
  * the results (or handle transmission error).
  *
  * @param cls the 'struct GNUNET_PEERINFO_IteratorContext'
- * @param transmit_success GNUNET_OK if transmission worked
+ * @param emsg error message, NULL if transmission worked
  */
 static void
-iterator_start_receive (void *cls, int transmit_success)
+iterator_start_receive (void *cls, const char *emsg)
 {
   struct GNUNET_PEERINFO_IteratorContext *ic = cls;
+  struct GNUNET_PEERINFO_Handle *h = ic->h;
+  GNUNET_PEERINFO_Processor cb;
+  void *cb_cls;
 
-  if (GNUNET_OK != transmit_success)
+  ic->ac = NULL;
+  if (NULL != emsg)
   {
-    if (ic->timeout_task != GNUNET_SCHEDULER_NO_TASK)
-    {
-      GNUNET_SCHEDULER_cancel (ic->timeout_task);
-      ic->timeout_task = GNUNET_SCHEDULER_NO_TASK;
-    }
-    reconnect (ic->h);
-    if (ic->callback != NULL)
-      ic->callback (ic->callback_cls, NULL, NULL,
-                    _
-                    ("Failed to transmit iteration request to `PEERINFO' service\n"));
-    GNUNET_free (ic);
+    cb = ic->callback;
+    cb_cls = ic->callback_cls;
+    GNUNET_PEERINFO_iterate_cancel (ic);
+    reconnect (h);
+    if (NULL != cb)
+      cb (cb_cls, NULL, NULL, emsg);
     return;
   }
-#if DEBUG_PEERINFO
   LOG (GNUNET_ERROR_TYPE_DEBUG, "Waiting for response from `%s' service.\n",
        "PEERINFO");
-#endif
-  ic->h->in_receive = GNUNET_YES;
   ic->in_receive = GNUNET_YES;
-  ic->tqe = NULL;
-  GNUNET_CLIENT_receive (ic->h->client, &peerinfo_handler, ic,
-                         GNUNET_TIME_absolute_get_remaining (ic->timeout));
+  if (GNUNET_NO == h->in_receive)
+  {
+    h->in_receive = GNUNET_YES;
+    GNUNET_CLIENT_receive (h->client, &peerinfo_handler, h,
+			   GNUNET_TIME_absolute_get_remaining (ic->timeout));
+  }
 }
 
 
@@ -546,18 +651,16 @@ static void
 signal_timeout (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct GNUNET_PEERINFO_IteratorContext *ic = cls;
+  GNUNET_PEERINFO_Processor cb;
+  void *cb_cls;
 
   ic->timeout_task = GNUNET_SCHEDULER_NO_TASK;
-  if (!ic->in_receive)
-    GNUNET_CONTAINER_DLL_remove (ic->h->tq_head, ic->h->tq_tail, ic->tqe);
-  else
-    reconnect (ic->h);
-  ic->callback (ic->callback_cls, NULL, NULL,
-                _
-                ("Timeout transmitting iteration request to `PEERINFO' service.\n"));
-  ic->callback = NULL;
-  GNUNET_free_non_null (ic->tqe);
-  GNUNET_free (ic);
+  cb = ic->callback;
+  cb_cls = ic->callback_cls;
+  GNUNET_PEERINFO_iterate_cancel (ic);
+  if (NULL != cb)
+    cb (cb_cls, NULL, NULL,
+	_("Timeout transmitting iteration request to `PEERINFO' service."));
 }
 
 
@@ -586,51 +689,50 @@ GNUNET_PEERINFO_iterate (struct GNUNET_PEERINFO_Handle *h,
   struct GNUNET_MessageHeader *lapm;
   struct ListPeerMessage *lpm;
   struct GNUNET_PEERINFO_IteratorContext *ic;
-  struct TransmissionQueueEntry *tqe;
+  struct GNUNET_PEERINFO_AddContext *ac;
 
-  if (peer == NULL)
+  ic = GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_IteratorContext));
+  if (NULL == peer)
   {
-#if DEBUG_PEERINFO
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Requesting list of peers from PEERINFO service\n");
-#endif
-    tqe =
-        GNUNET_malloc (sizeof (struct TransmissionQueueEntry) +
+    ac =
+        GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_AddContext) +
                        sizeof (struct GNUNET_MessageHeader));
-    tqe->size = sizeof (struct GNUNET_MessageHeader);
-    lapm = (struct GNUNET_MessageHeader *) &tqe[1];
+    ac->size = sizeof (struct GNUNET_MessageHeader);
+    lapm = (struct GNUNET_MessageHeader *) &ac[1];
     lapm->size = htons (sizeof (struct GNUNET_MessageHeader));
     lapm->type = htons (GNUNET_MESSAGE_TYPE_PEERINFO_GET_ALL);
   }
   else
   {
-#if DEBUG_PEERINFO
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Requesting information on peer `%4s' from PEERINFO service\n",
          GNUNET_i2s (peer));
-#endif
-    tqe =
-        GNUNET_malloc (sizeof (struct TransmissionQueueEntry) +
+    ac =
+        GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_AddContext) +
                        sizeof (struct ListPeerMessage));
-    tqe->size = sizeof (struct ListPeerMessage);
-    lpm = (struct ListPeerMessage *) &tqe[1];
+    ac->size = sizeof (struct ListPeerMessage);
+    lpm = (struct ListPeerMessage *) &ac[1];
     lpm->header.size = htons (sizeof (struct ListPeerMessage));
     lpm->header.type = htons (GNUNET_MESSAGE_TYPE_PEERINFO_GET);
     memcpy (&lpm->peer, peer, sizeof (struct GNUNET_PeerIdentity));
+    ic->have_peer = GNUNET_YES;
+    ic->peer = *peer;
   }
-  ic = GNUNET_malloc (sizeof (struct GNUNET_PEERINFO_IteratorContext));
   ic->h = h;
-  ic->tqe = tqe;
+  ic->ac = ac;
   ic->callback = callback;
   ic->callback_cls = callback_cls;
   ic->timeout = GNUNET_TIME_relative_to_absolute (timeout);
   ic->timeout_task =
       GNUNET_SCHEDULER_add_delayed (timeout, &signal_timeout, ic);
-  tqe->timeout = ic->timeout;
-  tqe->cont = &iterator_start_receive;
-  tqe->cont_cls = ic;
-  tqe->timeout = ic->timeout;
-  GNUNET_CONTAINER_DLL_insert_after (h->tq_head, h->tq_tail, h->tq_tail, tqe);
+  ac->cont = &iterator_start_receive;
+  ac->cont_cls = ic;
+  GNUNET_CONTAINER_DLL_insert_tail (h->ac_head, h->ac_tail, ac);
+  GNUNET_CONTAINER_DLL_insert_tail (h->ic_head,
+				    h->ic_tail,
+				    ic);
   trigger_transmit (h);
   return ic;
 }
@@ -644,7 +746,10 @@ GNUNET_PEERINFO_iterate (struct GNUNET_PEERINFO_Handle *h,
 void
 GNUNET_PEERINFO_iterate_cancel (struct GNUNET_PEERINFO_IteratorContext *ic)
 {
-  if (ic->timeout_task != GNUNET_SCHEDULER_NO_TASK)
+  struct GNUNET_PEERINFO_Handle *h;
+
+  h = ic->h;
+  if (GNUNET_SCHEDULER_NO_TASK != ic->timeout_task)
   {
     GNUNET_SCHEDULER_cancel (ic->timeout_task);
     ic->timeout_task = GNUNET_SCHEDULER_NO_TASK;
@@ -652,8 +757,14 @@ GNUNET_PEERINFO_iterate_cancel (struct GNUNET_PEERINFO_IteratorContext *ic)
   ic->callback = NULL;
   if (GNUNET_YES == ic->in_receive)
     return;                     /* need to finish processing */
-  GNUNET_CONTAINER_DLL_remove (ic->h->tq_head, ic->h->tq_tail, ic->tqe);
-  GNUNET_free (ic->tqe);
+  GNUNET_CONTAINER_DLL_remove (h->ic_head,
+			       h->ic_tail,
+			       ic);
+  if (NULL != ic->ac)
+  {
+    GNUNET_CONTAINER_DLL_remove (h->ac_head, h->ac_tail, ic->ac);
+    GNUNET_free (ic->ac);
+  }
   GNUNET_free (ic);
 }
 

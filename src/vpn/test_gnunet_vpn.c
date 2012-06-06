@@ -35,7 +35,7 @@
 
 #define VERBOSE GNUNET_NO
 
-#define TIMEOUT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 45)
+#define TIMEOUT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 300)
 
 struct PeerContext
 {
@@ -131,9 +131,7 @@ mhd_ahc (void *cls,
     return MHD_YES;
   }
   *unused = NULL;
-#if VERBOSE
-  fprintf (stderr, "MHD sends respose for request to URL `%s'\n", url);
-#endif
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "MHD sends respose for request to URL `%s'\n", url);
   response = MHD_create_response_from_buffer (strlen (url),
 					      (void *) url,
 					      MHD_RESPMEM_MUST_COPY);
@@ -225,8 +223,9 @@ curl_main ()
     {
       if (msg->data.result != CURLE_OK)
       {
-	printf ("%s failed at %s:%d: `%s'\n",
-		"curl_multi_perform",
+	fprintf (stderr,
+		 "%s failed at %s:%d: `%s'\n",
+		 "curl_multi_perform",
 		__FILE__,
 		__LINE__, curl_easy_strerror (msg->data.result));
 	global_ret = 1;
@@ -238,12 +237,16 @@ curl_main ()
     curl = NULL;
     multi = NULL;
     if (cbc.pos != strlen ("/hello_world"))
+    {
+      GNUNET_break (0);
       global_ret = 2;
+    }
     if (0 != strncmp ("/hello_world", cbc.buf, strlen ("/hello_world")))
+    {
+      GNUNET_break (0);
       global_ret = 3;
-#if VERBOSE
-    fprintf (stderr, "Download complete, shutting down!\n");
-#endif
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Download complete, shutting down!\n");
     do_shutdown ();
     return;    
   }
@@ -260,7 +263,6 @@ curl_main ()
 				    &ws,
 				    max + 1);
   curl_task_id = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-					      GNUNET_SCHEDULER_NO_TASK,
 					      delay,
 					      &nrs,
 					      &nws,
@@ -313,9 +315,7 @@ allocation_cb (void *cls,
   multi = curl_multi_init ();
   GNUNET_assert (multi != NULL);
   GNUNET_assert (CURLM_OK == curl_multi_add_handle (multi, curl));
-#if VERBOSE
-  fprintf (stderr, "Beginning HTTP download from `%s'\n", url);
-#endif
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Beginning HTTP download from `%s'\n", url);
   curl_main ();
 }
 
@@ -343,6 +343,7 @@ ctrl_c_shutdown (void *cls,
 {
   ctrl_c_task_id = GNUNET_SCHEDULER_NO_TASK;
   do_shutdown ();
+  GNUNET_break (0);
   global_ret = 1;
 }
 
@@ -378,7 +379,6 @@ mhd_main ()
 				    &ws,
 				    max_fd + 1);
   mhd_task_id = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-					     GNUNET_SCHEDULER_NO_TASK,
 					     delay,
 					     &nrs,
 					     &nws,
@@ -443,9 +443,6 @@ setup_peer (struct PeerContext *p, const char *cfgname)
   p->arm_proc =
       GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm",
-#if VERBOSE
-                               "-L", "DEBUG",
-#endif
                                "-c", cfgname, NULL);
 #endif
   GNUNET_assert (NULL != p->arm_proc);
@@ -465,7 +462,7 @@ stop_peer (struct PeerContext *p)
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "waitpid");
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "ARM process %u stopped\n",
                 GNUNET_OS_process_get_pid (p->arm_proc));
-    GNUNET_OS_process_close (p->arm_proc);
+    GNUNET_OS_process_destroy (p->arm_proc);
     p->arm_proc = NULL;
   }
 #endif
@@ -507,15 +504,12 @@ main (int argc, char *const *argv)
     "test_gnunet_vpn",
     "-c",
     "test_gnunet_vpn.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END
   };
-
+  
   if (0 != ACCESS ("/dev/net/tun", R_OK))
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
@@ -536,6 +530,7 @@ main (int argc, char *const *argv)
 	     "Change $PATH ('.' in $PATH before $GNUNET_PREFIX/bin is problematic) or permissions (run 'make install' as root) to fix this!\n");
     return 0;
   }
+  GNUNET_CRYPTO_setup_hostkey ("test_gnunet_vpn.conf");
   bin = argv[0];
   if (NULL != strstr (bin, "lt-"))
     bin = strstr (bin, "lt-") + 4;
@@ -585,14 +580,13 @@ main (int argc, char *const *argv)
 
 
   if (0 != curl_global_init (CURL_GLOBAL_WIN32))
+  {
+    fprintf (stderr, "failed to initialize curl\n");
     return 2;
+  }
   setup_peer (&p1, "test_gnunet_vpn.conf");
   GNUNET_log_setup ("test_gnunet_vpn",
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   GNUNET_PROGRAM_run ((sizeof (argvx) / sizeof (char *)) - 1, argvx,
                       "test_gnunet_vpn", "nohelp", options, &run, NULL);

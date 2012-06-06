@@ -27,7 +27,6 @@
 #include "platform.h"
 #include "gnunet_common.h"
 
-#define DEBUG_WINPROC 0
 
 #ifdef MINGW
 
@@ -146,7 +145,7 @@ GNInitWinEnv ()
 
   plibc_initialized ();
   plibc_set_panic_proc (plibc_panic);
-  ret = plibc_init ("GNU", PACKAGE);
+  ret = plibc_init_utf8 ("GNU", PACKAGE, 1);
 
   /* don't load other DLLs twice */
   if (hNTDLL)

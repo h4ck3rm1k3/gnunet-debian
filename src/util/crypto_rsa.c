@@ -36,6 +36,7 @@
 #include "gnunet_common.h"
 #include "gnunet_crypto_lib.h"
 #include "gnunet_disk_lib.h"
+#include "gnunet_strings_lib.h"
 
 #define LOG(kind,...) GNUNET_log_from (kind, "util", __VA_ARGS__)
 
@@ -52,32 +53,6 @@ struct GNUNET_CRYPTO_RsaPrivateKey
   gcry_sexp_t sexp;
 };
 
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * GNUnet mandates a certain format for the encoding
- * of private RSA key information that is provided
- * by the RSA implementations.  This format is used
- * to serialize a private RSA key (typically when
- * writing it to disk).
- */
-struct RsaPrivateKeyBinaryEncoded
-{
-  /**
-   * Total size of the structure, in bytes, in big-endian!
-   */
-  uint16_t len GNUNET_PACKED;
-  uint16_t sizen GNUNET_PACKED; /*  in big-endian! */
-  uint16_t sizee GNUNET_PACKED; /*  in big-endian! */
-  uint16_t sized GNUNET_PACKED; /*  in big-endian! */
-  uint16_t sizep GNUNET_PACKED; /*  in big-endian! */
-  uint16_t sizeq GNUNET_PACKED; /*  in big-endian! */
-  uint16_t sizedmp1 GNUNET_PACKED;      /*  in big-endian! */
-  uint16_t sizedmq1 GNUNET_PACKED;      /*  in big-endian! */
-  /* followed by the actual values */
-};
-GNUNET_NETWORK_STRUCT_END
 
 #define HOSTKEY_LEN 2048
 
@@ -107,7 +82,9 @@ adjust (unsigned char *buf, size_t size, size_t target)
 }
 
 /**
- * This HostKey implementation uses RSA.
+ * Create a new private key. Caller must free return value.
+ *
+ * @return fresh private key
  */
 struct GNUNET_CRYPTO_RsaPrivateKey *
 GNUNET_CRYPTO_rsa_key_create ()
@@ -132,6 +109,7 @@ GNUNET_CRYPTO_rsa_key_create ()
 
 /**
  * Free memory occupied by hostkey
+ * @param hostkey pointer to the memory to free
  */
 void
 GNUNET_CRYPTO_rsa_key_free (struct GNUNET_CRYPTO_RsaPrivateKey *hostkey)
@@ -238,6 +216,70 @@ GNUNET_CRYPTO_rsa_key_get_public (const struct GNUNET_CRYPTO_RsaPrivateKey
 
 
 /**
+ * Convert a public key to a string.
+ *
+ * @param pub key to convert
+ * @return string representing  'pub'
+ */
+char *
+GNUNET_CRYPTO_rsa_public_key_to_string (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *pub)
+{
+  char *pubkeybuf;
+  size_t keylen = (sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded)) * 8;
+  char *end;
+
+  if (keylen % 5 > 0)
+    keylen += 5 - keylen % 5;
+  keylen /= 5;
+  pubkeybuf = GNUNET_malloc (keylen + 1);
+  end = GNUNET_STRINGS_data_to_string ((unsigned char *) pub, 
+				       sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded), 
+				       pubkeybuf, 
+				       keylen);
+  if (NULL == end)
+  {
+    GNUNET_free (pubkeybuf);
+    return NULL;
+  }
+  *end = '\0';
+  return pubkeybuf;
+}
+
+
+/**
+ * Convert a string representing a public key to a public key.
+ *
+ * @param enc encoded public key
+ * @param enclen number of bytes in enc (without 0-terminator)
+ * @param pub where to store the public key
+ * @return GNUNET_OK on success
+ */
+int
+GNUNET_CRYPTO_rsa_public_key_from_string (const char *enc, 
+					  size_t enclen,
+					  struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *pub)
+{
+  size_t keylen = (sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded)) * 8;
+
+  if (keylen % 5 > 0)
+    keylen += 5 - keylen % 5;
+  keylen /= 5;
+  if (enclen != keylen)
+    return GNUNET_SYSERR;
+
+  if (GNUNET_OK != GNUNET_STRINGS_string_to_data (enc, enclen,
+						 (unsigned char*) pub,
+						 sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded)))
+    return GNUNET_SYSERR;
+  if ( (ntohs (pub->len) != sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded)) ||
+       (ntohs (pub->padding) != 0) ||
+       (ntohs (pub->sizen) != GNUNET_CRYPTO_RSA_DATA_ENCODING_LENGTH) )
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+/**
  * Internal: publicKey => RSA-Key.
  *
  * Note that the return type is not actually a private
@@ -301,10 +343,10 @@ public2PrivateKey (const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded
  * @returns encoding of the private key.
  *    The first 4 bytes give the size of the array, as usual.
  */
-static struct RsaPrivateKeyBinaryEncoded *
-rsa_encode_key (const struct GNUNET_CRYPTO_RsaPrivateKey *hostkey)
+struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded *
+GNUNET_CRYPTO_rsa_encode_key (const struct GNUNET_CRYPTO_RsaPrivateKey *hostkey)
 {
-  struct RsaPrivateKeyBinaryEncoded *retval;
+  struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded *retval;
   gcry_mpi_t pkv[6];
   void *pbu[6];
   size_t sizes[6];
@@ -333,7 +375,7 @@ rsa_encode_key (const struct GNUNET_CRYPTO_RsaPrivateKey *hostkey)
   if (rc)
     rc = key_from_sexp (pkv, hostkey->sexp, "rsa", "ned");
   GNUNET_assert (0 == rc);
-  size = sizeof (struct RsaPrivateKeyBinaryEncoded);
+  size = sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded);
   for (i = 0; i < 6; i++)
   {
     if (pkv[i] != NULL)
@@ -383,6 +425,7 @@ rsa_encode_key (const struct GNUNET_CRYPTO_RsaPrivateKey *hostkey)
   return retval;
 }
 
+
 /**
  * Decode the private key from the file-format back
  * to the "normal", internal format.
@@ -394,8 +437,8 @@ struct GNUNET_CRYPTO_RsaPrivateKey *
 GNUNET_CRYPTO_rsa_decode_key (const char *buf, uint16_t len)
 {
   struct GNUNET_CRYPTO_RsaPrivateKey *ret;
-  const struct RsaPrivateKeyBinaryEncoded *encoding =
-      (const struct RsaPrivateKeyBinaryEncoded *) buf;
+  const struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded *encoding =
+      (const struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded *) buf;
   gcry_sexp_t res;
   gcry_mpi_t n, e, d, p, q, u;
   int rc;
@@ -483,7 +526,7 @@ GNUNET_CRYPTO_rsa_decode_key (const char *buf, uint16_t len)
   pos += ntohs (encoding->sizedmp1);
   pos += ntohs (encoding->sizedmq1);
   size =
-      ntohs (encoding->len) - sizeof (struct RsaPrivateKeyBinaryEncoded) - pos;
+      ntohs (encoding->len) - sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded) - pos;
   if (size > 0)
   {
     rc = gcry_mpi_scan (&u, GCRYMPI_FMT_USG,
@@ -567,7 +610,7 @@ struct GNUNET_CRYPTO_RsaPrivateKey *
 GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
 {
   struct GNUNET_CRYPTO_RsaPrivateKey *ret;
-  struct RsaPrivateKeyBinaryEncoded *enc;
+  struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded *enc;
   uint16_t len;
   struct GNUNET_DISK_FileHandle *fd;
   unsigned int cnt;
@@ -607,7 +650,7 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
 
     while (GNUNET_YES !=
            GNUNET_DISK_file_lock (fd, 0,
-                                  sizeof (struct RsaPrivateKeyBinaryEncoded),
+                                  sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded),
                                   GNUNET_YES))
     {
       sleep (1);
@@ -623,7 +666,7 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
          _("Creating a new private key.  This may take a while.\n"));
     ret = GNUNET_CRYPTO_rsa_key_create ();
     GNUNET_assert (ret != NULL);
-    enc = rsa_encode_key (ret);
+    enc = GNUNET_CRYPTO_rsa_encode_key (ret);
     GNUNET_assert (enc != NULL);
     GNUNET_assert (ntohs (enc->len) ==
                    GNUNET_DISK_file_write (fd, enc, ntohs (enc->len)));
@@ -632,7 +675,7 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
     GNUNET_DISK_file_sync (fd);
     if (GNUNET_YES !=
         GNUNET_DISK_file_unlock (fd, 0,
-                                 sizeof (struct RsaPrivateKeyBinaryEncoded)))
+                                 sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded)))
       LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_WARNING, "fcntl", filename);
     GNUNET_assert (GNUNET_YES == GNUNET_DISK_file_close (fd));
     GNUNET_CRYPTO_rsa_key_get_public (ret, &pub);
@@ -655,7 +698,7 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
   {
     if (GNUNET_YES !=
         GNUNET_DISK_file_lock (fd, 0,
-                               sizeof (struct RsaPrivateKeyBinaryEncoded),
+                               sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded),
                                GNUNET_NO))
     {
       if (0 == ++cnt % 60)
@@ -677,21 +720,21 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
       LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_WARNING, "stat", filename);
       if (GNUNET_YES !=
           GNUNET_DISK_file_unlock (fd, 0,
-                                   sizeof (struct RsaPrivateKeyBinaryEncoded)))
+                                   sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded)))
         LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_WARNING, "fcntl", filename);
       GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_close (fd));
 
       return NULL;
     }
-    if (GNUNET_YES != GNUNET_DISK_file_size (filename, &fs, GNUNET_YES))
+    if (GNUNET_OK != GNUNET_DISK_file_size (filename, &fs, GNUNET_YES, GNUNET_YES))
       fs = 0;
-    if (fs < sizeof (struct RsaPrivateKeyBinaryEncoded))
+    if (fs < sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded))
     {
       /* maybe we got the read lock before the hostkey generating
        * process had a chance to get the write lock; give it up! */
       if (GNUNET_YES !=
           GNUNET_DISK_file_unlock (fd, 0,
-                                   sizeof (struct RsaPrivateKeyBinaryEncoded)))
+                                   sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded)))
         LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_WARNING, "fcntl", filename);
       if (0 == ++cnt % 10)
       {
@@ -699,7 +742,7 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
              _
              ("When trying to read hostkey file `%s' I found %u bytes but I need at least %u.\n"),
              filename, (unsigned int) fs,
-             (unsigned int) sizeof (struct RsaPrivateKeyBinaryEncoded));
+             (unsigned int) sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded));
         LOG (GNUNET_ERROR_TYPE_ERROR,
              _
              ("This may be ok if someone is currently generating a hostkey.\n"));
@@ -727,7 +770,7 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
   GNUNET_free (enc);
   if (GNUNET_YES !=
       GNUNET_DISK_file_unlock (fd, 0,
-                               sizeof (struct RsaPrivateKeyBinaryEncoded)))
+                               sizeof (struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded)))
     LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_WARNING, "fcntl", filename);
   GNUNET_assert (GNUNET_YES == GNUNET_DISK_file_close (fd));
   if (ret != NULL)
@@ -739,6 +782,35 @@ GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename)
          filename);
   }
   return ret;
+}
+
+
+/**
+ * Setup a hostkey file for a peer given the name of the
+ * configuration file (!).  This function is used so that
+ * at a later point code can be certain that reading a
+ * hostkey is fast (for example in time-dependent testcases).
+ *
+ * @param cfg_name name of the configuration file to use
+ */
+void
+GNUNET_CRYPTO_setup_hostkey (const char *cfg_name)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  struct GNUNET_CRYPTO_RsaPrivateKey *pk;
+  char *fn;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  (void) GNUNET_CONFIGURATION_load (cfg, cfg_name);
+  if (GNUNET_OK == 
+      GNUNET_CONFIGURATION_get_value_filename (cfg, "GNUNETD", "HOSTKEY", &fn))
+  {
+    pk = GNUNET_CRYPTO_rsa_key_create_from_file (fn);
+    if (NULL != pk)
+      GNUNET_CRYPTO_rsa_key_free (pk);
+    GNUNET_free (fn);
+  }
+  GNUNET_CONFIGURATION_destroy (cfg);
 }
 
 
@@ -792,6 +864,7 @@ GNUNET_CRYPTO_rsa_encrypt (const void *block, size_t size,
           sizeof (struct GNUNET_CRYPTO_RsaEncryptedData));
   return GNUNET_OK;
 }
+
 
 /**
  * Decrypt a given block with the hostkey.

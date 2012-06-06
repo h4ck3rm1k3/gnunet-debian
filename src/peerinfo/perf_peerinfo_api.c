@@ -53,12 +53,6 @@ static int
 check_it (void *cls, const struct GNUNET_HELLO_Address *address,
           struct GNUNET_TIME_Absolute expiration)
 {
-#if DEBUG
-  if (addrlen > 0)
-  {
-    FPRINTF (stderr, "name: %s, addr: %s\n", tname, (const char *) addr);
-  }
-#endif
   return GNUNET_OK;
 }
 
@@ -98,7 +92,7 @@ add_peer (size_t i)
   memset (&pkey, i, sizeof (pkey));
   GNUNET_CRYPTO_hash (&pkey, sizeof (pkey), &pid.hashPubKey);
   h2 = GNUNET_HELLO_create (&pkey, &address_generator, &i);
-  GNUNET_PEERINFO_add_peer (h, h2);
+  GNUNET_PEERINFO_add_peer (h, h2, NULL, NULL);
   GNUNET_free (h2);
 }
 
@@ -107,17 +101,8 @@ static void
 process (void *cls, const struct GNUNET_PeerIdentity *peer,
          const struct GNUNET_HELLO_Message *hello, const char *err_msg)
 {
-  if (peer == NULL)
+  if (NULL != peer)
   {
-#if DEBUG
-    FPRINTF (stderr, "Process received NULL response\n");
-#endif
-  }
-  else
-  {
-#if DEBUG
-    FPRINTF (stderr, "Processed a peer\n");
-#endif
     numpeers++;
     if (0 && (hello != NULL))
       GNUNET_HELLO_iterate_addresses (hello, GNUNET_NO, &check_it, NULL);
@@ -153,11 +138,7 @@ check ()
   char *const argv[] = { "perf-peerinfo-api",
     "-c",
     "test_peerinfo_api_data.conf",
-#if DEBUG_PEERINFO
-    "-L", "DEBUG",
-#else
     "-L", "ERROR",
-#endif
     NULL
   };
 #if START_SERVICE
@@ -169,11 +150,7 @@ check ()
   proc =
     GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-peerinfo",
                                "gnunet-service-peerinfo",
-#if DEBUG_PEERINFO
-                               "-L", "DEBUG",
-#else
                                "-L", "ERROR",
-#endif
                                "-c", "test_peerinfo_api_data.conf", NULL);
 #endif
   GNUNET_assert (NULL != proc);
@@ -189,9 +166,8 @@ check ()
     ok = 1;
   }
   GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_close (proc);
+  GNUNET_OS_process_destroy (proc);
   proc = NULL;
-
 #endif
   return ok;
 }
@@ -202,12 +178,9 @@ main (int argc, char *argv[])
 {
   int ret = 0;
 
+  GNUNET_DISK_directory_remove ("/tmp/test-gnunet-peerinfo");
   GNUNET_log_setup ("perf_peerinfo_api",
-#if DEBUG_PEERINFO
-                    "DEBUG",
-#else
                     "ERROR",
-#endif
                     NULL);
   ret = check ();
   GNUNET_DISK_directory_remove ("/tmp/test-gnunet-peerinfo");

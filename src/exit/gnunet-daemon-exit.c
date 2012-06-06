@@ -284,7 +284,7 @@ static struct GNUNET_CONTAINER_Heap *connections_heap;
 /**
  * If there are at least this many connections, old ones will be removed
  */
-static long long unsigned int max_connections;
+static unsigned long long max_connections;
 
 /**
  * This hashmaps saves interesting things about the configured UDP services
@@ -876,7 +876,7 @@ tcp_from_helper (const struct GNUNET_TUN_TcpHeader *tcp,
 		 const void *source_ip)
 {
   struct TunnelState *state;
-  char buf[pktlen];
+  char buf[pktlen] GNUNET_ALIGN;
   struct GNUNET_TUN_TcpHeader *mtcp;
   struct GNUNET_EXIT_TcpDataMessage *tdm;
   struct TunnelMessageQueue *tnq;
@@ -953,7 +953,7 @@ tcp_from_helper (const struct GNUNET_TUN_TcpHeader *tcp,
  * @param client unsued
  * @param message message received from helper
  */
-static void
+static int
 message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
                const struct GNUNET_MessageHeader *message)
 {
@@ -970,13 +970,13 @@ message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
   if (ntohs (message->type) != GNUNET_MESSAGE_TYPE_VPN_HELPER)
   {
     GNUNET_break (0);
-    return;
+    return GNUNET_OK;
   }
   size = ntohs (message->size);
   if (size < sizeof (struct GNUNET_TUN_Layer2PacketHeader) + sizeof (struct GNUNET_MessageHeader))
   {
     GNUNET_break (0);
-    return;
+    return GNUNET_OK;
   }
   GNUNET_STATISTICS_update (stats,
 			    gettext_noop ("# Bytes received from TUN"),
@@ -993,20 +993,20 @@ message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
       {
 	/* Kernel to blame? */
 	GNUNET_break (0);
-	return;
+        return GNUNET_OK;
       }
       pkt4 = (const struct GNUNET_TUN_IPv4Header *) &pkt_tun[1];
       if (size != ntohs (pkt4->total_length))
       {
 	/* Kernel to blame? */
 	GNUNET_break (0);
-	return;
+        return GNUNET_OK;
       }
       if (pkt4->header_length * 4 != sizeof (struct GNUNET_TUN_IPv4Header))
       {
 	GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
 		    _("IPv4 packet options received.  Ignored.\n"));
-	return;
+        return GNUNET_OK;
       }
       
       size -= sizeof (struct GNUNET_TUN_IPv4Header);
@@ -1034,7 +1034,7 @@ message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
 	GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
 		    _("IPv4 packet with unsupported next header %u received.  Ignored.\n"),
 	            (int) pkt4->protocol);
-	return;
+        return GNUNET_OK;
       }
     }
     break;
@@ -1046,14 +1046,14 @@ message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
       {
 	/* Kernel to blame? */
 	GNUNET_break (0);
-	return;
+        return GNUNET_OK;
       }
       pkt6 = (struct GNUNET_TUN_IPv6Header *) &pkt_tun[1];
       if (size != ntohs (pkt6->payload_length) + sizeof (struct GNUNET_TUN_IPv6Header))
       {
 	/* Kernel to blame? */
 	GNUNET_break (0);
-	return;
+        return GNUNET_OK;
       }
       size -= sizeof (struct GNUNET_TUN_IPv6Header);
       switch (pkt6->next_header)
@@ -1080,7 +1080,7 @@ message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
 	GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
 		    _("IPv6 packet with unsupported next header %d received.  Ignored.\n"),
                     pkt6->next_header);
-	return;
+        return GNUNET_OK;
       }
     }
     break;
@@ -1090,6 +1090,7 @@ message_token (void *cls GNUNET_UNUSED, void *client GNUNET_UNUSED,
 		ntohs (pkt_tun->proto));
     break;
   }
+  return GNUNET_OK;
 }
 
 
@@ -1493,7 +1494,7 @@ send_tcp_packet_via_tun (const struct SocketAddress *destination_address,
     return;
   }
   {
-    char buf[len];
+    char buf[len] GNUNET_ALIGN;
     struct GNUNET_MessageHeader *hdr;
     struct GNUNET_TUN_Layer2PacketHeader *tun;
     
@@ -1852,7 +1853,7 @@ send_icmp_packet_via_tun (const struct SocketAddress *destination_address,
     return;
   }
   {
-    char buf[len];
+    char buf[len] GNUNET_ALIGN;
     struct GNUNET_MessageHeader *hdr;
     struct GNUNET_TUN_Layer2PacketHeader *tun;
     
@@ -1985,7 +1986,7 @@ receive_icmp_remote (void *cls GNUNET_UNUSED, struct GNUNET_MESH_Tunnel *tunnel,
   const struct in_addr *v4;
   const struct in6_addr *v6;  
   const void *payload;
-  char buf[sizeof (struct GNUNET_TUN_IPv6Header) + 8];
+  char buf[sizeof (struct GNUNET_TUN_IPv6Header) + 8] GNUNET_ALIGN;
   int af;
 
   GNUNET_STATISTICS_update (stats,
@@ -2227,7 +2228,7 @@ receive_icmp_service (void *cls GNUNET_UNUSED, struct GNUNET_MESH_Tunnel *tunnel
   const struct GNUNET_EXIT_IcmpServiceMessage *msg;
   uint16_t pkt_len = ntohs (message->size);
   struct GNUNET_TUN_IcmpHeader icmp;
-  char buf[sizeof (struct GNUNET_TUN_IPv6Header) + 8];
+  char buf[sizeof (struct GNUNET_TUN_IPv6Header) + 8] GNUNET_ALIGN;
   const void *payload;
 
   GNUNET_STATISTICS_update (stats,
@@ -2435,7 +2436,7 @@ send_udp_packet_via_tun (const struct SocketAddress *destination_address,
     return;
   }
   {
-    char buf[len];
+    char buf[len] GNUNET_ALIGN;
     struct GNUNET_MessageHeader *hdr;
     struct GNUNET_TUN_Layer2PacketHeader *tun;
     
@@ -3027,9 +3028,9 @@ run (void *cls, char *const *args GNUNET_UNUSED,
   if (GNUNET_YES !=
       GNUNET_OS_check_helper_binary ("gnunet-helper-exit"))
   {
-    fprintf (stderr,
-	     "`%s' is not SUID, refusing to run.\n",
-	     "gnunet-helper-exit");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		_("`%s' must be installed SUID, refusing to run\n"),
+		"gnunet-helper-exit");
     global_ret = 1;
     return;
   }

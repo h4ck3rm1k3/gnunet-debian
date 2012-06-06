@@ -37,9 +37,9 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-noinst_PROGRAMS = $(am__EXEEXT_21) $(am__EXEEXT_22)
+noinst_PROGRAMS = $(am__EXEEXT_22)
 bin_PROGRAMS = gnunet-transport$(EXEEXT) $(am__EXEEXT_1) \
-	gnunet-service-transport$(EXEEXT) \
+	$(am__EXEEXT_2) gnunet-service-transport$(EXEEXT) \
 	gnunet-transport-certificate-creation$(EXEEXT)
 check_PROGRAMS = test_transport_testing$(EXEEXT) \
 	test_transport_startonly$(EXEEXT) \
@@ -53,22 +53,22 @@ check_PROGRAMS = test_transport_testing$(EXEEXT) \
 	test_transport_api_limited_sockets_tcp$(EXEEXT) \
 	test_transport_api_tcp_nat$(EXEEXT) \
 	test_transport_api_udp$(EXEEXT) \
-	test_transport_api_timeout_udp$(EXEEXT) $(am__EXEEXT_2) \
-	$(am__EXEEXT_3) test_transport_api_udp_nat$(EXEEXT) \
-	$(am__EXEEXT_4) $(am__EXEEXT_5) $(am__EXEEXT_6) \
-	$(am__EXEEXT_7) $(am__EXEEXT_8) $(am__EXEEXT_9) \
+	test_transport_api_timeout_udp$(EXEEXT) $(am__EXEEXT_3) \
+	$(am__EXEEXT_4) test_transport_api_udp_nat$(EXEEXT) \
+	$(am__EXEEXT_5) $(am__EXEEXT_6) $(am__EXEEXT_7) \
+	$(am__EXEEXT_8) $(am__EXEEXT_9) $(am__EXEEXT_10) \
 	test_transport_api_multi$(EXEEXT) \
 	test_transport_api_reliability_tcp$(EXEEXT) \
 	test_transport_api_reliability_tcp_nat$(EXEEXT) \
 	test_transport_api_unreliability_udp$(EXEEXT) \
 	test_transport_api_unreliability_constant_udp$(EXEEXT) \
-	$(am__EXEEXT_10) $(am__EXEEXT_11) $(am__EXEEXT_12) \
-	$(am__EXEEXT_13) $(am__EXEEXT_14) \
+	$(am__EXEEXT_11) $(am__EXEEXT_12) $(am__EXEEXT_13) \
+	$(am__EXEEXT_14) $(am__EXEEXT_15) \
 	test_quota_compliance_tcp$(EXEEXT) \
 	test_quota_compliance_tcp_asymmetric$(EXEEXT) \
-	test_quota_compliance_udp$(EXEEXT) $(am__EXEEXT_15) \
-	$(am__EXEEXT_16) $(am__EXEEXT_17) $(am__EXEEXT_18) \
-	$(am__EXEEXT_19) $(am__EXEEXT_20)
+	test_quota_compliance_udp$(EXEEXT) $(am__EXEEXT_16) \
+	$(am__EXEEXT_17) $(am__EXEEXT_18) $(am__EXEEXT_19) \
+	$(am__EXEEXT_20) $(am__EXEEXT_21)
 @ENABLE_TEST_RUN_TRUE@TESTS = test_transport_testing$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_startonly$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_blacklisting$(EXEEXT) \
@@ -82,25 +82,25 @@ check_PROGRAMS = test_transport_testing$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_tcp_nat$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_udp$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_timeout_udp$(EXEEXT) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_2) $(am__EXEEXT_3) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_3) $(am__EXEEXT_4) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_udp_nat$(EXEEXT) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_4) $(am__EXEEXT_5) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_6) $(am__EXEEXT_7) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_8) $(am__EXEEXT_9) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_5) $(am__EXEEXT_6) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_7) $(am__EXEEXT_8) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_9) $(am__EXEEXT_10) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_multi$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_reliability_tcp$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_reliability_tcp_nat$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_unreliability_udp$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_transport_api_unreliability_constant_udp$(EXEEXT) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_10) $(am__EXEEXT_11) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_12) $(am__EXEEXT_13) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_14) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_11) $(am__EXEEXT_12) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_13) $(am__EXEEXT_14) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_15) \
 @ENABLE_TEST_RUN_TRUE@	test_quota_compliance_tcp$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_quota_compliance_tcp_asymmetric$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_quota_compliance_udp$(EXEEXT) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_15) $(am__EXEEXT_16) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_17) $(am__EXEEXT_18) \
-@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_19) $(am__EXEEXT_20)
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_16) $(am__EXEEXT_17) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_18) $(am__EXEEXT_19) \
+@ENABLE_TEST_RUN_TRUE@	$(am__EXEEXT_20) $(am__EXEEXT_21)
 subdir = src/transport
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/transport.conf.in
@@ -279,37 +279,37 @@ libgnunettransporttesting_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_CFLAGS) $(CFLAGS) $(libgnunettransporttesting_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
 @LINUX_TRUE@am__EXEEXT_1 = gnunet-helper-transport-wlan$(EXEEXT)
-@MINGW_FALSE@am__EXEEXT_2 = test_transport_api_unix$(EXEEXT)
-@MINGW_FALSE@am__EXEEXT_3 = test_transport_api_timeout_unix$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_4 = test_transport_api_http$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_5 = test_transport_api_http_nat$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_6 =  \
-@HAVE_MHD_TRUE@	test_transport_api_timeout_http$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_7 = test_transport_api_https$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_8 = test_transport_api_https_nat$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_9 =  \
-@HAVE_MHD_TRUE@	test_transport_api_timeout_https$(EXEEXT)
-@MINGW_FALSE@am__EXEEXT_10 =  \
-@MINGW_FALSE@	test_transport_api_unreliability_unix$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_11 =  \
-@HAVE_MHD_TRUE@	test_transport_api_reliability_http$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_12 = test_transport_api_reliability_http_nat$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_13 =  \
-@HAVE_MHD_TRUE@	test_transport_api_reliability_https$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_14 = test_transport_api_reliability_https_nat$(EXEEXT)
-@MINGW_FALSE@am__EXEEXT_15 = test_quota_compliance_unix$(EXEEXT) \
-@MINGW_FALSE@	test_quota_compliance_unix_asymmetric$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_16 = test_quota_compliance_http$(EXEEXT) \
-@HAVE_MHD_TRUE@	test_quota_compliance_http_asymmetric$(EXEEXT)
-@HAVE_MHD_TRUE@am__EXEEXT_17 = test_quota_compliance_https$(EXEEXT) \
-@HAVE_MHD_TRUE@	test_quota_compliance_https_asymmetric$(EXEEXT)
-@LINUX_TRUE@am__EXEEXT_18 = test_transport_api_wlan$(EXEEXT)
-@LINUX_TRUE@am__EXEEXT_19 =  \
-@LINUX_TRUE@	test_transport_api_reliability_wlan$(EXEEXT)
-@LINUX_TRUE@am__EXEEXT_20 =  \
-@LINUX_TRUE@	test_transport_api_unreliability_wlan$(EXEEXT)
-@LINUX_TRUE@am__EXEEXT_21 =  \
+@LINUX_TRUE@am__EXEEXT_2 =  \
 @LINUX_TRUE@	gnunet-helper-transport-wlan-dummy$(EXEEXT)
+@MINGW_FALSE@am__EXEEXT_3 = test_transport_api_unix$(EXEEXT)
+@MINGW_FALSE@am__EXEEXT_4 = test_transport_api_timeout_unix$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_5 = test_transport_api_http$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_6 = test_transport_api_http_nat$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_7 =  \
+@HAVE_MHD_TRUE@	test_transport_api_timeout_http$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_8 = test_transport_api_https$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_9 = test_transport_api_https_nat$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_10 =  \
+@HAVE_MHD_TRUE@	test_transport_api_timeout_https$(EXEEXT)
+@MINGW_FALSE@am__EXEEXT_11 =  \
+@MINGW_FALSE@	test_transport_api_unreliability_unix$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_12 =  \
+@HAVE_MHD_TRUE@	test_transport_api_reliability_http$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_13 = test_transport_api_reliability_http_nat$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_14 =  \
+@HAVE_MHD_TRUE@	test_transport_api_reliability_https$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_15 = test_transport_api_reliability_https_nat$(EXEEXT)
+@MINGW_FALSE@am__EXEEXT_16 = test_quota_compliance_unix$(EXEEXT) \
+@MINGW_FALSE@	test_quota_compliance_unix_asymmetric$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_17 = test_quota_compliance_http$(EXEEXT) \
+@HAVE_MHD_TRUE@	test_quota_compliance_http_asymmetric$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_18 = test_quota_compliance_https$(EXEEXT) \
+@HAVE_MHD_TRUE@	test_quota_compliance_https_asymmetric$(EXEEXT)
+@LINUX_TRUE@am__EXEEXT_19 = test_transport_api_wlan$(EXEEXT)
+@LINUX_TRUE@am__EXEEXT_20 =  \
+@LINUX_TRUE@	test_transport_api_reliability_wlan$(EXEEXT)
+@LINUX_TRUE@am__EXEEXT_21 =  \
+@LINUX_TRUE@	test_transport_api_unreliability_wlan$(EXEEXT)
 @LINUX_TRUE@am__EXEEXT_22 = gnunet-transport-wlan-sender$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_gnunet_helper_transport_wlan_OBJECTS =  \
@@ -947,6 +947,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -980,6 +981,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -1169,7 +1171,7 @@ libgnunettransport_la_LIBADD = \
 
 libgnunettransport_la_LDFLAGS = \
   $(GN_LIB_LDFLAGS) $(WINFLAGS) \
-  -version-info 0:0:0
+  -version-info 1:0:0
 
 
 #bin_SCRIPTS = \

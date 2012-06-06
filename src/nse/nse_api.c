@@ -106,7 +106,7 @@ message_handler (void *cls, const struct GNUNET_MessageHeader *msg)
   if (msg == NULL)
   {
     /* Error, timeout, death */
-    GNUNET_CLIENT_disconnect (h->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (h->client);
     h->client = NULL;
     h->reconnect_task =
         GNUNET_SCHEDULER_add_delayed (h->reconnect_delay, &reconnect, h);
@@ -145,15 +145,13 @@ reschedule_connect (struct GNUNET_NSE_Handle *h)
   }
   if (NULL != h->client)
   {
-    GNUNET_CLIENT_disconnect (h->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (h->client);
     h->client = NULL;
   }
 
-#if DEBUG_NSE
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Scheduling task to reconnect to nse service in %llu ms.\n",
        h->reconnect_delay.rel_value);
-#endif
   h->reconnect_task =
       GNUNET_SCHEDULER_add_delayed (h->reconnect_delay, &reconnect, h);
   if (h->reconnect_delay.rel_value == 0)
@@ -187,16 +185,12 @@ send_start (void *cls, size_t size, void *buf)
   if (buf == NULL)
   {
     /* Connect error... */
-#if DEBUG_NSE
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Shutdown while trying to transmit `%s' request.\n", "START");
-#endif
     reschedule_connect (h);
     return 0;
   }
-#if DEBUG_NSE
   LOG (GNUNET_ERROR_TYPE_DEBUG, "Transmitting `%s' request.\n", "START");
-#endif
   GNUNET_assert (size >= sizeof (struct GNUNET_MessageHeader));
 
   msg = (struct GNUNET_MessageHeader *) buf;
@@ -225,10 +219,8 @@ reconnect (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     /* shutdown, just give up */
     return;
   }
-#if DEBUG_NSE
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Connecting to network size estimation service.\n");
-#endif
   GNUNET_assert (h->client == NULL);
   h->client = GNUNET_CLIENT_connect ("nse", h->cfg);
   GNUNET_assert (h->client != NULL);
@@ -289,7 +281,7 @@ GNUNET_NSE_disconnect (struct GNUNET_NSE_Handle *h)
   }
   if (h->client != NULL)
   {
-    GNUNET_CLIENT_disconnect (h->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (h->client);
     h->client = NULL;
   }
   GNUNET_free (h);

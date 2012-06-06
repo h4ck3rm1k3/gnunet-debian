@@ -27,9 +27,6 @@
 #include "gnunet_core_service.h"
 #include "gnunet_dht_service.h"
 
-/* DEFINES */
-#define VERBOSE GNUNET_NO
-
 /* Timeout for entire testcase */
 #define TIMEOUT GNUNET_TIME_relative_multiply(GNUNET_TIME_UNIT_MINUTES, 30)
 
@@ -279,7 +276,7 @@ static struct StatValues stats[] = {
   {"core", "# bytes encrypted", 0},
   {"core", "# type maps received", 0},
   {"core", "# session keys confirmed via PONG", 0},
-  {"core", "# entries in session map", 0},
+  {"core", "# peers connected", 0},
   {"core", "# key exchanges initiated", 0},
   {"core", "# send requests dropped (disconnected)", 0},
   {"core", "# transmissions delayed due to corking", 0},
@@ -624,7 +621,7 @@ do_get (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   GNUNET_assert (test_get->dht_handle != NULL);
   outstanding_gets++;
   test_get->get_handle =
-      GNUNET_DHT_get_start (test_get->dht_handle, GNUNET_TIME_UNIT_FOREVER_REL,
+      GNUNET_DHT_get_start (test_get->dht_handle, 
                             GNUNET_BLOCK_TYPE_TEST, &key, 1, route_option, NULL,
                             0, &get_result_iterator, test_get);
   test_get->task =
@@ -658,10 +655,9 @@ start_gets (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   unsigned long long j;
   struct TestGetContext *test_get;
 
-#if VERBOSE
-  FPRINTF (stderr, "Issuing %llu GETs\n",
-           (unsigned long long) (num_peers * num_peers));
-#endif
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "Issuing %llu GETs\n",
+	      (unsigned long long) (num_peers * num_peers));
   for (i = 0; i < num_peers; i++)
     for (j = 0; j < num_peers; j++)
     {
@@ -678,7 +674,7 @@ start_gets (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
  * Called when the PUT request has been transmitted to the DHT service.
  */
 static void
-put_finished (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+put_finished (void *cls, int success)
 {
   struct TestPutContext *test_put = cls;
 
@@ -719,10 +715,9 @@ do_put (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   test_put->dht_handle = GNUNET_DHT_connect (test_put->daemon->cfg, 10);
   GNUNET_assert (test_put->dht_handle != NULL);
   outstanding_puts++;
-#if VERBOSE > 2
-  FPRINTF (stderr, "PUT %u at `%s'\n", test_put->uid,
-           GNUNET_i2s (&test_put->daemon->id));
-#endif
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "PUT %u at `%s'\n", test_put->uid,
+	      GNUNET_i2s (&test_put->daemon->id));
   GNUNET_DHT_put (test_put->dht_handle, &key, 1, route_option,
                   GNUNET_BLOCK_TYPE_TEST, sizeof (data), data,
                   GNUNET_TIME_UNIT_FOREVER_ABS, GNUNET_TIME_UNIT_FOREVER_REL,
@@ -822,9 +817,6 @@ check ()
   char *const argv[] = { "test-dht-multipeer",  /* Name to give running binary */
     "-c",
     "test_dht_multipeer_data.conf",     /* Config file to use */
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -848,13 +840,8 @@ main (int argc, char *argv[])
 {
   int ret;
 
-
   GNUNET_log_setup ("test-dht-multipeer",
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   ret = check ();
   /**

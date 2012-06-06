@@ -45,7 +45,7 @@
 #define DEBUG_HTTP GNUNET_EXTRA_LOGGING
 #define VERBOSE_SERVER GNUNET_EXTRA_LOGGING
 #define VERBOSE_CLIENT GNUNET_EXTRA_LOGGING
-#define VERBOSE_CURL GNUNET_EXTRA_LOGGING
+#define VERBOSE_CURL GNUNET_NO
 
 #if BUILD_HTTPS
 #define LIBGNUNET_PLUGIN_TRANSPORT_INIT libgnunet_plugin_transport_https_init
@@ -160,6 +160,16 @@ struct Plugin
   int max_connections;
 
   /**
+   * Number of outbound sessions
+   */
+  unsigned int outbound_sessions;
+
+  /**
+   * Number of inbound sessions
+   */
+  unsigned int inbound_sessions;
+
+  /**
    * Plugin HTTPS SSL/TLS options
    * ----------------------------
    */
@@ -216,6 +226,11 @@ struct Plugin
   GNUNET_SCHEDULER_TaskIdentifier server_v4_task;
 
   /**
+   * The IPv4 server is scheduled to run asap
+   */
+  int server_v4_immediately;
+
+  /**
    * MHD IPv6 daemon
    */
   struct MHD_Daemon *server_v6;
@@ -224,6 +239,12 @@ struct Plugin
    * MHD IPv4 task
    */
   GNUNET_SCHEDULER_TaskIdentifier server_v6_task;
+
+  /**
+   * The IPv6 server is scheduled to run asap
+   */
+
+  int server_v6_immediately;
 
   /**
    * IPv4 server socket to bind to
@@ -294,6 +315,24 @@ struct IPv6HttpAddress
   uint16_t u6_port GNUNET_PACKED;
 };
 GNUNET_NETWORK_STRUCT_END
+
+
+struct ServerConnection
+{
+  /* _RECV or _SEND */
+  int direction;
+
+  /* Should this connection get disconnected? GNUNET_YES/NO  */
+  int disconnect;
+
+  /* The session this server connection belongs to */
+  struct Session *session;
+
+  /* The MHD connection */
+  struct MHD_Connection *mhd_conn;
+};
+
+
 
 /**
  * Session handle for connections.
@@ -390,6 +429,11 @@ struct Session
   GNUNET_SCHEDULER_TaskIdentifier recv_wakeup_task;
 
   /**
+   * Session timeout task
+   */
+  GNUNET_SCHEDULER_TaskIdentifier timeout_task;
+
+  /**
    * Is client send handle paused since there are no data to send?
    * GNUNET_YES/NO
    */
@@ -402,12 +446,12 @@ struct Session
   /**
    * Client send handle
    */
-  void *server_recv;
+  struct ServerConnection *server_recv;
 
   /**
    * Client send handle
    */
-  void *server_send;
+  struct ServerConnection *server_send;
 };
 
 /**
@@ -453,13 +497,18 @@ struct HTTP_Message
   void *transmit_cont_cls;
 };
 
+struct Session *
+create_session (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
+                const void *addr, size_t addrlen);
+
+int
+exist_session (struct Plugin *plugin, struct Session *s);
+
 void
 delete_session (struct Session *s);
 
-struct Session *
-create_session (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
-                const void *addr, size_t addrlen,
-                GNUNET_TRANSPORT_TransmitContinuation cont, void *cont_cls);
+int
+exist_session (struct Plugin *plugin, struct Session *s);
 
 struct GNUNET_TIME_Relative
 http_plugin_receive (void *cls, const struct GNUNET_PeerIdentity *peer,

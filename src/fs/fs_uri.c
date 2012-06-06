@@ -214,7 +214,7 @@ percent_decode_keyword (const char *in, char **emsg)
   {
     if (out[rpos] == '%')
     {
-      if (1 != sscanf (&out[rpos + 1], "%2X", &hx))
+      if (1 != SSCANF (&out[rpos + 1], "%2X", &hx))
       {
         GNUNET_free (out);
         *emsg = GNUNET_strdup (_("`%' must be followed by HEX number"));
@@ -1378,14 +1378,16 @@ GNUNET_FS_uri_sks_to_string_fancy (struct GNUNET_CONFIGURATION_Handle *cfg,
 {
   char *ret;
   char *name;
+  char *unique_name;
 
   if (uri->type != sks)
     return NULL;
-  name = GNUNET_PSEUDONYM_id_to_name (cfg, &uri->data.sks.namespace);
-  if (name == NULL)
-    return GNUNET_FS_uri_to_string (uri);
-  GNUNET_asprintf (&ret, "%s: %s", name, uri->data.sks.identifier);
+  (void) GNUNET_PSEUDONYM_get_info (cfg, &uri->data.sks.namespace,
+				    NULL, NULL, &name, NULL);
+  unique_name = GNUNET_PSEUDONYM_name_uniquify (cfg, &uri->data.sks.namespace, name, NULL);
   GNUNET_free (name);
+  GNUNET_asprintf (&ret, "%s: %s", unique_name, uri->data.sks.identifier);
+  GNUNET_free (unique_name);
   return ret;
 }
 
@@ -1499,6 +1501,10 @@ find_duplicate (const char *s, const char **array, int array_length)
   return GNUNET_NO;
 }
 
+
+/**
+ * FIXME: comment
+ */
 static char *
 normalize_metadata (enum EXTRACTOR_MetaFormat format, const char *data,
     size_t data_len)

@@ -100,17 +100,21 @@ certain binaries that require additional priviledges will not be
 installed properly (and autonomous NAT traversal, WLAN, DNS/GNS and 
 the VPN will then not work).
 
-Note that additional, per-user configuration files
-(~/.gnunet/gnunet.conf) need to be created by each user (for example,
-by running gnunet-setup).  Note that gnunet-setup is a separate
-download and requires recent versions of GTK+ and Glade; you can also
-edit the configuration file by hand, but this is not recommended.  For
-more general information about the GNU build process read the INSTALL
-file.
+If you run 'configure' and 'make install' as root or use the SUDO
+option, GNUnet's build system will install "libnss_gns*" libraries to
+"/lib/" regardless (!) of the $GNUNET_PREFIX you might have specified,
+as those libraries must be in "/lib/".  If you are packaging GNUnet
+for binary distribution, this may cause your packaging script to miss
+those plugins, so you might need to do some additional manual work to
+include those libraries in your binary package(s).  Similarly, if you
+want to use the GNUnet naming system and did NOT run GNUnet's 'make
+install' process with SUDO rights, the libraries will be installed to
+"$GNUNET_PREFIX/lib" and you will have to move them to "/lib/"
+manually.
 
-If you are compiling the code from subversion, you have to run
-". bootstrap" before ./configure.  If you receive an error during the
-running of ". bootstrap" that looks like "macro `AM_PATH_GTK' not
+Finally, if you are compiling the code from subversion, you have to
+run ". bootstrap" before ./configure.  If you receive an error during
+the running of ". bootstrap" that looks like "macro `AM_PATH_GTK' not
 found in library", you may need to run aclocal by hand with the -I
 option, pointing to your aclocal m4 macros, i.e.
 
@@ -119,6 +123,14 @@ $ aclocal -I /usr/local/share/aclocal
 
 Configuration
 =============
+
+Note that additional, per-user configuration files
+(~/.gnunet/gnunet.conf) need to be created by each user (for example,
+by running gnunet-setup).  Note that gnunet-setup is a separate
+download and requires recent versions of GTK+ and Glade; you can also
+edit the configuration file by hand, but this is not recommended.  For
+more general information about the GNU build process read the INSTALL
+file.
 
 GNUnet uses two types of configuration files, one that specifies the
 system-wide defaults (typically located in
@@ -221,18 +233,18 @@ Running http on port 80 and https on port 443
 In order to hide GNUnet's HTTP/HTTPS traffic perfectly, you might
 consider running GNUnet's HTTP/HTTPS transport on port 80/443.
 However, we do not recommend running GNUnet as root.  Instead, forward
-port 80 to say 8080 with this command (as root, in your startup
+port 80 to say 1080 with this command (as root, in your startup
 scripts):
 
-# iptables -t nat -A PREROUTING -p tcp -m tcp --dport 80 -j REDIRECT --to-ports 8080
+# iptables -t nat -A PREROUTING -p tcp -m tcp --dport 80 -j REDIRECT --to-ports 1080
 
 or for HTTPS
 
 # iptables -t nat -A PREROUTING -p tcp -m tcp --dport 443 -j REDIRECT --to-ports 4433
 
-Then set in the HTTP section of gnunet.conf the "ADVERTISED-PORT" to
-"80" and "PORT" to 8080 and similarly in the HTTPS section the
-"ADVERTISED-PORT" to "443" and "PORT" to 4433.
+Then set in the HTTP section of gnunet.conf the "ADVERTISED_PORT" to
+"80" and "PORT" to 1080 and similarly in the HTTPS section the
+"ADVERTISED_PORT" to "443" and "PORT" to 4433.
 
 You can do the same trick for the TCP and UDP transports if you want
 to map them to a priviledged port (from the point of view of the

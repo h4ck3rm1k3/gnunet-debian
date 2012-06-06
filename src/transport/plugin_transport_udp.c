@@ -85,6 +85,7 @@ struct PrettyPrinterContext
   uint16_t port;
 };
 
+
 struct Session
 {
   /**
@@ -92,12 +93,12 @@ struct Session
    */
   struct GNUNET_PeerIdentity target;
 
+  struct FragmentationContext * frag_ctx;
+
   /**
    * Address of the other peer
    */
   const struct sockaddr *sock_addr;
-
-  size_t addrlen;
 
   /**
    * Desired delay for next sending we send to other peer
@@ -110,14 +111,23 @@ struct Session
   struct GNUNET_TIME_Absolute flow_delay_from_other_peer;
 
   /**
+   * Session timeout task
+   */
+  GNUNET_SCHEDULER_TaskIdentifier timeout_task;
+
+  /**
    * expected delay for ACKs
    */
   struct GNUNET_TIME_Relative last_expected_delay;
 
-
   struct GNUNET_ATS_Information ats;
 
-  struct FragmentationContext * frag_ctx;
+  size_t addrlen;
+
+
+  unsigned int rc;
+
+  int in_destroy;
 };
 
 
@@ -143,12 +153,12 @@ struct SourceInformation
    */
   const void *arg;
 
+  struct Session *session;
   /**
    * Number of bytes in source address.
    */
   size_t args;
 
-  struct Session *session;
 };
 
 
@@ -167,12 +177,13 @@ struct FindReceiveContext
    */
   const struct sockaddr *addr;
 
+  struct Session *session;
+
   /**
    * Number of bytes in 'addr'.
    */
   socklen_t addr_len;
 
-  struct Session *session;
 };
 
 
@@ -225,9 +236,6 @@ struct FragmentationContext
   struct GNUNET_FRAGMENT_Context * frag;
   struct Session * session;
 
-  struct GNUNET_TIME_Absolute timeout;
-
-
   /**
    * Function to call upon completion of the transmission.
    */
@@ -237,6 +245,8 @@ struct FragmentationContext
    * Closure for 'cont'.
    */
   void *cont_cls;
+
+  struct GNUNET_TIME_Absolute timeout;
 
   size_t bytes_to_send;
 };
@@ -248,9 +258,6 @@ struct UDPMessageWrapper
   struct UDPMessageWrapper *prev;
   struct UDPMessageWrapper *next;
   char *udp;
-  size_t msg_size;
-
-  struct GNUNET_TIME_Absolute timeout;
 
   /**
    * Function to call upon completion of the transmission.
@@ -264,6 +271,9 @@ struct UDPMessageWrapper
 
   struct FragmentationContext *frag_ctx;
 
+  size_t msg_size;
+
+  struct GNUNET_TIME_Absolute timeout;
 };
 
 
@@ -290,6 +300,12 @@ struct UDP_ACK_Message
 };
 
 /**
+ * Encapsulation of all of the state of the plugin.
+ */
+struct Plugin * plugin;
+
+
+/**
  * We have been notified that our readset has something to read.  We don't
  * know which socket needs to be read, so we have to check each one
  * Then reschedule this function to be called again once more is available.
@@ -299,6 +315,7 @@ struct UDP_ACK_Message
  */
 static void
 udp_plugin_select (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc);
+
 
 /**
  * We have been notified that our readset has something to read.  We don't
@@ -310,6 +327,27 @@ udp_plugin_select (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc);
  */
 static void
 udp_plugin_select_v6 (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc);
+
+
+/**
+ * Start session timeout
+ */
+static void
+start_session_timeout (struct Session *s);
+
+/**
+ * Increment session timeout due to activity
+ */
+static void
+reschedule_session_timeout (struct Session *s);
+
+/**
+ * Cancel timeout
+ */
+static void
+stop_session_timeout (struct Session *s);
+
+
 
 /**
  * Function called for a quick conversion of the binary address to
@@ -360,6 +398,77 @@ udp_address_to_string (void *cls, const void *addr, size_t addrlen)
   GNUNET_snprintf (rbuf, sizeof (rbuf), (af == AF_INET6) ? "[%s]:%u" : "%s:%u",
                    buf, port);
   return rbuf;
+}
+
+
+/**
+ * Function called to convert a string address to
+ * a binary address.
+ *
+ * @param cls closure ('struct Plugin*')
+ * @param addr string address
+ * @param addrlen length of the address
+ * @param buf location to store the buffer
+ * @param added location to store the number of bytes in the buffer.
+ *        If the function returns GNUNET_SYSERR, its contents are undefined.
+ * @return GNUNET_OK on success, GNUNET_SYSERR on failure
+ */
+static int
+udp_string_to_address (void *cls, const char *addr, uint16_t addrlen,
+    void **buf, size_t *added)
+{
+  struct sockaddr_storage socket_address;
+  
+  if ((NULL == addr) || (0 == addrlen))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if ('\0' != addr[addrlen - 1])
+  {
+    return GNUNET_SYSERR;
+  }
+
+  if (strlen (addr) != addrlen - 1)
+  {
+    return GNUNET_SYSERR;
+  }
+
+  if (GNUNET_OK != GNUNET_STRINGS_to_address_ip (addr, strlen (addr),
+						 &socket_address))
+  {
+    return GNUNET_SYSERR;
+  }
+
+  switch (socket_address.ss_family)
+  {
+  case AF_INET:
+    {
+      struct IPv4UdpAddress *u4;
+      struct sockaddr_in *in4 = (struct sockaddr_in *) &socket_address;
+      u4 = GNUNET_malloc (sizeof (struct IPv4UdpAddress));
+      u4->ipv4_addr = in4->sin_addr.s_addr;
+      u4->u4_port = in4->sin_port;
+      *buf = u4;
+      *added = sizeof (struct IPv4UdpAddress);
+      return GNUNET_OK;
+    }
+  case AF_INET6:
+    {
+      struct IPv6UdpAddress *u6;
+      struct sockaddr_in6 *in6 = (struct sockaddr_in6 *) &socket_address;
+      u6 = GNUNET_malloc (sizeof (struct IPv6UdpAddress));
+      u6->ipv6_addr = in6->sin6_addr;
+      u6->u6_port = in6->sin6_port;
+      *buf = u6;
+      *added = sizeof (struct IPv6UdpAddress);
+      return GNUNET_OK;
+    }
+  default:
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 }
 
 
@@ -446,6 +555,12 @@ udp_plugin_address_pretty_printer (void *cls, const char *type,
     sb = &a4;
     sbs = sizeof (a4);
   }
+  else if (0 == addrlen)
+  {
+    asc (asc_cls, "<inbound connection>");
+    asc (asc_cls, NULL);
+    return;
+  }
   else
   {
     /* invalid address */
@@ -458,6 +573,21 @@ udp_plugin_address_pretty_printer (void *cls, const char *type,
   ppc->asc_cls = asc_cls;
   ppc->port = port;
   GNUNET_RESOLVER_hostname_get (sb, sbs, !numeric, timeout, &append_port, ppc);
+}
+
+
+static void
+call_continuation (struct UDPMessageWrapper *udpw, int result)
+{
+  LOG (GNUNET_ERROR_TYPE_DEBUG,
+      "Calling continuation for %u byte message to `%s' with result %s\n",
+      udpw->msg_size, GNUNET_i2s (&udpw->session->target),
+      (GNUNET_OK == result) ? "OK" : "SYSERR");
+  if (NULL != udpw->cont)
+  {
+    udpw->cont (udpw->cont_cls, &udpw->session->target,result);
+  }
+
 }
 
 
@@ -477,7 +607,6 @@ check_port (struct Plugin *plugin, uint16_t in_port)
     return GNUNET_OK;
   return GNUNET_SYSERR;
 }
-
 
 
 /**
@@ -539,6 +668,94 @@ udp_plugin_check_address (void *cls, const void *addr, size_t addrlen)
 
 
 /**
+ * Task to free resources associated with a session.
+ *
+ * @param s session to free
+ */
+static void
+free_session (struct Session *s)
+{
+  if (s->frag_ctx != NULL)
+  {
+    GNUNET_FRAGMENT_context_destroy(s->frag_ctx->frag);
+    GNUNET_free (s->frag_ctx);
+    s->frag_ctx = NULL;
+  }
+  GNUNET_free (s);
+}
+
+
+/**
+ * Functions with this signature are called whenever we need
+ * to close a session due to a disconnect or failure to
+ * establish a connection.
+ *
+ * @param s session to close down
+ */
+static void
+disconnect_session (struct Session *s)
+{
+  struct UDPMessageWrapper *udpw;
+  struct UDPMessageWrapper *next;
+
+  GNUNET_assert (GNUNET_YES != s->in_destroy);
+  LOG (GNUNET_ERROR_TYPE_DEBUG,
+       "Session %p to peer `%s' address ended \n",
+         s,
+         GNUNET_i2s (&s->target),
+         GNUNET_a2s (s->sock_addr, s->addrlen));
+  stop_session_timeout(s);
+  next = plugin->ipv4_queue_head;
+  while (NULL != (udpw = next))
+  {
+    next = udpw->next;
+    if (udpw->session == s)
+    {
+      GNUNET_CONTAINER_DLL_remove(plugin->ipv4_queue_head, plugin->ipv4_queue_tail, udpw);
+      call_continuation(udpw, GNUNET_SYSERR);
+      GNUNET_free (udpw);
+    }
+  }
+  next = plugin->ipv6_queue_head;
+  while (NULL != (udpw = next))
+  {
+    next = udpw->next;
+    if (udpw->session == s)
+    {
+      GNUNET_CONTAINER_DLL_remove(plugin->ipv6_queue_head, plugin->ipv6_queue_tail, udpw);
+      call_continuation(udpw, GNUNET_SYSERR);
+      GNUNET_free (udpw);
+    }
+    udpw = next;
+  }
+  plugin->env->session_end (plugin->env->cls, &s->target, s);
+
+  if (NULL != s->frag_ctx)
+  {
+    if (NULL != s->frag_ctx->cont)
+    {
+      s->frag_ctx->cont (s->frag_ctx->cont_cls, &s->target, GNUNET_SYSERR);
+      LOG (GNUNET_ERROR_TYPE_DEBUG,
+          "Calling continuation for fragemented message to `%s' with result SYSERR\n",
+          GNUNET_i2s (&s->target));
+    }
+  }
+
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CONTAINER_multihashmap_remove (plugin->sessions,
+                                                       &s->target.hashPubKey,
+                                                       s));
+  GNUNET_STATISTICS_set(plugin->env->stats,
+                        "# UDP sessions active",
+                        GNUNET_CONTAINER_multihashmap_size(plugin->sessions),
+                        GNUNET_NO);
+  if (s->rc > 0)
+    s->in_destroy = GNUNET_YES;
+  else
+    free_session (s);
+}
+
+/**
  * Destroy a session, plugin is being unloaded.
  *
  * @param cls unused
@@ -549,65 +766,7 @@ udp_plugin_check_address (void *cls, const void *addr, size_t addrlen)
 static int
 disconnect_and_free_it (void *cls, const GNUNET_HashCode * key, void *value)
 {
-  struct Plugin *plugin = cls;
-  struct Session *s = value;
-  struct UDPMessageWrapper *udpw;
-  struct UDPMessageWrapper *next;
-
-#if DEBUG_UDP
-  LOG (GNUNET_ERROR_TYPE_DEBUG,
-       "Session %p to peer `%s' address ended \n",
-         s,
-         GNUNET_i2s (&s->target),
-         GNUNET_a2s (s->sock_addr, s->addrlen));
-#endif
-
-  if (s->frag_ctx != NULL)
-  {
-    GNUNET_FRAGMENT_context_destroy(s->frag_ctx->frag);
-    GNUNET_free (s->frag_ctx);
-    s->frag_ctx = NULL;
-  }
-
-  udpw = plugin->ipv4_queue_head;
-  while (udpw != NULL)
-  {
-    next = udpw->next;
-    if (udpw->session == s)
-    {
-      GNUNET_CONTAINER_DLL_remove(plugin->ipv4_queue_head, plugin->ipv4_queue_tail, udpw);
-
-      if (udpw->cont != NULL)
-        udpw->cont (udpw->cont_cls, &s->target, GNUNET_SYSERR);
-      GNUNET_free (udpw);
-    }
-    udpw = next;
-  }
-
-  udpw = plugin->ipv6_queue_head;
-  while (udpw != NULL)
-  {
-    next = udpw->next;
-    if (udpw->session == s)
-    {
-      GNUNET_CONTAINER_DLL_remove(plugin->ipv6_queue_head, plugin->ipv6_queue_tail, udpw);
-
-      if (udpw->cont != NULL)
-        udpw->cont (udpw->cont_cls, &s->target, GNUNET_SYSERR);
-      GNUNET_free (udpw);
-    }
-    udpw = next;
-  }
-
-  plugin->env->session_end (plugin->env->cls, &s->target, s);
-
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_remove (plugin->sessions,
-                                                       &s->target.hashPubKey,
-                                                       s));
-
-
-  GNUNET_free (s);
+  disconnect_session(value);
   return GNUNET_OK;
 }
 
@@ -626,13 +785,12 @@ udp_disconnect (void *cls, const struct GNUNET_PeerIdentity *target)
   GNUNET_assert (plugin != NULL);
 
   GNUNET_assert (target != NULL);
-#if DEBUG_UDP
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Disconnecting from peer `%s'\n", GNUNET_i2s (target));
-#endif
   /* Clean up sessions */
   GNUNET_CONTAINER_multihashmap_get_multiple (plugin->sessions, &target->hashPubKey, &disconnect_and_free_it, plugin);
 }
+
 
 static struct Session *
 create_session (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
@@ -688,20 +846,19 @@ create_session (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
     GNUNET_break_op (0);
     return NULL;
   }
-
   s->addrlen = len;
   s->target = *target;
   s->sock_addr = (const struct sockaddr *) &s[1];
-  s->flow_delay_for_other_peer = GNUNET_TIME_relative_get_zero();
-  s->flow_delay_from_other_peer = GNUNET_TIME_absolute_get_zero();
   s->last_expected_delay = GNUNET_TIME_UNIT_SECONDS;
-
+  start_session_timeout(s);
   return s;
 }
 
-static int session_cmp_it (void *cls,
-                           const GNUNET_HashCode * key,
-                           void *value)
+
+static int
+session_cmp_it (void *cls,
+		const GNUNET_HashCode * key,
+		void *value)
 {
   struct SessionCompareContext * cctx = cls;
   const struct GNUNET_HELLO_Address *address = cctx->addr;
@@ -709,12 +866,9 @@ static int session_cmp_it (void *cls,
 
   socklen_t s_addrlen = s->addrlen;
 
-#if VERBOSE_UDP
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Comparing  address %s <-> %s\n",
+  LOG (GNUNET_ERROR_TYPE_DEBUG, "Comparing  address %s <-> %s\n",
       udp_address_to_string (NULL, (void *) address->address, address->address_length),
       GNUNET_a2s (s->sock_addr, s->addrlen));
-#endif
-
   if ((address->address_length == sizeof (struct IPv4UdpAddress)) &&
       (s_addrlen == sizeof (struct sockaddr_in)))
   {
@@ -742,8 +896,6 @@ static int session_cmp_it (void *cls,
       return GNUNET_NO;
     }
   }
-
-
   return GNUNET_YES;
 }
 
@@ -799,15 +951,14 @@ udp_plugin_get_session (void *cls,
   struct SessionCompareContext cctx;
   cctx.addr = address;
   cctx.res = NULL;
-#if VERBOSE_UDP
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Looking for existing session for peer `%s' `%s' \n", GNUNET_i2s (&address->peer), udp_address_to_string(NULL, address->address, address->address_length));
-#endif
+  LOG (GNUNET_ERROR_TYPE_DEBUG,
+       "Looking for existing session for peer `%s' `%s' \n", 
+       GNUNET_i2s (&address->peer), 
+       udp_address_to_string(NULL, address->address, address->address_length));
   GNUNET_CONTAINER_multihashmap_get_multiple(plugin->sessions, &address->peer.hashPubKey, session_cmp_it, &cctx);
   if (cctx.res != NULL)
   {
-#if VERBOSE_UDP
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Found existing session %p\n", cctx.res);
-#endif
+    LOG (GNUNET_ERROR_TYPE_DEBUG, "Found existing session %p\n", cctx.res);
     return cctx.res;
   }
 
@@ -817,23 +968,28 @@ udp_plugin_get_session (void *cls,
       address->address,
       address->address_length,
       NULL, NULL);
-#if VERBOSE
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Creating new session %p for peer `%s' address `%s'\n",
-              s,
-              GNUNET_i2s(&address->peer),
-              udp_address_to_string(NULL,address->address,address->address_length));
-#endif
+  LOG (GNUNET_ERROR_TYPE_DEBUG,
+       "Creating new session %p for peer `%s' address `%s'\n",
+       s,
+       GNUNET_i2s(&address->peer),
+       udp_address_to_string(NULL,address->address,address->address_length));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CONTAINER_multihashmap_put (plugin->sessions,
                                                     &s->target.hashPubKey,
                                                     s,
                                                     GNUNET_CONTAINER_MULTIHASHMAPOPTION_MULTIPLE));
 
+  GNUNET_STATISTICS_set(plugin->env->stats,
+                        "# UDP sessions active",
+                        GNUNET_CONTAINER_multihashmap_size(plugin->sessions),
+                        GNUNET_NO);
+
   return s;
 }
 
-static void enqueue (struct Plugin *plugin, struct UDPMessageWrapper * udpw)
+
+static void 
+enqueue (struct Plugin *plugin, struct UDPMessageWrapper * udpw)
 {
 
   if (udpw->session->addrlen == sizeof (struct sockaddr_in))
@@ -841,6 +997,26 @@ static void enqueue (struct Plugin *plugin, struct UDPMessageWrapper * udpw)
   if (udpw->session->addrlen == sizeof (struct sockaddr_in6))
     GNUNET_CONTAINER_DLL_insert(plugin->ipv6_queue_head, plugin->ipv6_queue_tail, udpw);
 }
+
+
+/**
+ * Fragment message was transmitted via UDP, let fragmentation know
+ * to send the next fragment now.
+ *
+ * @param cls the 'struct UDPMessageWrapper' of the fragment
+ * @param target destination peer (ignored)
+ * @param result GNUNET_OK on success (ignored)
+ */
+static void
+send_next_fragment (void *cls,
+		    const struct GNUNET_PeerIdentity *target,
+		    int result)
+{
+  struct UDPMessageWrapper *udpw = cls;
+
+  GNUNET_FRAGMENT_context_transmission_done (udpw->frag_ctx->frag);  
+}
+
 
 /**
  * Function that is called with messages created by the fragmentation
@@ -858,27 +1034,22 @@ enqueue_fragment (void *cls, const struct GNUNET_MessageHeader *msg)
   struct Plugin *plugin = frag_ctx->plugin;
   struct UDPMessageWrapper * udpw;
   struct Session *s;
-
   size_t msg_len = ntohs (msg->size);
 
-#if VERBOSE_UDP
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Enqueuing fragment with %u bytes %u\n", msg_len , sizeof (struct UDPMessageWrapper));
-#endif
-
+  LOG (GNUNET_ERROR_TYPE_DEBUG, 
+       "Enqueuing fragment with %u bytes %u\n", msg_len , sizeof (struct UDPMessageWrapper));
   udpw = GNUNET_malloc (sizeof (struct UDPMessageWrapper) + msg_len);
   udpw->session = frag_ctx->session;
   s = udpw->session;
   udpw->udp = (char *) &udpw[1];
 
   udpw->msg_size = msg_len;
-  udpw->cont = frag_ctx->cont;
-  udpw->cont_cls = frag_ctx->cont_cls;
+  udpw->cont = &send_next_fragment;
+  udpw->cont_cls = udpw;
   udpw->timeout = frag_ctx->timeout;
   udpw->frag_ctx = frag_ctx;
   memcpy (udpw->udp, msg, msg_len);
-
   enqueue (plugin, udpw);
-
 
   if (s->addrlen == sizeof (struct sockaddr_in))
   {
@@ -889,7 +1060,6 @@ enqueue_fragment (void *cls, const struct GNUNET_MessageHeader *msg)
 
       plugin->select_task =
           GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                       GNUNET_SCHEDULER_NO_TASK,
                                        GNUNET_TIME_UNIT_FOREVER_REL,
                                        plugin->rs_v4,
                                        plugin->ws_v4,
@@ -897,7 +1067,6 @@ enqueue_fragment (void *cls, const struct GNUNET_MessageHeader *msg)
       plugin->with_v4_ws = GNUNET_YES;
     }
   }
-
   else if (s->addrlen == sizeof (struct sockaddr_in6))
   {
     if (plugin->with_v6_ws == GNUNET_NO)
@@ -907,7 +1076,6 @@ enqueue_fragment (void *cls, const struct GNUNET_MessageHeader *msg)
 
       plugin->select_task_v6 =
           GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                       GNUNET_SCHEDULER_NO_TASK,
                                        GNUNET_TIME_UNIT_FOREVER_REL,
                                        plugin->rs_v6,
                                        plugin->ws_v6,
@@ -915,10 +1083,7 @@ enqueue_fragment (void *cls, const struct GNUNET_MessageHeader *msg)
       plugin->with_v6_ws = GNUNET_YES;
     }
   }
-
 }
-
-
 
 
 /**
@@ -958,7 +1123,6 @@ udp_plugin_send (void *cls,
 {
   struct Plugin *plugin = cls;
   size_t mlen = msgbuf_size + sizeof (struct UDPMessage);
-
   struct UDPMessageWrapper * udpw;
   struct UDPMessage *udp;
   char mbuf[mlen];
@@ -967,29 +1131,24 @@ udp_plugin_send (void *cls,
 
   if ((s->addrlen == sizeof (struct sockaddr_in6)) && (plugin->sockv6 == NULL))
     return GNUNET_SYSERR;
-
-   if ((s->addrlen == sizeof (struct sockaddr_in)) && (plugin->sockv4 == NULL))
-     return GNUNET_SYSERR;
-
-
+  if ((s->addrlen == sizeof (struct sockaddr_in)) && (plugin->sockv4 == NULL))
+    return GNUNET_SYSERR;
   if (mlen >= GNUNET_SERVER_MAX_MESSAGE_SIZE)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
   if (GNUNET_YES != GNUNET_CONTAINER_multihashmap_contains_value(plugin->sessions, &s->target.hashPubKey, s))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "UDP transmits %u-byte message to `%s' using address `%s'\n",
-         msgbuf_size,
-         GNUNET_i2s (&s->target),
-         GNUNET_a2s(s->sock_addr, s->addrlen));
-
+       mlen,
+       GNUNET_i2s (&s->target),
+       GNUNET_a2s(s->sock_addr, s->addrlen));
+  
   /* Message */
   udp = (struct UDPMessage *) mbuf;
   udp->header.size = htons (mlen);
@@ -997,6 +1156,7 @@ udp_plugin_send (void *cls,
   udp->reserved = htonl (0);
   udp->sender = *plugin->env->my_identity;
 
+  reschedule_session_timeout(s);
   if (mlen <= UDP_MTU)
   {
     udpw = GNUNET_malloc (sizeof (struct UDPMessageWrapper) + mlen);
@@ -1007,7 +1167,6 @@ udp_plugin_send (void *cls,
     udpw->cont = cont;
     udpw->cont_cls = cont_cls;
     udpw->frag_ctx = NULL;
-
     memcpy (udpw->udp, udp, sizeof (struct UDPMessage));
     memcpy (&udpw->udp[sizeof (struct UDPMessage)], msgbuf, msgbuf_size);
 
@@ -1037,7 +1196,6 @@ udp_plugin_send (void *cls,
               frag_ctx);
 
     s->frag_ctx = frag_ctx;
-
   }
 
   if (s->addrlen == sizeof (struct sockaddr_in))
@@ -1049,7 +1207,6 @@ udp_plugin_send (void *cls,
 
       plugin->select_task =
           GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                       GNUNET_SCHEDULER_NO_TASK,
                                        GNUNET_TIME_UNIT_FOREVER_REL,
                                        plugin->rs_v4,
                                        plugin->ws_v4,
@@ -1057,7 +1214,6 @@ udp_plugin_send (void *cls,
       plugin->with_v4_ws = GNUNET_YES;
     }
   }
-
   else if (s->addrlen == sizeof (struct sockaddr_in6))
   {
     if (plugin->with_v6_ws == GNUNET_NO)
@@ -1067,7 +1223,6 @@ udp_plugin_send (void *cls,
 
       plugin->select_task_v6 =
         GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                     GNUNET_SCHEDULER_NO_TASK,
                                      GNUNET_TIME_UNIT_FOREVER_REL,
                                      plugin->rs_v6,
                                      plugin->ws_v6,
@@ -1135,7 +1290,7 @@ udp_nat_port_map_callback (void *cls, int add_remove,
  * @param client the 'struct SourceInformation'
  * @param hdr the actual message
  */
-static void
+static int
 process_inbound_tokenized_messages (void *cls, void *client,
                                     const struct GNUNET_MessageHeader *hdr)
 {
@@ -1145,20 +1300,23 @@ process_inbound_tokenized_messages (void *cls, void *client,
   struct GNUNET_TIME_Relative delay;
 
   GNUNET_assert (si->session != NULL);
+  if (GNUNET_YES == si->session->in_destroy)
+    return GNUNET_OK;
   /* setup ATS */
   ats[0].type = htonl (GNUNET_ATS_QUALITY_NET_DISTANCE);
   ats[0].value = htonl (1);
   ats[1] = si->session->ats;
   GNUNET_break (ntohl(ats[1].value) != GNUNET_ATS_NET_UNSPECIFIED);
-
   delay = plugin->env->receive (plugin->env->cls,
-                &si->sender,
-                hdr,
-                (const struct GNUNET_ATS_Information *) &ats, 2,
-                NULL,
-                si->arg,
-                si->args);
+				&si->sender,
+				hdr,
+				(const struct GNUNET_ATS_Information *) &ats, 2,
+				NULL,
+				si->arg,
+				si->args);
   si->session->flow_delay_for_other_peer = delay;
+  reschedule_session_timeout(si->session);
+  return GNUNET_OK;
 }
 
 
@@ -1176,7 +1334,7 @@ process_udp_message (struct Plugin *plugin, const struct UDPMessage *msg,
                      socklen_t sender_addr_len)
 {
   struct SourceInformation si;
-  struct Session * s = NULL;
+  struct Session * s;
   struct IPv4UdpAddress u4;
   struct IPv6UdpAddress u6;
   const void *arg;
@@ -1215,12 +1373,10 @@ process_udp_message (struct Plugin *plugin, const struct UDPMessage *msg,
     GNUNET_break (0);
     return;
   }
-#if DEBUG_UDP
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Received message with %u bytes from peer `%s' at `%s'\n",
        (unsigned int) ntohs (msg->header.size), GNUNET_i2s (&msg->sender),
        GNUNET_a2s (sender_addr, sender_addr_len));
-#endif
 
   struct GNUNET_HELLO_Address * address = GNUNET_HELLO_address_allocate(&msg->sender, "udp", arg, args);
   s = udp_plugin_get_session(plugin, address);
@@ -1231,10 +1387,13 @@ process_udp_message (struct Plugin *plugin, const struct UDPMessage *msg,
   si.sender = msg->sender;
   si.arg = arg;
   si.args = args;
-
+  s->rc++;
   GNUNET_SERVER_mst_receive (plugin->mst, &si, (const char *) &msg[1],
                              ntohs (msg->header.size) -
                              sizeof (struct UDPMessage), GNUNET_YES, GNUNET_NO);
+  s->rc--;
+  if ( (0 == s->rc) && (GNUNET_YES == s->in_destroy))
+    free_session (s);
 }
 
 
@@ -1290,13 +1449,16 @@ fragment_msg_proc (void *cls, const struct GNUNET_MessageHeader *msg)
                        rc->src_addr, rc->addr_len);
 }
 
+
 struct LookupContext
 {
   const struct sockaddr * addr;
-  size_t addrlen;
 
   struct Session *res;
+
+  size_t addrlen;
 };
+
 
 static int
 lookup_session_by_addr_it (void *cls, const GNUNET_HashCode * key, void *value)
@@ -1313,6 +1475,7 @@ lookup_session_by_addr_it (void *cls, const GNUNET_HashCode * key, void *value)
   return GNUNET_YES;
 }
 
+
 /**
  * Transmit an acknowledgement.
  *
@@ -1324,7 +1487,6 @@ static void
 ack_proc (void *cls, uint32_t id, const struct GNUNET_MessageHeader *msg)
 {
   struct DefragContext *rc = cls;
-
   size_t msize = sizeof (struct UDP_ACK_Message) + ntohs (msg->size);
   struct UDP_ACK_Message *udp_ack;
   uint32_t delay = 0;
@@ -1340,12 +1502,12 @@ ack_proc (void *cls, uint32_t id, const struct GNUNET_MessageHeader *msg)
       &l_ctx);
   s = l_ctx.res;
 
-  GNUNET_assert (s != NULL);
+  if (NULL == s)
+    return;
 
   if (s->flow_delay_for_other_peer.rel_value <= UINT32_MAX)
     delay = s->flow_delay_for_other_peer.rel_value;
 
-#if DEBUG_UDP
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Sending ACK to `%s' including delay of %u ms\n",
        GNUNET_a2s (rc->src_addr,
@@ -1353,16 +1515,11 @@ ack_proc (void *cls, uint32_t id, const struct GNUNET_MessageHeader *msg)
                     AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct
                                                                      sockaddr_in6)),
        delay);
-#endif
   udpw = GNUNET_malloc (sizeof (struct UDPMessageWrapper) + msize);
-  udpw->cont = NULL;
-  udpw->cont_cls = NULL;
-  udpw->frag_ctx = NULL;
   udpw->msg_size = msize;
   udpw->session = s;
-  udpw->timeout = GNUNET_TIME_absolute_get_forever();
+  udpw->timeout = GNUNET_TIME_UNIT_FOREVER_ABS;
   udpw->udp = (char *)&udpw[1];
-
   udp_ack = (struct UDP_ACK_Message *) udpw->udp;
   udp_ack->header.size = htons ((uint16_t) msize);
   udp_ack->header.type = htons (GNUNET_MESSAGE_TYPE_TRANSPORT_UDP_ACK);
@@ -1374,10 +1531,11 @@ ack_proc (void *cls, uint32_t id, const struct GNUNET_MessageHeader *msg)
 }
 
 
-static void read_process_msg (struct Plugin *plugin,
-    const struct GNUNET_MessageHeader *msg,
-    char *addr,
-    socklen_t fromlen)
+static void 
+read_process_msg (struct Plugin *plugin,
+		  const struct GNUNET_MessageHeader *msg,
+		  const char *addr,
+		  socklen_t fromlen)
 {
   if (ntohs (msg->size) < sizeof (struct UDPMessage))
   {
@@ -1386,18 +1544,19 @@ static void read_process_msg (struct Plugin *plugin,
   }
   process_udp_message (plugin, (const struct UDPMessage *) msg,
                        (const struct sockaddr *) addr, fromlen);
-  return;
 }
 
-static void read_process_ack (struct Plugin *plugin,
-    const struct GNUNET_MessageHeader *msg,
-    char *addr,
-    socklen_t fromlen)
+
+static void 
+read_process_ack (struct Plugin *plugin,
+		  const struct GNUNET_MessageHeader *msg,
+		  char *addr,
+		  socklen_t fromlen)
 {
   const struct GNUNET_MessageHeader *ack;
   const struct UDP_ACK_Message *udp_ack;
   struct LookupContext l_ctx;
-  struct Session *s = NULL;
+  struct Session *s;
   struct GNUNET_TIME_Relative flow_delay;
 
   if (ntohs (msg->size) <
@@ -1406,9 +1565,7 @@ static void read_process_ack (struct Plugin *plugin,
     GNUNET_break_op (0);
     return;
   }
-
   udp_ack = (const struct UDP_ACK_Message *) msg;
-
   l_ctx.addr = (const struct sockaddr *) addr;
   l_ctx.addrlen = fromlen;
   l_ctx.res = NULL;
@@ -1436,35 +1593,33 @@ static void read_process_ack (struct Plugin *plugin,
 
   if (GNUNET_OK != GNUNET_FRAGMENT_process_ack (s->frag_ctx->frag, ack))
   {
-#if DEBUG_UDP
-  LOG (GNUNET_ERROR_TYPE_DEBUG,
-       "UDP processes %u-byte acknowledgement from `%s' at `%s'\n",
-       (unsigned int) ntohs (msg->size), GNUNET_i2s (&udp_ack->sender),
-       GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
-#endif
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+	 "UDP processes %u-byte acknowledgement from `%s' at `%s'\n",
+	 (unsigned int) ntohs (msg->size), GNUNET_i2s (&udp_ack->sender),
+	 GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
     return;
   }
 
-#if DEBUG_UDP
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "FULL MESSAGE ACKed\n",
        (unsigned int) ntohs (msg->size), GNUNET_i2s (&udp_ack->sender),
        GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
-#endif
   s->last_expected_delay = GNUNET_FRAGMENT_context_destroy (s->frag_ctx->frag);
 
-  struct UDPMessageWrapper * udpw = NULL;
+  struct UDPMessageWrapper * udpw;
+  struct UDPMessageWrapper * tmp;
   if (s->addrlen == sizeof (struct sockaddr_in6))
   {
     udpw = plugin->ipv6_queue_head;
-    while (udpw!= NULL)
+    while (NULL != udpw)
     {
+      tmp = udpw->next;
       if ((udpw->frag_ctx != NULL) && (udpw->frag_ctx == s->frag_ctx))
       {
         GNUNET_CONTAINER_DLL_remove(plugin->ipv6_queue_head, plugin->ipv6_queue_tail, udpw);
         GNUNET_free (udpw);
       }
-      udpw = udpw->next;
+      udpw = tmp;
     }
   }
   if (s->addrlen == sizeof (struct sockaddr_in))
@@ -1472,43 +1627,46 @@ static void read_process_ack (struct Plugin *plugin,
     udpw = plugin->ipv4_queue_head;
     while (udpw!= NULL)
     {
+      tmp = udpw->next;
       if ((udpw->frag_ctx != NULL) && (udpw->frag_ctx == s->frag_ctx))
       {
         GNUNET_CONTAINER_DLL_remove(plugin->ipv4_queue_head, plugin->ipv4_queue_tail, udpw);
         GNUNET_free (udpw);
       }
-      udpw = udpw->next;
+      udpw = tmp;
     }
   }
 
   if (s->frag_ctx->cont != NULL)
-    s->frag_ctx->cont
-    (s->frag_ctx->cont_cls, &udp_ack->sender, GNUNET_OK);
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+        "Calling continuation for fragmented message to `%s' with result %s\n",
+        GNUNET_i2s (&s->target), "OK");
+    s->frag_ctx->cont (s->frag_ctx->cont_cls, &udp_ack->sender, GNUNET_OK);
+  }
+
   GNUNET_free (s->frag_ctx);
   s->frag_ctx = NULL;
-  return;
 }
 
-static void read_process_fragment (struct Plugin *plugin,
-    const struct GNUNET_MessageHeader *msg,
-    char *addr,
-    socklen_t fromlen)
+
+static void 
+read_process_fragment (struct Plugin *plugin,
+		       const struct GNUNET_MessageHeader *msg,
+		       char *addr,
+		       socklen_t fromlen)
 {
   struct DefragContext *d_ctx;
   struct GNUNET_TIME_Absolute now;
   struct FindReceiveContext frc;
 
-
   frc.rc = NULL;
   frc.addr = (const struct sockaddr *) addr;
   frc.addr_len = fromlen;
 
-#if DEBUG_UDP
   LOG (GNUNET_ERROR_TYPE_DEBUG, "UDP processes %u-byte fragment from `%s'\n",
        (unsigned int) ntohs (msg->size),
        GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
-#endif
-
   /* Lookup existing receive context for this address */
   GNUNET_CONTAINER_heap_iterate (plugin->defrag_ctxs,
                                  &find_receive_context,
@@ -1532,19 +1690,17 @@ static void read_process_fragment (struct Plugin *plugin,
         GNUNET_CONTAINER_heap_insert (plugin->defrag_ctxs, d_ctx,
                                       (GNUNET_CONTAINER_HeapCostType)
                                       now.abs_value);
-#if DEBUG_UDP
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "Created new defragmentation context for %u-byte fragment from `%s'\n",
-       (unsigned int) ntohs (msg->size),
-       GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
-#endif
+    LOG (GNUNET_ERROR_TYPE_DEBUG, 
+	 "Created new defragmentation context for %u-byte fragment from `%s'\n",
+	 (unsigned int) ntohs (msg->size),
+	 GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
   }
   else
   {
-#if DEBUG_UDP
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "Found existing defragmentation context for %u-byte fragment from `%s'\n",
-       (unsigned int) ntohs (msg->size),
-       GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
-#endif
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+	 "Found existing defragmentation context for %u-byte fragment from `%s'\n",
+	 (unsigned int) ntohs (msg->size),
+	 GNUNET_a2s ((const struct sockaddr *) addr, fromlen));
   }
 
   if (GNUNET_OK == GNUNET_DEFRAGMENT_process_fragment (d_ctx->defrag, msg))
@@ -1565,6 +1721,7 @@ static void read_process_fragment (struct Plugin *plugin,
   }
 }
 
+
 /**
  * Read and process a message from the given socket.
  *
@@ -1576,7 +1733,7 @@ udp_select_read (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *rsock)
 {
   socklen_t fromlen;
   char addr[32];
-  char buf[65536];
+  char buf[65536] GNUNET_ALIGN;
   ssize_t size;
   const struct GNUNET_MessageHeader *msg;
 
@@ -1613,7 +1770,7 @@ udp_select_read (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *rsock)
     return;
 
   case GNUNET_MESSAGE_TYPE_TRANSPORT_UDP_ACK:
-    read_process_ack (plugin, msg, addr, fromlen);;
+    read_process_ack (plugin, msg, addr, fromlen);
     return;
 
   case GNUNET_MESSAGE_TYPE_FRAGMENT:
@@ -1626,14 +1783,13 @@ udp_select_read (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *rsock)
   }
 }
 
-size_t
+
+static size_t
 udp_select_send (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *sock)
 {
   ssize_t sent;
   size_t slen;
   struct GNUNET_TIME_Absolute max;
-  struct GNUNET_TIME_Absolute ;
-
   struct UDPMessageWrapper *udpw = NULL;
 
   if (sock == plugin->sockv4)
@@ -1660,25 +1816,21 @@ udp_select_send (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *sock)
     if (max.abs_value != udpw->timeout.abs_value)
     {
       /* Message timed out */
-
-      if (udpw->cont != NULL)
-        udpw->cont (udpw->cont_cls, &udpw->session->target, GNUNET_SYSERR);
+      call_continuation(udpw, GNUNET_SYSERR);
       if (udpw->frag_ctx != NULL)
       {
-#if DEBUG_UDP
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Fragmented message for peer `%s' with size %u timed out\n",
-            GNUNET_i2s(&udpw->session->target), udpw->frag_ctx->bytes_to_send);
-#endif
+        LOG (GNUNET_ERROR_TYPE_DEBUG,
+	     "Fragmented message for peer `%s' with size %u timed out\n",
+	     GNUNET_i2s(&udpw->session->target), udpw->frag_ctx->bytes_to_send);
         udpw->session->last_expected_delay = GNUNET_FRAGMENT_context_destroy(udpw->frag_ctx->frag);
         GNUNET_free (udpw->frag_ctx);
         udpw->session->frag_ctx = NULL;
       }
       else
       {
-#if DEBUG_UDP
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Message for peer `%s' with size %u timed out\n",
-            GNUNET_i2s(&udpw->session->target), udpw->msg_size);
-#endif
+        LOG (GNUNET_ERROR_TYPE_DEBUG, 
+	     "Message for peer `%s' with size %u timed out\n",
+	     GNUNET_i2s(&udpw->session->target), udpw->msg_size);
       }
 
       if (sock == plugin->sockv4)
@@ -1700,20 +1852,21 @@ udp_select_send (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *sock)
       if (delta.rel_value == 0)
       {
         /* this message is not delayed */
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Message for peer `%s' (%u bytes) is not delayed \n",
-            GNUNET_i2s(&udpw->session->target), udpw->msg_size);
+        LOG (GNUNET_ERROR_TYPE_DEBUG, 
+	     "Message for peer `%s' (%u bytes) is not delayed \n",
+	     GNUNET_i2s(&udpw->session->target), udpw->msg_size);
         break;
       }
       else
       {
         /* this message is delayed, try next */
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Message for peer `%s' (%u bytes) is delayed for %llu \n",
-            GNUNET_i2s(&udpw->session->target), udpw->msg_size,
-            delta);
+        LOG (GNUNET_ERROR_TYPE_DEBUG,
+	     "Message for peer `%s' (%u bytes) is delayed for %llu \n",
+	     GNUNET_i2s(&udpw->session->target), udpw->msg_size,
+	     delta);
         udpw = udpw->next;
       }
     }
-
   }
 
   if (udpw == NULL)
@@ -1726,29 +1879,40 @@ udp_select_send (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *sock)
 
   if (GNUNET_SYSERR == sent)
   {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR, "sendto");
-    LOG (GNUNET_ERROR_TYPE_DEBUG,
-         "UDP transmitted %u-byte message to %s (%d: %s)\n",
-         (unsigned int) (udpw->msg_size), GNUNET_a2s (sa, slen), (int) sent,
-         (sent < 0) ? STRERROR (errno) : "ok");
-    if (udpw->cont != NULL)
-      udpw->cont (udpw->cont_cls, &udpw->session->target, GNUNET_SYSERR);
-  }
-  LOG (GNUNET_ERROR_TYPE_DEBUG,
-       "UDP transmitted %u-byte message to %s (%d: %s)\n",
-       (unsigned int) (udpw->msg_size), GNUNET_a2s (sa, slen), (int) sent,
-       (sent < 0) ? STRERROR (errno) : "ok");
+    const struct GNUNET_ATS_Information type = plugin->env->get_address_type
+        (plugin->env->cls,sa, slen);
 
-  /* This was just a message fragment */
-  if (udpw->frag_ctx != NULL)
-  {
-    GNUNET_FRAGMENT_context_transmission_done (udpw->frag_ctx->frag);
+    if ((GNUNET_ATS_NET_WAN == type.value) &&
+        ((ENETUNREACH == errno) || (ENETDOWN == errno)))
+    {
+      /* "Network unreachable" or "Network down" */
+      /*
+       * This indicates that this system is IPv6 enabled, but does not
+       * have a valid global IPv6 address assigned
+       */
+       LOG (GNUNET_ERROR_TYPE_ERROR | GNUNET_ERROR_TYPE_BULK,
+           _("UDP could not message to `%s': `%s'. "
+	     "Please check your network configuration and disable IPv6 if your "
+	     "connection does not have a global IPv6 address\n"),
+           GNUNET_a2s (sa, slen),
+           STRERROR (errno));
+    }
+    else
+    {
+      LOG (GNUNET_ERROR_TYPE_ERROR,
+         "UDP could not transmit %u-byte message to `%s': `%s'\n",
+         (unsigned int) (udpw->msg_size), GNUNET_a2s (sa, slen),
+         STRERROR (errno));
+    }
+    call_continuation(udpw, GNUNET_SYSERR);
   }
-  /* This was a complete message*/
   else
   {
-    if (udpw->cont != NULL)
-      udpw->cont (udpw->cont_cls, &udpw->session->target, GNUNET_OK);
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "UDP transmitted %u-byte message to `%s' (%d: %s)\n",
+         (unsigned int) (udpw->msg_size), GNUNET_a2s (sa, slen), (int) sent,
+         (sent < 0) ? STRERROR (errno) : "ok");
+    call_continuation(udpw, GNUNET_OK);
   }
 
   if (sock == plugin->sockv4)
@@ -1760,6 +1924,7 @@ udp_select_send (struct Plugin *plugin, struct GNUNET_NETWORK_Handle *sock)
 
   return sent;
 }
+
 
 /**
  * We have been notified that our readset has something to read.  We don't
@@ -1799,7 +1964,6 @@ udp_plugin_select (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   if (plugin->select_task != GNUNET_SCHEDULER_NO_TASK)
     GNUNET_SCHEDULER_cancel (plugin->select_task);
   plugin->select_task = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                   GNUNET_SCHEDULER_NO_TASK,
                                    GNUNET_TIME_UNIT_FOREVER_REL,
                                    plugin->rs_v4,
                                    (plugin->ipv4_queue_head != NULL) ? plugin->ws_v4 : NULL,
@@ -1847,7 +2011,6 @@ udp_plugin_select_v6 (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   if (plugin->select_task_v6 != GNUNET_SCHEDULER_NO_TASK)
     GNUNET_SCHEDULER_cancel (plugin->select_task_v6);
   plugin->select_task_v6 = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                   GNUNET_SCHEDULER_NO_TASK,
                                    GNUNET_TIME_UNIT_FOREVER_REL,
                                    plugin->rs_v6,
                                    (plugin->ipv6_queue_head != NULL) ? plugin->ws_v6 : NULL,
@@ -1875,7 +2038,7 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
     plugin->sockv6 = GNUNET_NETWORK_socket_create (PF_INET6, SOCK_DGRAM, 0);
     if (NULL == plugin->sockv6)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Disabling IPv6 since it is not supported on this system!\n");
+      LOG (GNUNET_ERROR_TYPE_WARNING, "Disabling IPv6 since it is not supported on this system!\n");
       plugin->enable_ipv6 = GNUNET_NO;
     }
     else
@@ -1888,20 +2051,16 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
       serverAddrv6->sin6_port = htons (plugin->port);
       addrlen = sizeof (struct sockaddr_in6);
       serverAddr = (struct sockaddr *) serverAddrv6;
-#if DEBUG_UDP
       LOG (GNUNET_ERROR_TYPE_DEBUG, "Binding to IPv6 port %d\n",
            ntohs (serverAddrv6->sin6_port));
-#endif
       tries = 0;
       while (GNUNET_NETWORK_socket_bind (plugin->sockv6, serverAddr, addrlen) !=
              GNUNET_OK)
       {
         serverAddrv6->sin6_port = htons (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG, 33537) + 32000);        /* Find a good, non-root port */
-#if DEBUG_UDP
         LOG (GNUNET_ERROR_TYPE_DEBUG,
              "IPv6 Binding failed, trying new port %d\n",
              ntohs (serverAddrv6->sin6_port));
-#endif
         tries++;
         if (tries > 10)
         {
@@ -1912,11 +2071,9 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
       }
       if (plugin->sockv6 != NULL)
       {
-#if DEBUG_UDP
         LOG (GNUNET_ERROR_TYPE_DEBUG,
              "IPv6 socket created on port %d\n",
              ntohs (serverAddrv6->sin6_port));
-#endif
         addrs[sockets_created] = (struct sockaddr *) serverAddrv6;
         addrlens[sockets_created] = sizeof (struct sockaddr_in6);
         sockets_created++;
@@ -1941,19 +2098,15 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
     addrlen = sizeof (struct sockaddr_in);
     serverAddr = (struct sockaddr *) serverAddrv4;
 
-#if DEBUG_UDP
     LOG (GNUNET_ERROR_TYPE_DEBUG, "Binding to IPv4 port %d\n",
          ntohs (serverAddrv4->sin_port));
-#endif
     tries = 0;
     while (GNUNET_NETWORK_socket_bind (plugin->sockv4, serverAddr, addrlen) !=
            GNUNET_OK)
     {
       serverAddrv4->sin_port = htons (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG, 33537) + 32000);   /* Find a good, non-root port */
-#if DEBUG_UDP
       LOG (GNUNET_ERROR_TYPE_DEBUG, "IPv4 Binding failed, trying new port %d\n",
            ntohs (serverAddrv4->sin_port));
-#endif
       tries++;
       if (tries > 10)
       {
@@ -1982,11 +2135,10 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
   }
 
   if (sockets_created == 0)
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING, _("Failed to open UDP sockets\n"));
+    LOG (GNUNET_ERROR_TYPE_WARNING, _("Failed to open UDP sockets\n"));
 
   plugin->select_task =
       GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                   GNUNET_SCHEDULER_NO_TASK,
                                    GNUNET_TIME_UNIT_FOREVER_REL,
                                    plugin->rs_v4,
                                    NULL,
@@ -2007,7 +2159,6 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
 
     plugin->select_task_v6 =
         GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                     GNUNET_SCHEDULER_NO_TASK,
                                      GNUNET_TIME_UNIT_FOREVER_REL,
                                      plugin->rs_v6,
                                      NULL,
@@ -2024,6 +2175,82 @@ setup_sockets (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struct 
   return sockets_created;
 }
 
+/**
+ * Session was idle, so disconnect it
+ */
+static void
+session_timeout (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  GNUNET_assert (NULL != cls);
+  struct Session *s = cls;
+
+  s->timeout_task = GNUNET_SCHEDULER_NO_TASK;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Session %p was idle for %llu, disconnecting\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+
+  /* call session destroy function */
+  disconnect_session(s);
+
+}
+
+/**
+ * Start session timeout
+ */
+static void
+start_session_timeout (struct Session *s)
+{
+  GNUNET_assert (NULL != s);
+  GNUNET_assert (GNUNET_SCHEDULER_NO_TASK == s->timeout_task);
+
+  s->timeout_task =  GNUNET_SCHEDULER_add_delayed (GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT,
+                                                   &session_timeout,
+                                                   s);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout for session %p set to %llu\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+}
+
+/**
+ * Increment session timeout due to activity
+ */
+static void
+reschedule_session_timeout (struct Session *s)
+{
+  GNUNET_assert (NULL != s);
+  GNUNET_assert (GNUNET_SCHEDULER_NO_TASK != s->timeout_task);
+
+  GNUNET_SCHEDULER_cancel (s->timeout_task);
+  s->timeout_task =  GNUNET_SCHEDULER_add_delayed (GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT,
+                                                   &session_timeout,
+                                                   s);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout rescheduled for session %p set to %llu\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+}
+
+/**
+ * Cancel timeout
+ */
+static void
+stop_session_timeout (struct Session *s)
+{
+  GNUNET_assert (NULL != s);
+
+  if (GNUNET_SCHEDULER_NO_TASK != s->timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (s->timeout_task);
+    s->timeout_task = GNUNET_SCHEDULER_NO_TASK;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout rescheduled for session %p canceled\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout for session %p was not active\n",
+      s);
+  }
+}
 
 /**
  * The exported method. Makes the core api available via a global and
@@ -2037,8 +2264,7 @@ libgnunet_plugin_transport_udp_init (void *cls)
 {
   struct GNUNET_TRANSPORT_PluginEnvironment *env = cls;
   struct GNUNET_TRANSPORT_PluginFunctions *api;
-  struct Plugin *plugin;
-
+  struct Plugin *p;
   unsigned long long port;
   unsigned long long aport;
   unsigned long long broadcast;
@@ -2047,11 +2273,23 @@ libgnunet_plugin_transport_udp_init (void *cls)
   char * bind4_address;
   char * bind6_address;
   struct GNUNET_TIME_Relative interval;
-
   struct sockaddr_in serverAddrv4;
   struct sockaddr_in6 serverAddrv6;
-
   int res;
+
+  if (NULL == env->receive)
+  {
+    /* run in 'stub' mode (i.e. as part of gnunet-peerinfo), don't fully
+       initialze the plugin or the API */
+    api = GNUNET_malloc (sizeof (struct GNUNET_TRANSPORT_PluginFunctions));
+    api->cls = NULL;
+    api->address_pretty_printer = &udp_plugin_address_pretty_printer;
+    api->address_to_string = &udp_address_to_string;
+    api->string_to_address = &udp_string_to_address;
+    return api;
+  }
+
+  GNUNET_assert( NULL != env->stats);
 
   /* Get port number */
   if (GNUNET_OK !=
@@ -2079,7 +2317,6 @@ libgnunet_plugin_transport_udp_init (void *cls)
   }
   else
     enable_v6 = GNUNET_YES;
-
 
   /* Addresses */
   memset (&serverAddrv6, 0, sizeof (serverAddrv6));
@@ -2117,7 +2354,6 @@ libgnunet_plugin_transport_udp_init (void *cls)
     }
   }
 
-
   /* Enable neighbour discovery */
   broadcast = GNUNET_CONFIGURATION_get_value_yesno (env->cfg, "transport-udp",
                                             "BROADCAST");
@@ -2137,56 +2373,60 @@ libgnunet_plugin_transport_udp_init (void *cls)
     udp_max_bps = 1024 * 1024 * 50;     /* 50 MB/s == infinity for practical purposes */
   }
 
-  plugin = GNUNET_malloc (sizeof (struct Plugin));
+  p = GNUNET_malloc (sizeof (struct Plugin));
   api = GNUNET_malloc (sizeof (struct GNUNET_TRANSPORT_PluginFunctions));
 
-  GNUNET_BANDWIDTH_tracker_init (&plugin->tracker,
+  GNUNET_BANDWIDTH_tracker_init (&p->tracker,
                                  GNUNET_BANDWIDTH_value_init ((uint32_t)udp_max_bps), 30);
+  p->sessions = GNUNET_CONTAINER_multihashmap_create (10);
+  p->defrag_ctxs = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MIN);
+  p->mst = GNUNET_SERVER_mst_create (&process_inbound_tokenized_messages, p);
+  p->port = port;
+  p->aport = aport;
+  p->broadcast_interval = interval;
+  p->enable_ipv6 = enable_v6;
+  p->env = env;
 
+  plugin = p;
 
-  plugin->sessions = GNUNET_CONTAINER_multihashmap_create (10);
-  plugin->defrag_ctxs = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MIN);
-  plugin->mst = GNUNET_SERVER_mst_create (&process_inbound_tokenized_messages, plugin);
-  plugin->port = port;
-  plugin->aport = aport;
-  plugin->broadcast_interval = interval;
-  plugin->enable_ipv6 = enable_v6;
-  plugin->env = env;
-
-  api->cls = plugin;
+  api->cls = p;
   api->send = NULL;
   api->disconnect = &udp_disconnect;
   api->address_pretty_printer = &udp_plugin_address_pretty_printer;
   api->address_to_string = &udp_address_to_string;
+  api->string_to_address = &udp_string_to_address;
   api->check_address = &udp_plugin_check_address;
   api->get_session = &udp_plugin_get_session;
   api->send = &udp_plugin_send;
 
   LOG (GNUNET_ERROR_TYPE_DEBUG, "Setting up sockets\n");
-  res = setup_sockets (plugin, &serverAddrv6, &serverAddrv4);
-  if ((res == 0) || ((plugin->sockv4 == NULL) && (plugin->sockv6 == NULL)))
+  res = setup_sockets (p, &serverAddrv6, &serverAddrv4);
+  if ((res == 0) || ((p->sockv4 == NULL) && (p->sockv6 == NULL)))
   {
     LOG (GNUNET_ERROR_TYPE_ERROR, "Failed to create network sockets, plugin failed\n");
-    GNUNET_free (plugin);
+    GNUNET_free (p);
     GNUNET_free (api);
     return NULL;
   }
 
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "Starting broadcasting\n");
   if (broadcast == GNUNET_YES)
-    setup_broadcast (plugin, &serverAddrv6, &serverAddrv4);
-
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG, "Starting broadcasting\n");
+    setup_broadcast (p, &serverAddrv6, &serverAddrv4);
+  }
 
   GNUNET_free_non_null (bind4_address);
   GNUNET_free_non_null (bind6_address);
   return api;
 }
 
-int heap_cleanup_iterator (void *cls,
-                          struct GNUNET_CONTAINER_HeapNode *
-                          node, void *element,
-                          GNUNET_CONTAINER_HeapCostType
-                          cost)
+
+static int
+heap_cleanup_iterator (void *cls,
+		       struct GNUNET_CONTAINER_HeapNode *
+		       node, void *element,
+		       GNUNET_CONTAINER_HeapCostType
+		       cost)
 {
   struct DefragContext * d_ctx = element;
 
@@ -2203,13 +2443,20 @@ int heap_cleanup_iterator (void *cls,
  * returns the udp transport API.
  *
  * @param cls our 'struct GNUNET_TRANSPORT_PluginEnvironment'
- * @return our 'struct GNUNET_TRANSPORT_PluginFunctions'
+ * @return NULL
  */
 void *
 libgnunet_plugin_transport_udp_done (void *cls)
 {
   struct GNUNET_TRANSPORT_PluginFunctions *api = cls;
   struct Plugin *plugin = api->cls;
+
+  if (NULL == plugin)
+  {
+    GNUNET_free (api);
+    return NULL;
+  }
+
   stop_broadcast (plugin);
 
   if (plugin->select_task != GNUNET_SCHEDULER_NO_TASK)
@@ -2263,8 +2510,7 @@ libgnunet_plugin_transport_udp_done (void *cls)
   {
     struct UDPMessageWrapper *tmp = udpw->next;
     GNUNET_CONTAINER_DLL_remove(plugin->ipv4_queue_head, plugin->ipv4_queue_tail, udpw);
-    if (udpw->cont != NULL)
-      udpw->cont (udpw->cont_cls, &udpw->session->target, GNUNET_SYSERR);
+    call_continuation(udpw, GNUNET_SYSERR);
     GNUNET_free (udpw);
     udpw = tmp;
   }
@@ -2273,17 +2519,14 @@ libgnunet_plugin_transport_udp_done (void *cls)
   {
     struct UDPMessageWrapper *tmp = udpw->next;
     GNUNET_CONTAINER_DLL_remove(plugin->ipv6_queue_head, plugin->ipv6_queue_tail, udpw);
-    if (udpw->cont != NULL)
-      udpw->cont (udpw->cont_cls, &udpw->session->target, GNUNET_SYSERR);
+    call_continuation(udpw, GNUNET_SYSERR);
     GNUNET_free (udpw);
     udpw = tmp;
   }
 
   /* Clean up sessions */
-#if DEBUG_UDP
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Cleaning up sessions\n");
-#endif
   GNUNET_CONTAINER_multihashmap_iterate (plugin->sessions, &disconnect_and_free_it, plugin);
   GNUNET_CONTAINER_multihashmap_destroy (plugin->sessions);
 

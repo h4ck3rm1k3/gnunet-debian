@@ -51,7 +51,8 @@ check_PROGRAMS = test_fs_directory$(EXEEXT) test_fs_download$(EXEEXT) \
 	test_fs_list_indexed$(EXEEXT) test_fs_namespace$(EXEEXT) \
 	test_fs_namespace_list_updateable$(EXEEXT) \
 	test_fs_publish$(EXEEXT) test_fs_publish_persistence$(EXEEXT) \
-	test_fs_search$(EXEEXT) test_fs_search_persistence$(EXEEXT) \
+	test_fs_search$(EXEEXT) test_fs_search_probes$(EXEEXT) \
+	test_fs_search_persistence$(EXEEXT) \
 	test_fs_start_stop$(EXEEXT) test_fs_test_lib$(EXEEXT) \
 	test_fs_unindex$(EXEEXT) test_fs_unindex_persistence$(EXEEXT) \
 	test_fs_uri$(EXEEXT) test_gnunet_service_fs_migration$(EXEEXT) \
@@ -67,6 +68,7 @@ check_PROGRAMS = test_fs_directory$(EXEEXT) test_fs_download$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_fs_publish$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_fs_publish_persistence$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_fs_search$(EXEEXT) \
+@ENABLE_TEST_RUN_TRUE@	test_fs_search_probes$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_fs_search_persistence$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_fs_start_stop$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_fs_unindex$(EXEEXT) \
@@ -310,6 +312,11 @@ test_fs_search_persistence_OBJECTS =  \
 test_fs_search_persistence_DEPENDENCIES =  \
 	$(top_builddir)/src/fs/libgnunetfs.la \
 	$(top_builddir)/src/util/libgnunetutil.la
+am_test_fs_search_probes_OBJECTS = test_fs_search_probes.$(OBJEXT)
+test_fs_search_probes_OBJECTS = $(am_test_fs_search_probes_OBJECTS)
+test_fs_search_probes_DEPENDENCIES =  \
+	$(top_builddir)/src/fs/libgnunetfs.la \
+	$(top_builddir)/src/util/libgnunetutil.la
 am_test_fs_start_stop_OBJECTS = test_fs_start_stop.$(OBJEXT)
 test_fs_start_stop_OBJECTS = $(am_test_fs_start_stop_OBJECTS)
 test_fs_start_stop_DEPENDENCIES =  \
@@ -401,8 +408,8 @@ SOURCES = $(libgnunetfstest_a_SOURCES) \
 	$(test_fs_publish_persistence_SOURCES) \
 	$(test_fs_search_SOURCES) \
 	$(test_fs_search_persistence_SOURCES) \
-	$(test_fs_start_stop_SOURCES) $(test_fs_test_lib_SOURCES) \
-	$(test_fs_unindex_SOURCES) \
+	$(test_fs_search_probes_SOURCES) $(test_fs_start_stop_SOURCES) \
+	$(test_fs_test_lib_SOURCES) $(test_fs_unindex_SOURCES) \
 	$(test_fs_unindex_persistence_SOURCES) $(test_fs_uri_SOURCES) \
 	$(test_gnunet_service_fs_migration_SOURCES) \
 	$(test_gnunet_service_fs_p2p_SOURCES)
@@ -428,8 +435,8 @@ DIST_SOURCES = $(libgnunetfstest_a_SOURCES) \
 	$(test_fs_publish_persistence_SOURCES) \
 	$(test_fs_search_SOURCES) \
 	$(test_fs_search_persistence_SOURCES) \
-	$(test_fs_start_stop_SOURCES) $(test_fs_test_lib_SOURCES) \
-	$(test_fs_unindex_SOURCES) \
+	$(test_fs_search_probes_SOURCES) $(test_fs_start_stop_SOURCES) \
+	$(test_fs_test_lib_SOURCES) $(test_fs_unindex_SOURCES) \
 	$(test_fs_unindex_persistence_SOURCES) $(test_fs_uri_SOURCES) \
 	$(test_gnunet_service_fs_migration_SOURCES) \
 	$(test_gnunet_service_fs_p2p_SOURCES)
@@ -494,6 +501,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -527,6 +535,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -683,7 +692,7 @@ libgnunetfs_la_LIBADD = \
 
 libgnunetfs_la_LDFLAGS = \
   $(GN_LIB_LDFLAGS)  $(WINFLAGS) \
-  -version-info 2:0:0
+  -version-info 2:1:0
 
 libgnunetfstest_a_SOURCES = \
   fs_test_lib.c fs_test_lib.h
@@ -836,6 +845,8 @@ libgnunet_plugin_block_fs_la_DEPENDENCIES = \
 @HAVE_PYTHON_PEXPECT_TRUE@ test_gnunet_fs_idx.py \
 @HAVE_PYTHON_PEXPECT_TRUE@ test_gnunet_fs_ns.py 
 
+@ENABLE_MONKEY_TRUE@TESTS_ENVIRONMENT = @MONKEYPREFIX@
+@ENABLE_MONKEY_TRUE@AM_LDFLAGS = -no-install
 test_fs_directory_SOURCES = \
  test_fs_directory.c
 
@@ -919,6 +930,12 @@ test_fs_search_SOURCES = \
  test_fs_search.c
 
 test_fs_search_LDADD = $(top_builddir)/src/fs/libgnunetfs.la	\
+  $(top_builddir)/src/util/libgnunetutil.la
+
+test_fs_search_probes_SOURCES = \
+ test_fs_search_probes.c
+
+test_fs_search_probes_LDADD = $(top_builddir)/src/fs/libgnunetfs.la	\
   $(top_builddir)/src/util/libgnunetutil.la
 
 test_fs_search_persistence_SOURCES = \
@@ -1288,6 +1305,9 @@ test_fs_search$(EXEEXT): $(test_fs_search_OBJECTS) $(test_fs_search_DEPENDENCIES
 test_fs_search_persistence$(EXEEXT): $(test_fs_search_persistence_OBJECTS) $(test_fs_search_persistence_DEPENDENCIES) 
 	@rm -f test_fs_search_persistence$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_fs_search_persistence_OBJECTS) $(test_fs_search_persistence_LDADD) $(LIBS)
+test_fs_search_probes$(EXEEXT): $(test_fs_search_probes_OBJECTS) $(test_fs_search_probes_DEPENDENCIES) 
+	@rm -f test_fs_search_probes$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_fs_search_probes_OBJECTS) $(test_fs_search_probes_LDADD) $(LIBS)
 test_fs_start_stop$(EXEEXT): $(test_fs_start_stop_OBJECTS) $(test_fs_start_stop_DEPENDENCIES) 
 	@rm -f test_fs_start_stop$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_fs_start_stop_OBJECTS) $(test_fs_start_stop_LDADD) $(LIBS)
@@ -1400,6 +1420,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_publish_persistence.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_search.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_search_persistence.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_search_probes.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_start_stop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_test_lib.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fs_unindex.Po@am__quote@

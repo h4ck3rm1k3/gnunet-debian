@@ -21,7 +21,7 @@ install-exec-hook:
 	$(SUDO_BINARY) chown root $(bindir)/gnunet-helper-dns || true
 	$(SUDO_BINARY) chgrp $(GNUNETDNS_GROUP) $(bindir)/gnunet-helper-dns || true
 	$(SUDO_BINARY) chmod 4750 $(bindir)/gnunet-helper-dns || true
-	$(SUDO_BINARY) chgrp $(GNUNETDNS_GROUP) $(bindir)/gnunet-service-dns || true
+	$(SUDO_BINARY) chown gnunet:$(GNUNETDNS_GROUP) $(bindir)/gnunet-service-dns || true
 	$(SUDO_BINARY) chmod 2750 $(bindir)/gnunet-service-dns || true
 else
 install-exec-hook:
@@ -40,9 +40,10 @@ noinst_PROGRAMS = \
 plugin_LTLIBRARIES = \
   libgnunet_plugin_block_dns.la 
 
+if LINUX
 check_SCRIPTS = \
  test_gnunet_dns.sh
-
+endif
 
 gnunet_helper_dns_SOURCES = \
  gnunet-helper-dns.c

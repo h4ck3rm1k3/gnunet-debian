@@ -41,18 +41,49 @@ static struct GNUNET_SERVICE_Context *sctx;
 
 static int ok = 1;
 
+static struct GNUNET_CLIENT_Connection *client;
+
+
+
+
+static void
+do_stop (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  if (NULL != client)
+  {
+    GNUNET_CLIENT_disconnect (client);
+    client = NULL;
+  }
+  if (NULL != sctx)
+  {
+    GNUNET_SERVICE_stop (sctx);
+    sctx = NULL;
+  }
+  else
+  {
+    GNUNET_SCHEDULER_shutdown ();
+  }
+}
+
 
 static size_t
 build_msg (void *cls, size_t size, void *buf)
 {
-  struct GNUNET_CLIENT_Connection *client = cls;
   struct GNUNET_MessageHeader *msg = buf;
+
+  if (size < sizeof (struct GNUNET_MessageHeader))
+  {
+    /* timeout */
+    GNUNET_break (0);
+    GNUNET_SCHEDULER_add_now (&do_stop, NULL);
+    ok = 1;
+    return 0;
+  }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Client connected, transmitting\n");
   GNUNET_assert (size >= sizeof (struct GNUNET_MessageHeader));
   msg->type = htons (MY_TYPE);
   msg->size = htons (sizeof (struct GNUNET_MessageHeader));
-  GNUNET_CLIENT_disconnect (client, GNUNET_NO);
   return sizeof (struct GNUNET_MessageHeader);
 }
 
@@ -61,7 +92,6 @@ static void
 ready (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
-  struct GNUNET_CLIENT_Connection *client;
 
   GNUNET_assert (0 != (tc->reason & GNUNET_SCHEDULER_REASON_PREREQ_DONE));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Service confirmed running\n");
@@ -72,27 +102,19 @@ ready (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   GNUNET_CLIENT_notify_transmit_ready (client,
                                        sizeof (struct GNUNET_MessageHeader),
                                        GNUNET_TIME_UNIT_SECONDS, GNUNET_NO,
-                                       &build_msg, client);
+                                       &build_msg, NULL);
 }
 
 
 static void
-do_stop (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
-{
-  GNUNET_SERVICE_stop (sctx);
-}
-
-
-static void
-recv_cb (void *cls, struct GNUNET_SERVER_Client *client,
+recv_cb (void *cls, struct GNUNET_SERVER_Client *sc,
          const struct GNUNET_MessageHeader *message)
 {
+  if (NULL == message)
+    return;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Receiving client message...\n");
-  GNUNET_SERVER_receive_done (client, GNUNET_OK);
-  if (sctx != NULL)
-    GNUNET_SCHEDULER_add_now (&do_stop, NULL);
-  else
-    GNUNET_SCHEDULER_shutdown ();
+  GNUNET_SERVER_receive_done (sc, GNUNET_OK);
+  GNUNET_SCHEDULER_add_now (&do_stop, NULL);
   ok = 0;
 }
 
@@ -146,7 +168,6 @@ static void
 ready6 (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
-  struct GNUNET_CLIENT_Connection *client;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "V6 ready\n");
   GNUNET_assert (0 != (tc->reason & GNUNET_SCHEDULER_REASON_PREREQ_DONE));
@@ -156,7 +177,7 @@ ready6 (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   GNUNET_CLIENT_notify_transmit_ready (client,
                                        sizeof (struct GNUNET_MessageHeader),
                                        GNUNET_TIME_UNIT_SECONDS, GNUNET_NO,
-                                       &build_msg, client);
+                                       &build_msg, NULL);
 }
 
 static void
@@ -206,7 +227,7 @@ start_stop_main (void *cls, char *const *args, const char *cfgfile,
   int *ret = cls;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Starting service using start method\n");
-  sctx = GNUNET_SERVICE_start ("test_service", cfg);
+  sctx = GNUNET_SERVICE_start ("test_service", cfg, GNUNET_SERVICE_OPTION_NONE);
   GNUNET_assert (NULL != sctx);
   runner (cls, GNUNET_SERVICE_get_server (sctx), cfg);
   *ret = 0;
@@ -257,7 +278,6 @@ main (int argc, char *argv[])
                     NULL);
   ret += check ();
   ret += check ();
-
   // FIXME
 #ifndef MINGW
   s = GNUNET_NETWORK_socket_create (PF_INET6, SOCK_STREAM, 0);
@@ -280,7 +300,6 @@ main (int argc, char *argv[])
     ret += check6 ();
   }
   ret += check_start_stop ();
-
   return ret;
 }
 

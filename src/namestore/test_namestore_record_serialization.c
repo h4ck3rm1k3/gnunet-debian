@@ -36,15 +36,12 @@ static void
 run (void *cls, char *const *args, const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  char * dest = NULL;
   size_t len;
   int c;
-  int elem = 0;
 
   int rd_count = 3;
   size_t data_len;
   struct GNUNET_NAMESTORE_RecordData src[rd_count];
-  struct GNUNET_NAMESTORE_RecordData *dst = NULL;
 
   memset(src, '\0', rd_count * sizeof (struct GNUNET_NAMESTORE_RecordData));
 
@@ -61,25 +58,27 @@ run (void *cls, char *const *args, const char *cfgfile,
   }
   res = 0;
 
-  len = GNUNET_NAMESTORE_records_serialize (&dest, rd_count, src);
+  len = GNUNET_NAMESTORE_records_get_size(rd_count, src);
+  char rd_ser[len];
+  GNUNET_assert (len == GNUNET_NAMESTORE_records_serialize(rd_count, src, len, rd_ser));
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Serialized data len: %u\n",len);
 
-  GNUNET_assert (dest != NULL);
+  GNUNET_assert (rd_ser != NULL);
 
-  elem = GNUNET_NAMESTORE_records_deserialize(&dst, dest, len);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Deserialized elements: %u\n",elem);
+  struct GNUNET_NAMESTORE_RecordData dst[rd_count];
+  GNUNET_assert (GNUNET_OK == GNUNET_NAMESTORE_records_deserialize (len, rd_ser, rd_count, dst));
 
-  GNUNET_assert (elem == rd_count);
   GNUNET_assert (dst != NULL);
 
-  for (c = 0; c < elem; c++)
+  for (c = 0; c < rd_count; c++)
   {
     if (src[c].data_size != dst[c].data_size)
     {
       GNUNET_break (0);
       res = 1;
     }
-    if (GNUNET_TIME_absolute_get_difference(src[c].expiration, dst[c].expiration).rel_value != GNUNET_TIME_relative_get_zero().rel_value)
+    if (0 != GNUNET_TIME_absolute_get_difference(src[c].expiration, dst[c].expiration).rel_value)
     {
       GNUNET_break (0);
       res = 1;
@@ -115,12 +114,12 @@ run (void *cls, char *const *args, const char *cfgfile,
     }
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Element [%i]: EQUAL\n", c);
-    /* clean up */
-    GNUNET_free((char *) dst[c].data);
-    GNUNET_free((char *) src[c].data);
   }
-  GNUNET_free (dest);
-  GNUNET_free (dst);
+
+  for (c = 0; c < rd_count; c++)
+  {
+    GNUNET_free ((void *)src[c].data);
+  }
 }
 
 static int

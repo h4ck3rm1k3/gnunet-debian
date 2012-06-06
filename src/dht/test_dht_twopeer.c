@@ -28,8 +28,6 @@
 #include "gnunet_dht_service.h"
 
 /* DEFINES */
-#define VERBOSE GNUNET_NO
-
 #define MAX_GET_ATTEMPTS 10
 
 #define TIMEOUT GNUNET_TIME_relative_multiply(GNUNET_TIME_UNIT_MINUTES, 5)
@@ -250,8 +248,6 @@ get_stop_finished (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
                                     &stop_retry_get, get_context);
   get_context->get_handle =
       GNUNET_DHT_get_start (get_context->dht_handle,
-                            GNUNET_TIME_relative_multiply
-                            (GNUNET_TIME_UNIT_SECONDS, 5),
                             GNUNET_BLOCK_TYPE_DHT_HELLO,
                             &get_context->peer->hashPubKey, 1,
                             GNUNET_DHT_RO_NONE, NULL, 0, &get_result_iterator,
@@ -285,8 +281,6 @@ do_get (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
                                     &stop_retry_get, get_context);
   get_context->get_handle =
       GNUNET_DHT_get_start (get_context->dht_handle,
-                            GNUNET_TIME_relative_multiply
-                            (GNUNET_TIME_UNIT_SECONDS, 5),
                             GNUNET_BLOCK_TYPE_DHT_HELLO,
                             &get_context->peer->hashPubKey, 1,
                             GNUNET_DHT_RO_FIND_PEER, NULL, 0,
@@ -306,7 +300,6 @@ topology_callback (void *cls, const struct GNUNET_PeerIdentity *first,
   if (emsg == NULL)
   {
     total_connections++;
-#if VERBOSE
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "connected peer %s to peer %s, distance %u\n",
                 first_daemon->shortname, second_daemon->shortname, distance);
@@ -314,19 +307,16 @@ topology_callback (void *cls, const struct GNUNET_PeerIdentity *first,
   else
   {
     failed_connections++;
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to connect peer %s to peer %s with error :\n%s\n",
                 first_daemon->shortname, second_daemon->shortname, emsg);
-#endif
   }
 
   if (total_connections == expected_connections)
   {
-#if VERBOSE
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Created %d total connections, which is our target number!  Starting next phase of testing.\n",
                 total_connections);
-#endif
     GNUNET_SCHEDULER_cancel (die_task);
     die_task =
         GNUNET_SCHEDULER_add_delayed (TIMEOUT, &end_badly,
@@ -409,10 +399,8 @@ peers_started_callback (void *cls, const struct GNUNET_PeerIdentity *id,
 
   if (peers_left == 0)
   {
-#if VERBOSE
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "All %d daemons started, now connecting peers!\n", num_peers);
-#endif
     GNUNET_SCHEDULER_cancel (die_task);
     /* Set up task in case topology creation doesn't finish
      * within a reasonable amount of time */
@@ -466,9 +454,6 @@ check ()
   char *const argv[] = { "test-dht-twopeer",
     "-c",
     "test_dht_twopeer_data.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -491,11 +476,7 @@ main (int argc, char *argv[])
   int ret;
 
   GNUNET_log_setup ("test-dht-twopeer",
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   ret = check ();
   /**

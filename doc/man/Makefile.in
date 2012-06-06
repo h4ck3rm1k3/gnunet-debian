@@ -144,6 +144,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -177,6 +178,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -295,14 +297,18 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 man_MANS = \
   gnunet-arm.1 \
+  gnunet-core.1 \
   gnunet-directory.1 \
   gnunet-download.1 \
   gnunet-download-manager.1 \
   gnunet-fs.1 \
+  gnunet-gns.1 \
+  gnunet-namestore.1 \
   gnunet-nat-server.1 \
   gnunet-peerinfo.1 \
   gnunet-pseudonym.1 \
   gnunet-publish.1 \
+  gnunet-rsa.1 \
   gnunet-search.1 \
   gnunet-statistics.1 \
   gnunet-transport.1 \

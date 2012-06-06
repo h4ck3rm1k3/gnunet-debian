@@ -59,12 +59,14 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_gnunet_peerinfo_OBJECTS = gnunet-peerinfo.$(OBJEXT)
+am_gnunet_peerinfo_OBJECTS = gnunet-peerinfo.$(OBJEXT) \
+	gnunet-peerinfo_plugins.$(OBJEXT)
 gnunet_peerinfo_OBJECTS = $(am_gnunet_peerinfo_OBJECTS)
 gnunet_peerinfo_DEPENDENCIES =  \
 	$(top_builddir)/src/peerinfo/libgnunetpeerinfo.la \
 	$(top_builddir)/src/transport/libgnunettransport.la \
 	$(top_builddir)/src/hello/libgnunethello.la \
+	$(top_builddir)/src/statistics/libgnunetstatistics.la \
 	$(top_builddir)/src/util/libgnunetutil.la
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
@@ -157,6 +159,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -190,6 +193,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -311,12 +315,14 @@ INCLUDES = -I$(top_srcdir)/src/include
 @USE_COVERAGE_TRUE@AM_CFLAGS = --coverage -O0
 @USE_COVERAGE_TRUE@XLIB = -lgcov
 gnunet_peerinfo_SOURCES = \
- gnunet-peerinfo.c         
+ gnunet-peerinfo.c \
+ gnunet-peerinfo_plugins.c gnunet-peerinfo_plugins.h
 
 gnunet_peerinfo_LDADD = \
   $(top_builddir)/src/peerinfo/libgnunetpeerinfo.la \
   $(top_builddir)/src/transport/libgnunettransport.la \
   $(top_builddir)/src/hello/libgnunethello.la \
+  $(top_builddir)/src/statistics/libgnunetstatistics.la \
   $(top_builddir)/src/util/libgnunetutil.la 
 
 @HAVE_PYTHON_PEXPECT_TRUE@check_SCRIPTS = \
@@ -417,6 +423,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-peerinfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-peerinfo_plugins.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

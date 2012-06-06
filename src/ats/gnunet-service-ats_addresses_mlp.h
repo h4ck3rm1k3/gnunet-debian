@@ -36,6 +36,9 @@
 
 #define DEBUG_MLP GNUNET_EXTRA_LOGGING
 
+#define BIG_M_VALUE (UINT32_MAX) /10
+#define BIG_M_STRING "unlimited"
+
 #define MLP_AVERAGING_QUEUE_LENGTH 3
 
 #define MLP_MAX_EXEC_DURATION   GNUNET_TIME_relative_multiply(GNUNET_TIME_UNIT_SECONDS, 3)
@@ -68,6 +71,14 @@ struct ATS_PreferedAddress
   uint32_t bandwidth_out;
   uint32_t bandwidth_in;
   struct ATS_Address *address;
+};
+
+struct GAS_MLP_SolutionContext
+{
+  int lp_result;
+  int mlp_result;
+  struct GNUNET_TIME_Relative lp_duration;
+  struct GNUNET_TIME_Relative mlp_duration;
 };
 
 /**
@@ -127,6 +138,8 @@ struct GAS_MLP_Handle
    * Can be disabled for test and measurements
    */
   int auto_solve;
+
+  int semaphore;
 
   /* state information */
 
@@ -318,10 +331,11 @@ GAS_mlp_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * Solves the MLP problem on demand
  *
  * @param mlp the MLP Handle
+ * @param ctx solution context
  * @return GNUNET_OK if could be solved, GNUNET_SYSERR on failure
  */
 int
-GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp);
+GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp, struct GAS_MLP_SolutionContext *ctx);
 
 
 /**

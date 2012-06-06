@@ -21,7 +21,6 @@
 /**
  * @file src/util/configuration.c
  * @brief configuration management
- *
  * @author Christian Grothoff
  */
 
@@ -197,19 +196,19 @@ GNUNET_CONFIGURATION_parse (struct GNUNET_CONFIGURATION_Handle *cfg,
     for (i = strlen (line) - 1; (i >= 0) && (isspace ((unsigned char) line[i]));
          i--)
       line[i] = '\0';
-    if (1 == sscanf (line, "@INLINE@ %191[^\n]", value))
+    if (1 == SSCANF (line, "@INLINE@ %191[^\n]", value))
     {
       /* @INLINE@ value */
       if (GNUNET_OK != GNUNET_CONFIGURATION_parse (cfg, value))
         ret = GNUNET_SYSERR;    /* failed to parse included config */
     }
-    else if (1 == sscanf (line, "[%99[^]]]", value))
+    else if (1 == SSCANF (line, "[%99[^]]]", value))
     {
       /* [value] */
       GNUNET_free (section);
       section = GNUNET_strdup (value);
     }
-    else if (2 == sscanf (line, " %63[^= ] = %191[^\n]", tag, value))
+    else if (2 == SSCANF (line, " %63[^= ] = %191[^\n]", tag, value))
     {
       /* tag = value */
       /* Strip LF */
@@ -233,7 +232,7 @@ GNUNET_CONFIGURATION_parse (struct GNUNET_CONFIGURATION_Handle *cfg,
       }
       GNUNET_CONFIGURATION_set_value_string (cfg, section, tag, &value[i]);
     }
-    else if (1 == sscanf (line, " %63[^= ] =[^\n]", tag))
+    else if (1 == SSCANF (line, " %63[^= ] =[^\n]", tag))
     {
       /* tag = */
       GNUNET_CONFIGURATION_set_value_string (cfg, section, tag, "");
@@ -1228,10 +1227,38 @@ static int
 parse_configuration_file (void *cls, const char *filename)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
+  char * ext;
   int ret;
+
+  /* Examine file extension */
+  ext = strrchr (filename, '.');
+  if ((NULL == ext) || (0 != strcmp (ext, ".conf")))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Skipping file `%s'\n", filename);
+    return GNUNET_OK;
+  }
 
   ret = GNUNET_CONFIGURATION_parse (cfg, filename);
   return ret;
+}
+
+
+/**
+ * Load default configuration.  This function will parse the
+ * defaults from the given defaults_d directory.
+ *
+ * @param cfg configuration to update
+ * @param defaults_d directory with the defaults
+ * @return GNUNET_OK on success, GNUNET_SYSERR on error
+ */
+int
+GNUNET_CONFIGURATION_load_from (struct GNUNET_CONFIGURATION_Handle *cfg,
+				const char *defaults_d)
+{
+  if (GNUNET_SYSERR ==
+      GNUNET_DISK_directory_scan (defaults_d, &parse_configuration_file, cfg))
+    return GNUNET_SYSERR;       /* no configuration at all found */
+  return GNUNET_OK;
 }
 
 

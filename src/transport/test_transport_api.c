@@ -37,8 +37,6 @@
 #include "transport.h"
 #include "transport-testing.h"
 
-#define VERBOSE GNUNET_NO
-#define VERBOSE_ARM GNUNET_NO
 
 #define START_ARM GNUNET_YES
 
@@ -52,9 +50,9 @@
  */
 #define TIMEOUT_TRANSMIT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 30)
 
-#define MSIZE 2600
+#define TEST_MESSAGE_SIZE 2600
 
-#define MTYPE 12345
+#define TEST_MESSAGE_TYPE 12345
 
 static char *test_source;
 
@@ -65,32 +63,29 @@ static char *test_name;
 static int ok;
 
 static int s_started;
+
 static int s_connected;
+
 static int s_sending;
 
 static GNUNET_SCHEDULER_TaskIdentifier die_task;
 
 static GNUNET_SCHEDULER_TaskIdentifier send_task;
 
-struct PeerContext *p1;
+static struct PeerContext *p1;
 
-struct PeerContext *p2;
+static struct PeerContext *p2;
 
 static GNUNET_TRANSPORT_TESTING_ConnectRequest cc;
 
-struct GNUNET_TRANSPORT_TransmitHandle *th;
+static struct GNUNET_TRANSPORT_TransmitHandle *th;
 
-struct GNUNET_TRANSPORT_TESTING_handle *tth;
+static struct GNUNET_TRANSPORT_TESTING_handle *tth;
 
-char *cfg_file_p1;
+static char *cfg_file_p1;
 
-char *cfg_file_p2;
+static char *cfg_file_p2;
 
-#if VERBOSE
-#define OKPP do { ok++; FPRINTF (stderr, "Now at stage %u at %s:%u\n", ok, __FILE__, __LINE__); } while (0)
-#else
-#define OKPP do { ok++; } while (0)
-#endif
 
 static void
 end ()
@@ -135,9 +130,9 @@ end_badly (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, _("Peer were not ready to send data\n"));
 
   if (s_started == GNUNET_NO)
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, _("Peers were not started n"));
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, _("Peers were not started \n"));
   else
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, _("Peers were started n"));
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, _("Peers were started \n"));
 
   if (s_connected == GNUNET_NO)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, _("Peer were not connected\n"));
@@ -186,8 +181,8 @@ notify_receive (void *cls, const struct GNUNET_PeerIdentity *peer,
               GNUNET_i2s (&t->id));
   GNUNET_free (ps);
 
-  if ((MTYPE == ntohs (message->type)) &&
-      (MSIZE == ntohs (message->size)))
+  if ((TEST_MESSAGE_TYPE == ntohs (message->type)) &&
+      (TEST_MESSAGE_SIZE == ntohs (message->size)))
   {
     ok = 0;
     end ();
@@ -220,13 +215,13 @@ notify_ready (void *cls, size_t size, void *buf)
     return 0;
   }
 
-  GNUNET_assert (size >= MSIZE);
-
+  GNUNET_assert (size >= TEST_MESSAGE_SIZE);
   if (buf != NULL)
   {
+    memset (buf, '\0', TEST_MESSAGE_SIZE);
     hdr = buf;
-    hdr->size = htons (MSIZE);
-    hdr->type = htons (MTYPE);
+    hdr->size = htons (TEST_MESSAGE_SIZE);
+    hdr->type = htons (TEST_MESSAGE_TYPE);
   }
 
   char *ps = GNUNET_strdup (GNUNET_i2s (&p2->id));
@@ -236,7 +231,7 @@ notify_ready (void *cls, size_t size, void *buf)
               GNUNET_i2s (&p->id));
   GNUNET_free (ps);
 
-  return MSIZE;
+  return TEST_MESSAGE_SIZE;
 }
 
 
@@ -254,7 +249,7 @@ sendtask (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
               p2->no, GNUNET_i2s (&p2->id), p1->no, receiver_s);
   GNUNET_free (receiver_s);
   s_sending = GNUNET_YES;
-  th = GNUNET_TRANSPORT_notify_transmit_ready (p2->th, &p1->id, MSIZE, 0,
+  th = GNUNET_TRANSPORT_notify_transmit_ready (p2->th, &p1->id, TEST_MESSAGE_SIZE, 0,
                                                TIMEOUT_TRANSMIT, &notify_ready,
                                                p1);
 }
@@ -302,6 +297,7 @@ notify_disconnect (void *cls, const struct GNUNET_PeerIdentity *peer)
   th = NULL;
 }
 
+
 static void
 testing_connect_cb (struct PeerContext *p1, struct PeerContext *p2, void *cls)
 {
@@ -317,8 +313,7 @@ testing_connect_cb (struct PeerContext *p1, struct PeerContext *p2, void *cls)
 }
 
 
-
-void
+static void
 start_cb (struct PeerContext *p, void *cls)
 {
   static int started;
@@ -343,6 +338,7 @@ start_cb (struct PeerContext *p, void *cls)
                                                NULL);
 
 }
+
 
 static void
 run (void *cls, char *const *args, const char *cfgfile,
@@ -381,9 +377,6 @@ check ()
   static char *const argv[] = { "test-transport-api",
     "-c",
     "test_transport_api_data.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   static struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -413,13 +406,8 @@ main (int argc, char *argv[])
                                                  &test_plugin);
 
   GNUNET_log_setup (test_name,
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
-
   tth = GNUNET_TRANSPORT_TESTING_init ();
 
   GNUNET_TRANSPORT_TESTING_get_config_name (argv[0], &cfg_file_p1, 1);

@@ -36,7 +36,7 @@ static struct GNUNET_OS_Process *arm;
 
 static struct GNUNET_CRYPTO_RsaPrivateKey * privkey;
 static struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded pubkey;
-static GNUNET_HashCode zone;
+static struct GNUNET_CRYPTO_ShortHashCode zone;
 
 static int res;
 
@@ -66,7 +66,7 @@ stop_arm ()
     if (0 != GNUNET_OS_process_kill (arm, SIGTERM))
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "kill");
     GNUNET_OS_process_wait (arm);
-    GNUNET_OS_process_close (arm);
+    GNUNET_OS_process_destroy (arm);
     arm = NULL;
   }
 }
@@ -142,20 +142,45 @@ void put_cont (void *cls, int32_t success, const char *emsg)
   GNUNET_NAMESTORE_lookup_record (nsh, &zone, name, 0, &name_lookup_proc, NULL);
 }
 
+void
+delete_existing_db (const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  char *afsdir;
+
+  if (GNUNET_OK ==
+      GNUNET_CONFIGURATION_get_value_filename (cfg, "namestore-sqlite",
+                                               "FILENAME", &afsdir))
+  {
+    if (GNUNET_OK == GNUNET_DISK_file_test (afsdir))
+      if (GNUNET_OK == GNUNET_DISK_file_test (afsdir))
+        if (GNUNET_OK == GNUNET_DISK_directory_remove(afsdir))
+          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Deleted existing database `%s' \n", afsdir);
+   GNUNET_free (afsdir);
+  }
+
+}
+
 static void
 run (void *cls, char *const *args, const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  delete_existing_db(cfg);
   endbadly_task = GNUNET_SCHEDULER_add_delayed(TIMEOUT,endbadly, NULL);
 
-  privkey = GNUNET_CRYPTO_rsa_key_create_from_file("hostkey");
+  char *hostkey_file;
+  GNUNET_asprintf(&hostkey_file,"zonefiles%s%s",DIR_SEPARATOR_STR,
+      "N0UJMP015AFUNR2BTNM3FKPBLG38913BL8IDMCO2H0A1LIB81960.zkey");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Using zonekey file `%s' \n", hostkey_file);
+  privkey = GNUNET_CRYPTO_rsa_key_create_from_file(hostkey_file);
+  GNUNET_free (hostkey_file);
   GNUNET_assert (privkey != NULL);
   GNUNET_CRYPTO_rsa_key_get_public(privkey, &pubkey);
 
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK, &zone);
+  GNUNET_CRYPTO_short_hash (&pubkey, sizeof (pubkey), &zone);
 
 
   struct GNUNET_CRYPTO_RsaSignature signature;
+  memset (&signature, '\0', sizeof (signature));
   struct GNUNET_NAMESTORE_RecordData rd;
 
   rd.expiration = GNUNET_TIME_absolute_get();
@@ -172,7 +197,7 @@ run (void *cls, char *const *args, const char *cfgfile,
   GNUNET_break (NULL != nsh);
 
   GNUNET_NAMESTORE_record_put (nsh, &pubkey, name,
-                              GNUNET_TIME_absolute_get_forever(),
+                              GNUNET_TIME_UNIT_FOREVER_ABS,
                               1, &rd, &signature, put_cont, name);
 
   GNUNET_free ((void *)rd.data);

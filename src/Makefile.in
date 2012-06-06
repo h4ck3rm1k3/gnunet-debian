@@ -82,9 +82,10 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 ETAGS = etags
 CTAGS = ctags
 DIST_SUBDIRS = include util hello tun block statistics arm peerinfo \
-	datacache datastore namestore template ats nat fragmentation \
-	transport peerinfo-tool core testing nse dht hostlist topology \
-	fs mesh dns exit vpn pt integration-tests chat dv gns stream
+	mysql postgres datacache datastore namestore template ats nat \
+	fragmentation transport peerinfo-tool core testing testbed nse \
+	dht hostlist topology fs mesh lockmanager dns gns exit vpn pt \
+	integration-tests chat dv stream regex
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -166,6 +167,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -199,6 +201,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -315,10 +318,12 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@HAVE_EXPERIMENTAL_TRUE@EXP_DIR = chat dv gns stream
+@HAVE_EXPERIMENTAL_TRUE@EXP_DIR = chat dv stream regex
 
 # All of these currently only work on GNU/Linux
-@LINUX_TRUE@LINUX_DIR = dns exit vpn pt
+@LINUX_TRUE@LINUX_DIR = dns gns exit vpn pt
+@HAVE_MYSQL_TRUE@MYSQL_DIR = mysql
+@HAVE_POSTGRES_TRUE@POSTGRES_DIR = postgres
 SUBDIRS = \
   include $(INTLEMU_SUBDIRS) \
   util \
@@ -328,6 +333,8 @@ SUBDIRS = \
   statistics \
   arm \
   peerinfo \
+  $(MYSQL_DIR) \
+  $(POSTGRES_DIR) \
   datacache \
   datastore \
   namestore \
@@ -339,12 +346,14 @@ SUBDIRS = \
   peerinfo-tool \
   core \
   testing \
+  testbed \
   nse \
   dht \
   hostlist \
   topology \
   fs \
   mesh \
+  lockmanager \
   $(LINUX_DIR) \
   integration-tests \
   $(EXP_DIR) 

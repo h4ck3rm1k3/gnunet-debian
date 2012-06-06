@@ -44,8 +44,9 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/gnunetfragmentation.pc.in $(srcdir)/gnunetfs.pc.in \
 	$(srcdir)/gnunethello.pc.in $(srcdir)/gnunetnat.pc.in \
 	$(srcdir)/gnunetnse.pc.in $(srcdir)/gnunetpeerinfo.pc.in \
-	$(srcdir)/gnunetstatistics.pc.in $(srcdir)/gnunettesting.pc.in \
-	$(srcdir)/gnunettransport.pc.in $(srcdir)/gnunetutil.pc.in
+	$(srcdir)/gnunetregex.pc.in $(srcdir)/gnunetstatistics.pc.in \
+	$(srcdir)/gnunettesting.pc.in $(srcdir)/gnunettransport.pc.in \
+	$(srcdir)/gnunetutil.pc.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/absolute-header.m4 \
 	$(top_srcdir)/m4/align.m4 $(top_srcdir)/m4/argz.m4 \
@@ -67,8 +68,8 @@ CONFIG_CLEAN_FILES = gnunetarm.pc gnunetblock.pc gnunetcore.pc \
 	gnunetdatacache.pc gnunetdatastore.pc gnunetdht.pc \
 	gnunetdhtlog.pc gnunetdv.pc gnunetfragmentation.pc gnunetfs.pc \
 	gnunethello.pc gnunetnat.pc gnunetnse.pc gnunetpeerinfo.pc \
-	gnunetstatistics.pc gnunettesting.pc gnunettransport.pc \
-	gnunetutil.pc
+	gnunetregex.pc gnunetstatistics.pc gnunettesting.pc \
+	gnunettransport.pc gnunetutil.pc
 CONFIG_CLEAN_VPATH_FILES =
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
@@ -157,6 +158,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -190,6 +192,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -413,6 +416,8 @@ gnunetnat.pc: $(top_builddir)/config.status $(srcdir)/gnunetnat.pc.in
 gnunetnse.pc: $(top_builddir)/config.status $(srcdir)/gnunetnse.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 gnunetpeerinfo.pc: $(top_builddir)/config.status $(srcdir)/gnunetpeerinfo.pc.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+gnunetregex.pc: $(top_builddir)/config.status $(srcdir)/gnunetregex.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 gnunetstatistics.pc: $(top_builddir)/config.status $(srcdir)/gnunetstatistics.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@

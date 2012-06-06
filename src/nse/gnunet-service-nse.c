@@ -410,9 +410,7 @@ handle_start_message (void *cls, struct GNUNET_SERVER_Client *client,
 {
   struct GNUNET_NSE_ClientMessage em;
 
-#if DEBUG_NSE
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Received START message from client\n");
-#endif
   GNUNET_SERVER_notification_context_add (nc, client);
   setup_estimate_message (&em);
   GNUNET_SERVER_notification_context_unicast (nc, client, &em.header,
@@ -457,11 +455,9 @@ get_delay_randomization (uint32_t matching_bits)
 
   d = get_matching_bits_delay (matching_bits);
   i = (uint32_t) (d / (double) (hop_count_max + 1));
-#if DEBUG_NSE
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
 	      "Randomizing flood using latencies up to %u ms\n",
 	      (unsigned int) i);
-#endif
   ret.rel_value = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, i + 1);
   return ret;
 #else
@@ -514,11 +510,9 @@ get_transmit_delay (int round_offset)
 #else
     ret = GNUNET_TIME_UNIT_ZERO;
 #endif
-#if DEBUG_NSE
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Transmitting previous round behind schedule in %llu ms\n",
                 (unsigned long long) ret.rel_value);
-#endif
     return ret;
   case 0:
     /* current round is based on best-known matching_bits */
@@ -527,13 +521,11 @@ get_transmit_delay (int round_offset)
     dist_delay = get_matching_bits_delay (matching_bits);
     dist_delay += get_delay_randomization (matching_bits).rel_value;
     ret.rel_value = (uint64_t) dist_delay;
-#if DEBUG_NSE
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "For round %llu, delay for %u matching bits is %llu ms\n",
                 (unsigned long long) current_timestamp.abs_value,
                 (unsigned int) matching_bits,
                 (unsigned long long) ret.rel_value);
-#endif
     /* now consider round start time and add delay to it */
     tgt = GNUNET_TIME_absolute_add (current_timestamp, ret);
     return GNUNET_TIME_absolute_get_remaining (tgt);
@@ -569,14 +561,14 @@ transmit_ready (void *cls, size_t size, void *buf)
   unsigned int idx;
 
   peer_entry->th = NULL;
-  if (buf == NULL)
+  if (NULL == buf)
   {
     /* client disconnected */
     return 0;
   }
   GNUNET_assert (size >= sizeof (struct GNUNET_NSE_FloodMessage));
   idx = estimate_index;
-  if (peer_entry->previous_round == GNUNET_NO)
+  if (GNUNET_NO == peer_entry->previous_round)
   {
     idx = (idx + HISTORY_SIZE - 1) % HISTORY_SIZE;
     peer_entry->previous_round = GNUNET_YES;
@@ -599,7 +591,6 @@ transmit_ready (void *cls, size_t size, void *buf)
                               1, GNUNET_NO);
     return 0;
   }
-#if DEBUG_NSE
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "In round %llu, sending to `%s' estimate with %u bits\n",
               (unsigned long long)
@@ -607,7 +598,6 @@ transmit_ready (void *cls, size_t size, void *buf)
                                          timestamp).abs_value,
               GNUNET_i2s (&peer_entry->id),
               (unsigned int) ntohl (size_estimate_messages[idx].matching_bits));
-#endif
   if (ntohl (size_estimate_messages[idx].hop_count) == 0)
     GNUNET_STATISTICS_update (stats, "# flood messages started", 1, GNUNET_NO);
   GNUNET_STATISTICS_update (stats, "# flood messages transmitted", 1,
@@ -635,6 +625,7 @@ transmit_task_cb (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   struct NSEPeerEntry *peer_entry = cls;
 
   peer_entry->transmit_task = GNUNET_SCHEDULER_NO_TASK;
+
   GNUNET_assert (NULL == peer_entry->th);
   peer_entry->th =
       GNUNET_CORE_notify_transmit_ready (coreAPI, GNUNET_NO, NSE_PRIORITY,
@@ -713,12 +704,12 @@ schedule_current_round (void *cls, const GNUNET_HashCode * key, void *value)
   struct NSEPeerEntry *peer_entry = value;
   struct GNUNET_TIME_Relative delay;
 
-  if (peer_entry->th != NULL)
+  if (NULL != peer_entry->th)
   {
     peer_entry->previous_round = GNUNET_NO;
     return GNUNET_OK;
   }
-  if (peer_entry->transmit_task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != peer_entry->transmit_task)
   {
     GNUNET_SCHEDULER_cancel (peer_entry->transmit_task);
     peer_entry->previous_round = GNUNET_NO;
@@ -762,14 +753,16 @@ update_flood_message (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
         GNUNET_SCHEDULER_add_delayed (offset, &update_flood_message, NULL);
     return;
   }
-  current_timestamp = next_timestamp;
-  next_timestamp =
-      GNUNET_TIME_absolute_add (current_timestamp, gnunet_nse_interval);
   estimate_index = (estimate_index + 1) % HISTORY_SIZE;
   if (estimate_count < HISTORY_SIZE)
     estimate_count++;
-  if (next_timestamp.abs_value ==
-      GNUNET_TIME_absolute_ntoh (next_message.timestamp).abs_value)
+  current_timestamp = next_timestamp;
+  next_timestamp =
+      GNUNET_TIME_absolute_add (current_timestamp, gnunet_nse_interval);
+  if ((current_timestamp.abs_value ==
+      GNUNET_TIME_absolute_ntoh (next_message.timestamp).abs_value) &&
+      (get_matching_bits (current_timestamp, &my_identity) <
+      ntohl(next_message.matching_bits)))
   {
     /* we received a message for this round way early, use it! */
     size_estimate_messages[estimate_index] = next_message;
@@ -823,7 +816,7 @@ check_proof_of_work (const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *pkey,
                      uint64_t val)
 {
   char buf[sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded) +
-           sizeof (val)];
+           sizeof (val)] GNUNET_ALIGN;
   GNUNET_HashCode result;
 
   memcpy (buf, &val, sizeof (val));
@@ -868,7 +861,7 @@ find_proof (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 #define ROUND_SIZE 10
   uint64_t counter;
   char buf[sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded) +
-           sizeof (uint64_t)];
+           sizeof (uint64_t)] GNUNET_ALIGN;
   GNUNET_HashCode result;
   unsigned int i;
 
@@ -884,10 +877,8 @@ find_proof (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     if (nse_work_required <= count_leading_zeroes (&result))
     {
       my_proof = counter;
-#if DEBUG_NSE
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Proof of work found: %llu!\n",
                   (unsigned long long) GNUNET_ntohll (counter));
-#endif
       write_proof ();
       setup_flood_message (estimate_index, current_timestamp);
       return;
@@ -897,10 +888,8 @@ find_proof (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   }
   if (my_proof / (100 * ROUND_SIZE) < counter / (100 * ROUND_SIZE))
   {
-#if DEBUG_NSE
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Testing proofs currently at %llu\n",
                 (unsigned long long) counter);
-#endif
     /* remember progress every 100 rounds */
     my_proof = counter;
     write_proof ();
@@ -977,7 +966,11 @@ update_flood_times (void *cls, const GNUNET_HashCode * key, void *value)
   {
     /* still stuck in previous round, no point to update, check that
      * we are active here though... */
-    GNUNET_break (peer_entry->transmit_task != GNUNET_SCHEDULER_NO_TASK);
+    if (GNUNET_SCHEDULER_NO_TASK == peer_entry->transmit_task &&
+        NULL == peer_entry->th)
+    {
+        GNUNET_break (0);
+    }
     return GNUNET_OK;
   }
   if (peer_entry->transmit_task != GNUNET_SCHEDULER_NO_TASK)
@@ -1015,7 +1008,7 @@ handle_p2p_size_estimate (void *cls, const struct GNUNET_PeerIdentity *peer,
 
 #if ENABLE_HISTOGRAM
   if (NULL != wh)
-    GNUNET_BIO_write_int64 (wh, GNUNET_TIME_absolute_get ().abs_value);
+    GNUNET_break (GNUNET_OK == GNUNET_BIO_write_int64 (wh, GNUNET_TIME_absolute_get ().abs_value));
 #endif
   incoming_flood = (const struct GNUNET_NSE_FloodMessage *) message;
   GNUNET_STATISTICS_update (stats, "# flood messages received", 1, GNUNET_NO);
@@ -1054,14 +1047,12 @@ handle_p2p_size_estimate (void *cls, const struct GNUNET_PeerIdentity *peer,
 #endif
 
   ts = GNUNET_TIME_absolute_ntoh (incoming_flood->timestamp);
-
   if (ts.abs_value == current_timestamp.abs_value)
     idx = estimate_index;
   else if (ts.abs_value ==
            current_timestamp.abs_value - gnunet_nse_interval.rel_value)
     idx = (estimate_index + HISTORY_SIZE - 1) % HISTORY_SIZE;
-  else if (ts.abs_value ==
-           next_timestamp.abs_value - gnunet_nse_interval.rel_value)
+  else if (ts.abs_value == next_timestamp.abs_value)
   {
     if (matching_bits <= ntohl (next_message.matching_bits))
       return GNUNET_OK;         /* ignore, simply too early/late */
@@ -1117,8 +1108,9 @@ handle_p2p_size_estimate (void *cls, const struct GNUNET_PeerIdentity *peer,
   }
   if (matching_bits < ntohl (size_estimate_messages[idx].matching_bits))
   {
-    if ((idx < estimate_index) && (peer_entry->previous_round == GNUNET_YES))
+    if ((idx < estimate_index) && (peer_entry->previous_round == GNUNET_YES)) {
       peer_entry->previous_round = GNUNET_NO;
+    }
     /* push back our result now, that peer is spreading bad information... */
     if (NULL == peer_entry->th)
     {
@@ -1140,7 +1132,10 @@ handle_p2p_size_estimate (void *cls, const struct GNUNET_PeerIdentity *peer,
   }
   GNUNET_assert (matching_bits >
                  ntohl (size_estimate_messages[idx].matching_bits));
-  /* cancel transmission from us to this peer for this round */
+  /* Cancel transmission in the other direction, as this peer clearly has
+   * up-to-date information already.
+   */
+  peer_entry->previous_round = GNUNET_YES;
   if (idx == estimate_index)
   {
       /* cancel any activity for current round */
@@ -1154,11 +1149,6 @@ handle_p2p_size_estimate (void *cls, const struct GNUNET_PeerIdentity *peer,
         GNUNET_CORE_notify_transmit_ready_cancel (peer_entry->th);
         peer_entry->th = NULL;
       }
-  }
-  else
-  {
-    /* cancel previous round only */
-    peer_entry->previous_round = GNUNET_YES;
   }
   size_estimate_messages[idx] = *incoming_flood;
   size_estimate_messages[idx].hop_count =
@@ -1181,7 +1171,8 @@ handle_p2p_size_estimate (void *cls, const struct GNUNET_PeerIdentity *peer,
 
 
 /**
- * Method called whenever a peer connects.
+ * Method called whenever a peer connects. Sets up the PeerEntry and
+ * schedules the initial size info transmission to this peer.
  *
  * @param cls closure
  * @param peer peer identity this notification is about
@@ -1195,10 +1186,8 @@ handle_core_connect (void *cls, const struct GNUNET_PeerIdentity *peer,
 {
   struct NSEPeerEntry *peer_entry;
 
-#if DEBUG_NSE
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Peer `%s' connected to us\n",
               GNUNET_i2s (peer));
-#endif
   peer_entry = GNUNET_malloc (sizeof (struct NSEPeerEntry));
   peer_entry->id = *peer;
   GNUNET_assert (GNUNET_OK ==
@@ -1208,12 +1197,13 @@ handle_core_connect (void *cls, const struct GNUNET_PeerIdentity *peer,
   peer_entry->transmit_task =
       GNUNET_SCHEDULER_add_delayed (get_transmit_delay (-1), &transmit_task_cb,
                                     peer_entry);
-  GNUNET_STATISTICS_update (stats, "# peers", 1, GNUNET_NO);
+  GNUNET_STATISTICS_update (stats, "# peers connected", 1, GNUNET_NO);
 }
 
 
 /**
- * Method called whenever a peer disconnects.
+ * Method called whenever a peer disconnects. Deletes the PeerEntry and cancels
+ * any pending transmission requests to that peer.
  *
  * @param cls closure
  * @param peer peer identity this notification is about
@@ -1223,10 +1213,8 @@ handle_core_disconnect (void *cls, const struct GNUNET_PeerIdentity *peer)
 {
   struct NSEPeerEntry *pos;
 
-#if DEBUG_NSE
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Peer `%s' disconnected from us\n",
               GNUNET_i2s (peer));
-#endif
   pos = GNUNET_CONTAINER_multihashmap_get (peers, &peer->hashPubKey);
   if (NULL == pos)
   {
@@ -1236,15 +1224,17 @@ handle_core_disconnect (void *cls, const struct GNUNET_PeerIdentity *peer)
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (peers, &peer->hashPubKey,
                                                        pos));
-  if (pos->transmit_task != GNUNET_SCHEDULER_NO_TASK)
+  if (pos->transmit_task != GNUNET_SCHEDULER_NO_TASK) {
     GNUNET_SCHEDULER_cancel (pos->transmit_task);
+    pos->transmit_task = GNUNET_SCHEDULER_NO_TASK;
+  }
   if (pos->th != NULL)
   {
     GNUNET_CORE_notify_transmit_ready_cancel (pos->th);
     pos->th = NULL;
   }
   GNUNET_free (pos);
-  GNUNET_STATISTICS_update (stats, "# peers", -1, GNUNET_NO);
+  GNUNET_STATISTICS_update (stats, "# peers connected", -1, GNUNET_NO);
 }
 
 
@@ -1296,7 +1286,7 @@ shutdown_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 #if ENABLE_HISTOGRAM
   if (wh != NULL)
   {
-    GNUNET_BIO_write_close (wh);
+    GNUNET_break (GNUNET_OK == GNUNET_BIO_write_close (wh));
     wh = NULL;
   }
 #endif
@@ -1317,11 +1307,9 @@ core_init (void *cls, struct GNUNET_CORE_Handle *server,
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute prev_time;
 
-  if (server == NULL)
+  if (NULL == server)
   {
-#if DEBUG_NSE
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Connection to core FAILED!\n");
-#endif
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Connection to core FAILED!\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -1338,9 +1326,11 @@ core_init (void *cls, struct GNUNET_CORE_Handle *server,
   estimate_count = 0;
   if (GNUNET_YES == check_proof_of_work (&my_public_key, my_proof))
   {
+    int idx = (estimate_index + HISTORY_SIZE - 1) % HISTORY_SIZE;
     prev_time.abs_value =
         current_timestamp.abs_value - gnunet_nse_interval.rel_value;
-    setup_flood_message (estimate_index, prev_time);
+    setup_flood_message (idx, prev_time);
+    setup_flood_message (estimate_index, current_timestamp);
     estimate_count++;
   }
   flood_task =

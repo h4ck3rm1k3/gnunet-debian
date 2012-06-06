@@ -42,7 +42,7 @@
 /**
  * How long until we give up on transmitting the message?
  */
-#define TIMEOUT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 60)
+#define TIMEOUT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 120)
 
 /**
  * How long should our test-content live?
@@ -75,9 +75,11 @@ static char *fn1;
 
 static int err;
 
+
 static void
 timeout_kill_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
+  fprintf (stderr, "Download not fast enough, timeout!\n");
   if (download != NULL)
   {
     GNUNET_FS_download_stop (download, GNUNET_YES);
@@ -102,12 +104,14 @@ abort_publish_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   }
 }
 
+
 static void
 stop_fs_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   GNUNET_FS_stop (fs);
   fs = NULL;
 }
+
 
 static void
 abort_download_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
@@ -119,7 +123,7 @@ abort_download_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     GNUNET_FS_download_stop (download, GNUNET_YES);
     download = NULL;
   }
-  GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_size (fn, &size, GNUNET_YES));
+  GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_size (fn, &size, GNUNET_YES, GNUNET_NO));
   GNUNET_assert (size == FILESIZE);
   GNUNET_DISK_directory_remove (fn);
   GNUNET_free (fn);
@@ -248,9 +252,6 @@ setup_peer (struct PeerContext *p, const char *cfgname)
   p->arm_proc =
     GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm",
-#if VERBOSE
-                               "-L", "DEBUG",
-#endif
                                "-c", cfgname, NULL);
 #endif
   GNUNET_assert (GNUNET_OK == GNUNET_CONFIGURATION_load (p->cfg, cfgname));
@@ -269,7 +270,7 @@ stop_arm (struct PeerContext *p)
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "waitpid");
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "ARM process %u stopped\n",
                 GNUNET_OS_process_get_pid (p->arm_proc));
-    GNUNET_OS_process_close (p->arm_proc);
+    GNUNET_OS_process_destroy (p->arm_proc);
     p->arm_proc = NULL;
   }
 #endif
@@ -335,9 +336,6 @@ main (int argc, char *argv[])
     "test-fs-download-indexed",
     "-c",
     "test_fs_download_data.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -345,11 +343,7 @@ main (int argc, char *argv[])
   };
 
   GNUNET_log_setup ("test_fs_download_indexed",
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   GNUNET_PROGRAM_run ((sizeof (argvx) / sizeof (char *)) - 1, argvx,
                       "test-fs-download-indexed", "nohelp", options, &run,

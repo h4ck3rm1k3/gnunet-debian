@@ -30,9 +30,6 @@
 #include "gnunet_ats_service.h"
 #include "gnunet-service-ats_addresses_mlp.h"
 
-#define VERBOSE GNUNET_YES
-#define VERBOSE_ARM GNUNET_NO
-
 #define MLP_MAX_EXEC_DURATION   GNUNET_TIME_relative_multiply(GNUNET_TIME_UNIT_SECONDS, 3)
 #define MLP_MAX_ITERATIONS      INT_MAX
 
@@ -52,7 +49,7 @@ create_address (struct ATS_Address *addr, char * plugin, int ats_count, struct G
   addr->mlp_information = NULL;
   addr->next = NULL;
   addr->prev = NULL;
-  addr->plugin = strdup (plugin);
+  addr->plugin = GNUNET_strdup (plugin);
   addr->ats_count = ats_count;
   addr->ats = ats;
 }
@@ -75,6 +72,7 @@ check (void *cls, char *const *args, const char *cfgfile,
 #endif
   struct ATS_Address addr[10];
   struct ATS_PreferedAddress *res[10];
+  struct GAS_MLP_SolutionContext ctx;
 
   stats = GNUNET_STATISTICS_create("ats", cfg);
 
@@ -140,7 +138,9 @@ check (void *cls, char *const *args, const char *cfgfile,
   GAS_mlp_address_update (mlp, addresses, &addr[2]);
   GNUNET_assert (mlp->addr_in_problem == 3);
 
-  GNUNET_assert (GNUNET_OK == GAS_mlp_solve_problem(mlp));
+  GNUNET_assert (GNUNET_OK == GAS_mlp_solve_problem(mlp, &ctx));
+  GNUNET_assert (GNUNET_OK == ctx.lp_result);
+  GNUNET_assert (GNUNET_OK == ctx.mlp_result);
 
   res[0] = GAS_mlp_get_preferred_address(mlp, addresses, &p[0]);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Preferred address `%s' outbound bandwidth: %u Bps\n",res[0]->address->plugin, res[0]->bandwidth_out);
@@ -176,11 +176,7 @@ main (int argc, char *argv[])
   static char *const argv2[] = { "test_ats_mlp",
     "-c",
     "test_ats_api.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#else
     "-L", "WARNING",
-#endif
     NULL
   };
 

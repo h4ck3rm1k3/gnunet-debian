@@ -227,6 +227,8 @@ process (void *cls, const GNUNET_HashCode * key, void *value)
                               1, GNUNET_NO);
     return GNUNET_SYSERR;
   case GNUNET_BLOCK_EVALUATION_REQUEST_VALID:
+    GNUNET_break (0);
+    return GNUNET_OK;
   case GNUNET_BLOCK_EVALUATION_REQUEST_INVALID:
     GNUNET_break (0);
     return GNUNET_OK;
@@ -280,8 +282,45 @@ GDS_ROUTING_process (enum GNUNET_BLOCK_Type type,
   pc.get_path = get_path;
   pc.data = data;
   pc.data_size = data_size;
+  if (NULL == data)
+  {
+    /* Some apps might have an 'empty' reply as a valid reply; however,
+       'process' will call GNUNET_BLOCK_evaluate' which treats a 'NULL'
+       reply as request-validation (but we need response-validation).
+       So we set 'data' to a 0-byte non-NULL value just to be sure */
+    GNUNET_break (0 == data_size);
+    data_size = 0;
+    pc.data = ""; /* something not null */
+  }
   GNUNET_CONTAINER_multihashmap_get_multiple (recent_map, key, &process, &pc);
 }
+
+
+/**
+ * Remove the oldest entry from the DHT routing table.  Must only
+ * be called if it is known that there is at least one entry
+ * in the heap and hashmap.
+ */
+static void
+expire_oldest_entry ()
+{
+  struct RecentRequest *recent_req;
+
+  GNUNET_STATISTICS_update (GDS_stats,
+			    gettext_noop
+			    ("# Entries removed from routing table"), 1,
+			    GNUNET_NO);
+  recent_req = GNUNET_CONTAINER_heap_peek (recent_heap);
+  GNUNET_assert (recent_req != NULL);
+  GNUNET_CONTAINER_heap_remove_node (recent_req->heap_node);
+  GNUNET_CONTAINER_bloomfilter_free (recent_req->reply_bf);
+  GNUNET_assert (GNUNET_YES ==
+		 GNUNET_CONTAINER_multihashmap_remove (recent_map, 
+						       &recent_req->key, 
+						       recent_req));
+  GNUNET_free (recent_req);
+}
+
 
 
 /**
@@ -308,18 +347,7 @@ GDS_ROUTING_add (const struct GNUNET_PeerIdentity *sender,
   struct RecentRequest *recent_req;
 
   while (GNUNET_CONTAINER_heap_get_size (recent_heap) >= DHT_MAX_RECENT)
-  {
-    GNUNET_STATISTICS_update (GDS_stats,
-                              gettext_noop
-                              ("# Entries removed from routing table"), 1,
-                              GNUNET_NO);
-    recent_req = GNUNET_CONTAINER_heap_peek (recent_heap);
-    GNUNET_assert (recent_req != NULL);
-    GNUNET_CONTAINER_heap_remove_node (recent_req->heap_node);
-    GNUNET_CONTAINER_bloomfilter_free (recent_req->reply_bf);
-    GNUNET_free (recent_req);
-  }
-
+    expire_oldest_entry ();
   GNUNET_STATISTICS_update (GDS_stats,
                             gettext_noop ("# Entries added to routing table"),
                             1, GNUNET_NO);
@@ -359,23 +387,12 @@ GDS_ROUTING_init ()
 void
 GDS_ROUTING_done ()
 {
-  struct RecentRequest *recent_req;
-
   while (GNUNET_CONTAINER_heap_get_size (recent_heap) > 0)
-  {
-    GNUNET_STATISTICS_update (GDS_stats,
-                              gettext_noop
-                              ("# Entries removed from routing table"), 1,
-                              GNUNET_NO);
-    recent_req = GNUNET_CONTAINER_heap_peek (recent_heap);
-    GNUNET_assert (recent_req != NULL);
-    GNUNET_CONTAINER_heap_remove_node (recent_req->heap_node);
-    GNUNET_CONTAINER_bloomfilter_free (recent_req->reply_bf);
-    GNUNET_free (recent_req);
-  }
+    expire_oldest_entry ();
   GNUNET_assert (0 == GNUNET_CONTAINER_heap_get_size (recent_heap));
   GNUNET_CONTAINER_heap_destroy (recent_heap);
   recent_heap = NULL;
+  GNUNET_assert (0 == GNUNET_CONTAINER_multihashmap_size (recent_map));
   GNUNET_CONTAINER_multihashmap_destroy (recent_map);
   recent_map = NULL;
 }

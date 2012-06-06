@@ -87,18 +87,22 @@ am__gnunetinclude_HEADERS_DIST = gauger.h gettext.h platform.h plibc.h \
 	gnunet_dv_service.h gnunet_fragmentation_lib.h \
 	gnunet_fs_service.h gnunet_getopt_lib.h gnunet_gns_service.h \
 	gnunet_hello_lib.h gnunet_helper_lib.h gnunet_load_lib.h \
-	gnunet_mesh_service.h gnunet_namestore_plugin.h \
+	gnunet_lockmanager_service.h gnunet_mesh_service.h \
+	gnunet_mysql_lib.h gnunet_namestore_plugin.h \
 	gnunet_namestore_service.h gnunet_nat_lib.h \
 	gnunet_network_lib.h gnunet_nse_service.h gnunet_os_lib.h \
 	gnunet_peer_lib.h gnunet_peerinfo_service.h \
-	gnunet_plugin_lib.h gnunet_program_lib.h gnunet_protocols.h \
-	gnunet_pseudonym_lib.h gnunet_resolver_service.h \
+	gnunet_plugin_lib.h gnunet_postgres_lib.h gnunet_program_lib.h \
+	gnunet_protocols.h gnunet_pseudonym_lib.h \
+	gnunet_resolver_service.h gnunet_regex_lib.h \
 	gnunet_scheduler_lib.h gnunet_server_lib.h \
 	gnunet_service_lib.h gnunet_signal_lib.h gnunet_signatures.h \
 	gnunet_statistics_service.h gnunet_stream_lib.h \
-	gnunet_strings_lib.h gnunet_testing_lib.h gnunet_time_lib.h \
-	gnunet_transport_service.h gnunet_transport_plugin.h \
-	gnunet_tun_lib.h gnunet_util_lib.h gnunet_vpn_service.h
+	gnunet_strings_lib.h gnunet_testbed_service.h \
+	gnunet_testing_lib.h gnunet_testing_lib-new.h \
+	gnunet_time_lib.h gnunet_transport_service.h \
+	gnunet_transport_plugin.h gnunet_tun_lib.h gnunet_util_lib.h \
+	gnunet_vpn_service.h
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -212,6 +216,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -245,6 +250,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -409,7 +415,9 @@ gnunetinclude_HEADERS = \
   gnunet_hello_lib.h \
   gnunet_helper_lib.h \
   gnunet_load_lib.h \
+  gnunet_lockmanager_service.h \
   gnunet_mesh_service.h \
+  gnunet_mysql_lib.h \
   gnunet_namestore_plugin.h \
   gnunet_namestore_service.h \
   gnunet_nat_lib.h \
@@ -419,10 +427,12 @@ gnunetinclude_HEADERS = \
   gnunet_peer_lib.h \
   gnunet_peerinfo_service.h \
   gnunet_plugin_lib.h \
+  gnunet_postgres_lib.h \
   gnunet_program_lib.h \
   gnunet_protocols.h \
   gnunet_pseudonym_lib.h \
   gnunet_resolver_service.h \
+  gnunet_regex_lib.h \
   gnunet_scheduler_lib.h \
   gnunet_server_lib.h \
   gnunet_service_lib.h \
@@ -431,7 +441,9 @@ gnunetinclude_HEADERS = \
   gnunet_statistics_service.h \
   gnunet_stream_lib.h \
   gnunet_strings_lib.h \
+  gnunet_testbed_service.h \
   gnunet_testing_lib.h \
+  gnunet_testing_lib-new.h \
   gnunet_time_lib.h \
   gnunet_transport_service.h \
   gnunet_transport_plugin.h \

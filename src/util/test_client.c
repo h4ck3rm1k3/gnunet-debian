@@ -109,7 +109,7 @@ recv_bounce (void *cls, const struct GNUNET_MessageHeader *got)
   msg.type = htons (MY_TYPE);
   msg.size = htons (sizeof (struct GNUNET_MessageHeader));
   GNUNET_assert (0 == memcmp (got, &msg, sizeof (struct GNUNET_MessageHeader)));
-  GNUNET_CLIENT_disconnect (client, GNUNET_YES);
+  GNUNET_CLIENT_disconnect (client);
   client = NULL;
   GNUNET_SERVER_destroy (server);
   server = NULL;
@@ -137,6 +137,10 @@ task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   struct sockaddr *sap[2];
   socklen_t slens[2];
 
+  /* test that ill-configured client fails instantly */
+  GNUNET_assert (NULL == GNUNET_CLIENT_connect ("invalid-service", cfg));
+
+  /* test IPC between client and server */
   sap[0] = (struct sockaddr *) &sa;
   slens[0] = sizeof (sa);
   sap[1] = NULL;

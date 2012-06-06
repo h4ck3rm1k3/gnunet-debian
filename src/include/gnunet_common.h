@@ -141,6 +141,26 @@
 #define GNUNET_PACKED __attribute__((packed))
 
 /**
+ * gcc-ism to get gcc bitfield layout when compiling with -mms-bitfields
+ */
+#if MINGW
+#define GNUNET_GCC_STRUCT_LAYOUT __attribute__((gcc_struct))
+#else
+#define GNUNET_GCC_STRUCT_LAYOUT
+#endif
+
+/**
+ * gcc-ism to force alignment; we use this to align char-arrays
+ * that may then be cast to 'struct's.  See also gcc
+ * bug #33594.
+ */
+#ifdef __BIGGEST_ALIGNMENT__
+#define GNUNET_ALIGN __attribute__((aligned (__BIGGEST_ALIGNMENT__)))
+#else
+#define GNUNET_ALIGN __attribute__((aligned (8)))
+#endif
+
+/**
  * gcc-ism to document unused arguments
  */
 #define GNUNET_UNUSED __attribute__((unused))
@@ -199,19 +219,17 @@ struct GNUNET_MessageHeader
   uint16_t type GNUNET_PACKED;
 
 };
-GNUNET_NETWORK_STRUCT_END
+
 
 /**
  * @brief 512-bit hashcode
  */
-typedef struct
+typedef struct GNUNET_HashCode
 {
   uint32_t bits[512 / 8 / sizeof (uint32_t)];   /* = 16 */
 }
 GNUNET_HashCode;
 
-
-GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * The identity of the host (basically the SHA-512 hashcode of
@@ -219,7 +237,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
  */
 struct GNUNET_PeerIdentity
 {
-  GNUNET_HashCode hashPubKey GNUNET_PACKED;
+  GNUNET_HashCode hashPubKey;
 };
 GNUNET_NETWORK_STRUCT_END
 

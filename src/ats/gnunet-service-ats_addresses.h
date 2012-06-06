@@ -75,6 +75,16 @@ struct ATS_Address
   struct GNUNET_BANDWIDTH_Value32NBO assigned_bw_out;
 
   /**
+   * Blocking interval
+   */
+  struct GNUNET_TIME_Relative block_interval;
+
+  /**
+   * Time when address can be suggested again
+   */
+  struct GNUNET_TIME_Absolute blocked_until;
+
+  /**
    * Is this the active address for this peer?
    */
   int active;
@@ -102,10 +112,13 @@ GAS_addresses_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
 void
 GAS_addresses_done (void);
 
+void
+GAS_addresses_handle_backoff_reset (const struct GNUNET_PeerIdentity *peer);
+
 /**
  * This address is now used or not used anymore
  */
-void
+int
 GAS_addresses_in_use (const struct GNUNET_PeerIdentity *peer,
                       const char *plugin_name, const void *plugin_addr,
                       size_t plugin_addr_len, uint32_t session_id, int in_use);

@@ -251,6 +251,10 @@ struct ValidationEntry
    * Are we expecting a PONG message for this validation entry?
    */
   int expecting_pong;
+
+  /* FIXME: DEBUGGING */
+  int last_line_set_to_no;
+  int last_line_set_to_yes;
 };
 
 
@@ -600,6 +604,9 @@ find_validation_entry (const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded
   if (public_key == NULL)
     return NULL;
   ve = GNUNET_malloc (sizeof (struct ValidationEntry));
+  ve->in_use = GNUNET_SYSERR; /* not defined */
+  ve->last_line_set_to_no  = 0;
+  ve->last_line_set_to_yes  = 0;
   ve->address = GNUNET_HELLO_address_copy (address);
   ve->public_key = *public_key;
   ve->pid = address->peer;
@@ -863,10 +870,8 @@ GST_validation_handle_ping (const struct GNUNET_PeerIdentity *sender,
       PONG_SIGNATURE_LIFETIME.rel_value / 4)
   {
     /* create / update cached sig */
-#if DEBUG_TRANSPORT
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Creating PONG signature to indicate ownership.\n");
-#endif
     *sig_cache_exp = GNUNET_TIME_relative_to_absolute (PONG_SIGNATURE_LIFETIME);
     pong->expiration = GNUNET_TIME_absolute_hton (*sig_cache_exp);
     GNUNET_assert (GNUNET_OK ==
@@ -1076,13 +1081,10 @@ GST_validation_handle_pong (const struct GNUNET_PeerIdentity *sender,
                               GNUNET_NO);
     return;
   }
-#if DEBUG_TRANSPORT
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Address validated for peer `%s' with plugin `%s': `%s'\n",
-              GNUNET_i2s (sender), tname, GST_plugins_a2s (tname, addr,
-                                                           addrlen));
-#endif
 
+              GNUNET_i2s (sender), tname, GST_plugins_a2s (ve->address));
   /* validity achieved, remember it! */
   ve->expecting_pong = GNUNET_NO;
   ve->valid_until = GNUNET_TIME_relative_to_absolute (HELLO_ADDRESS_EXPIRATION);
@@ -1097,7 +1099,7 @@ GST_validation_handle_pong (const struct GNUNET_PeerIdentity *sender,
   /* build HELLO to store in PEERINFO */
   ve->copied = GNUNET_NO;
   hello = GNUNET_HELLO_create (&ve->public_key, &add_valid_peer_address, ve);
-  GNUNET_PEERINFO_add_peer (GST_peerinfo, hello);
+  GNUNET_PEERINFO_add_peer (GST_peerinfo, hello, NULL, NULL);
   GNUNET_free (hello);
 }
 
@@ -1128,7 +1130,7 @@ GST_validation_handle_hello (const struct GNUNET_MessageHeader *hello)
     return;
   /* Add peer identity without addresses to peerinfo service */
   h = GNUNET_HELLO_create (&vac.public_key, NULL, NULL);
-  GNUNET_PEERINFO_add_peer (GST_peerinfo, h);
+  GNUNET_PEERINFO_add_peer (GST_peerinfo, h, NULL, NULL);
 #if VERBOSE_VALIDATION
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               _("Adding `%s' without addresses for peer `%s'\n"), "HELLO",
@@ -1211,11 +1213,13 @@ GST_validation_get_addresses (const struct GNUNET_PeerIdentity *target,
  * @param session the session
  * @param in_use GNUNET_YES if we are now using the address for a connection,
  *               GNUNET_NO if we are no longer using the address for a connection
+ * @param line line of caller just for DEBUGGING!
  */
 void
 GST_validation_set_address_use (const struct GNUNET_HELLO_Address *address,
                                 struct Session *session,
-                                int in_use)
+                                int in_use,
+                                int line)
 {
   struct ValidationEntry *ve;
 
@@ -1229,10 +1233,33 @@ GST_validation_set_address_use (const struct GNUNET_HELLO_Address *address,
     return;
   }
   if (ve->in_use == in_use)
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "GST_validation_set_address_use: %s %s: ve->in_use %i <-> in_use %i\n",
-                GNUNET_i2s (&address->peer), GST_plugins_a2s (address), ve->in_use,
-                in_use);
+  {
+
+    if (GNUNET_YES == in_use)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error setting address in use for peer `%s' `%s' to USED: set last time by %i, called now by %i\n",
+                  GNUNET_i2s (&address->peer), GST_plugins_a2s (address),
+                  ve->last_line_set_to_yes, line);
+    }
+    if (GNUNET_NO == in_use)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error setting address in use for peer `%s' `%s' to NOT_USED: set last time by %i, called now by %i\n",
+                  GNUNET_i2s (&address->peer), GST_plugins_a2s (address),
+                  ve->last_line_set_to_no, line);
+    }
+  }
+
+  if (GNUNET_YES == in_use)
+  {
+    ve->last_line_set_to_yes = line;
+  }
+  if (GNUNET_NO == in_use)
+  {
+    ve->last_line_set_to_no = line;
+  }
+
   GNUNET_break (ve->in_use != in_use);  /* should be different... */
   ve->in_use = in_use;
   if (in_use == GNUNET_YES)

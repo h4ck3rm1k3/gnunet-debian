@@ -287,6 +287,10 @@ GNUNET_FS_tree_encoder_create (struct GNUNET_FS_Handle *h, uint64_t size,
   te->chk_tree =
       GNUNET_malloc (te->chk_tree_depth * CHK_PER_INODE *
                      sizeof (struct ContentHashKey));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "Created tree encoder for file with %llu bytes and depth %u\n",
+	      (unsigned long long) size,
+	      te->chk_tree_depth);
   return te;
 }
 
@@ -357,8 +361,8 @@ GNUNET_FS_tree_encoder_next (struct GNUNET_FS_TreeEncoder *te)
     if (pt_size !=
         te->reader (te->cls, te->publish_offset, pt_size, iob, &te->emsg))
     {
-      te->cont (te->cls, NULL);
       te->in_next = GNUNET_NO;
+      te->cont (te->cls, NULL);
       return;
     }
     pt_block = iob;
@@ -425,6 +429,7 @@ void
 GNUNET_FS_tree_encoder_finish (struct GNUNET_FS_TreeEncoder *te,
                                struct GNUNET_FS_Uri **uri, char **emsg)
 {
+  (void) te->reader (te->cls, UINT64_MAX, 0, 0, NULL);
   GNUNET_assert (GNUNET_NO == te->in_next);
   if (uri != NULL)
     *uri = te->uri;

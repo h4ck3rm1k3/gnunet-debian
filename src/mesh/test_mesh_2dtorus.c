@@ -171,7 +171,7 @@ topo_cb (void *cls, const struct GNUNET_PeerIdentity *first,
       if (disconnect_task != GNUNET_SCHEDULER_NO_TASK)
       {
         GNUNET_SCHEDULER_cancel (disconnect_task);
-        GNUNET_SCHEDULER_add_now (&disconnect_peers, NULL);
+        disconnect_task = GNUNET_SCHEDULER_add_now (&disconnect_peers, NULL);
       }
       return;
     }
@@ -316,7 +316,7 @@ run (void *cls, char *const *args, const char *cfgfile,
                                        hosts);
   GNUNET_assert (pg != NULL);
   shutdown_handle =
-      GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_get_forever (),
+    GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
                                     &shutdown_task, NULL);
 }
 

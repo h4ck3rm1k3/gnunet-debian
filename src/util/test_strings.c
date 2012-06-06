@@ -97,10 +97,12 @@ check ()
   GNUNET_free (r);
   b = GNUNET_STRINGS_to_utf8 ("TEST", 4, "ASCII");
   WANT ("TEST", b);
+#if ENABLE_NLS && HAVE_ICONV
   GNUNET_log_skip (2, GNUNET_NO);
   b = GNUNET_STRINGS_to_utf8 ("TEST", 4, "unknown");
   GNUNET_log_skip (0, GNUNET_YES);
   WANT ("TEST", b);
+#endif
   return 0;
 }
 

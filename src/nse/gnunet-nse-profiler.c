@@ -371,7 +371,9 @@ connect_nse_service (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 #endif
   for (i = 0; i < num_peers; i++)
   {
-    if ((connection_limit > 0) && (i % (num_peers / connection_limit) != 0))
+    if ((connection_limit > 0) &&
+	(num_peers > connection_limit) && 
+	(i % (num_peers / connection_limit) != 0))
       continue;
 #if VERBOSE
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -894,7 +896,7 @@ run (void *cls, char *const *args, const char *cfgfile,
                                        &connect_cb, &my_cb, NULL, hosts);
   GNUNET_assert (pg != NULL);
   shutdown_handle =
-      GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_get_forever (),
+    GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
                                     &shutdown_task, NULL);
 }
 

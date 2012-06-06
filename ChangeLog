@@ -1,3 +1,886 @@
+2012-06-02 14:39  grothoff
+
+	* [r21729] configure.ac, src/include/plibc.h, src/util/server.c,
+	  src/util/winproc.c: LRN: Update plibc and utf8ization
+
+2012-06-01 18:51  wachs
+
+	* [r21714] src/transport/plugin_transport_http_client.c,
+	  src/transport/plugin_transport_http_server.c: fix for 2395
+
+2012-06-01 15:36  wachs
+
+	* [r21704] src/ats/gnunet-service-ats_addresses.c: fix for 0002392
+
+2012-06-01 08:58  schanzen
+
+	* [r21684] src/gns/nss/Makefile.am, src/gns/nss/nss_gns.c,
+	  src/gns/nss/nss_gns_query.c, src/gns/nss/nss_gns_query.h,
+	  src/gns/nss/query.c, src/gns/nss/query.h, src/gns/nss/util.c,
+	  src/gns/nss/util.h: cleanup
+
+2012-06-01 08:53  wachs
+
+	* [r21683] src/transport/plugin_transport_unix.c: additional error
+	  message
+
+2012-06-01 08:53  wachs
+
+	* [r21682] src/transport/plugin_transport_http_server.c: remove
+	  unused variable
+
+2012-05-30 21:21  harsha
+
+	* [r21647] src/testing/Makefile.am, src/testing/testing_new.c: test
+	  case for peer startup in new testing library
+
+2012-05-30 14:47  wachs
+
+	* [r21646] src/util/Makefile.am, src/util/program.c,
+	  src/util/service.c, src/util/speedup.c, src/util/test_speedup.c,
+	  src/util/test_speedup_data.conf, src/util/util.conf: speedup
+	  mechanism to manipulate gnunet time
+
+2012-05-30 14:34  harsha
+
+	* [r21645] src/testing/testing_new.c: comments and fixed NULL check
+	  for tm
+
+2012-05-30 14:26  harsha
+
+	* [r21644] src/testing/testing_new.c: refined
+	  GNUNET_TESTING_service_run
+
+2012-05-29 14:06  harsha
+
+	* [r21634] src/testing/testing_new.c: removed double rsa key free
+
+2012-05-27 21:46  grothoff
+
+	* [r21608] src/ats/gnunet-service-ats_addresses.c,
+	  src/ats/gnunet-service-ats_addresses_mlp.c,
+	  src/ats/test_ats_api_update_address.c,
+	  src/core/core_api_is_connected.c,
+	  src/core/core_api_iterate_peers.c, src/dns/plugin_block_dns.c,
+	  src/dv/gnunet-service-dv.c,
+	  src/gns/gnunet-service-gns_resolver.c,
+	  src/gns/plugin_block_gns.c,
+	  src/gns/test_gns_dht_delegated_lookup.c,
+	  src/gns/test_gns_max_queries.c, src/gns/test_gns_pseu_shorten.c,
+	  src/gns/test_gns_simple_delegated_lookup.c,
+	  src/gns/test_gns_simple_get_authority.c,
+	  src/gns/test_gns_simple_lookup.c,
+	  src/gns/test_gns_simple_mx_lookup.c,
+	  src/gns/test_gns_simple_shorten.c,
+	  src/gns/test_gns_simple_zkey_lookup.c,
+	  src/hostlist/hostlist-client.c, src/include/gnunet_time_lib.h,
+	  src/integration-tests/connection_watchdog.c,
+	  src/mesh/gnunet-service-mesh.c, src/mesh/test_mesh_2dtorus.c,
+	  src/mesh/test_mesh_small.c, src/namestore/gnunet-namestore.c,
+	  src/namestore/gnunet-service-namestore.c,
+	  src/namestore/namestore_api.c,
+	  src/namestore/test_namestore_api.c,
+	  src/namestore/test_namestore_api_create.c,
+	  src/namestore/test_namestore_api_create_update.c,
+	  src/namestore/test_namestore_api_lookup.c,
+	  src/namestore/test_namestore_api_lookup_specific_type.c,
+	  src/namestore/test_namestore_api_put.c,
+	  src/namestore/test_namestore_api_remove.c,
+	  src/namestore/test_namestore_api_remove_not_existing_record.c,
+	  src/namestore/test_namestore_api_zone_iteration.c,
+	  src/namestore/test_namestore_api_zone_iteration_specific_zone.c,
+	  src/namestore/test_namestore_api_zone_iteration_stop.c,
+	  src/namestore/test_namestore_record_serialization.c,
+	  src/nse/gnunet-nse-profiler.c, src/nse/nse_profiler_test.conf,
+	  src/testing/test_testing_2dtorus.c, src/testing/testing_group.c,
+	  src/transport/plugin_transport_http.c,
+	  src/transport/plugin_transport_http_server.c,
+	  src/transport/plugin_transport_udp.c, src/util/test_time.c,
+	  src/util/time.c: renaming GNUNET_TIME_relative_get_forever and
+	  GNUNET_TIME_absolute_get_forever methods, adding underscore, to
+	  make it clear that the respective #defines should be used
+	  instead; replacing use of direct function calls with respective
+	  macros where applicable; adding additional
+	  GNUNET_TIME_relative_get_xxx-functions to avoid calls to
+	  GNUNET_TIME_relative_multiply, which turn out to have gotten
+	  performance-relevant
+
+2012-05-27 21:11  grothoff
+
+	* [r21607] src/util/server.c: use
+	  GNUNET_SCHEDULER_add_read_net_with_priority instead of
+	  constructing fd sets in server with only one active listen socket
+
+2012-05-27 21:10  grothoff
+
+	* [r21606] src/gns/gnunet-service-gns.c,
+	  src/include/gnunet_scheduler_lib.h, src/util/scheduler.c: adding
+	  GNUNET_SCHEDULER_add_read_net_with_priority
+
+2012-05-26 15:14  harsha
+
+	* [r21586] src/testing/test_testing_new_portreservation.c,
+	  src/testing/testing_new.c: port reservation - release
+
+2012-05-26 14:04  harsha
+
+	* [r21585] src/testing, src/testing/Makefile.am,
+	  src/testing/test_testing_new_portreservation.c,
+	  src/testing/testing_new.c: port reservation and test cases
+
+2012-05-25 14:40  harsha
+
+	* [r21578] src/testing/testing_new.c: testing port reservation
+
+2012-05-25 09:34  wachs
+
+	* [r21573] src/transport/plugin_transport_tcp.c,
+	  src/transport/plugin_transport_udp.c: session timeout for udp and
+	  tcp
+
+2012-05-25 08:25  wachs
+
+	* [r21572] src/transport/gnunet-service-transport_neighbours.c:
+
+2012-05-23 07:10  wachs
+
+	* [r21562] contrib/gnunet_janitor.py.in: LRN's patch
+
+2012-05-22 15:43  harsha
+
+	* [r21561] src/stream, src/testing/testing_new.c: testing port
+	  checking (incomplete)
+
+2012-05-22 15:03  harsha
+
+	* [r21560] src/stream/test_stream_2peers.c,
+	  src/stream/test_stream_2peers_halfclose.c,
+	  src/stream/test_stream_local.c: fixed segmentation fault due to
+	  missing GNUNET_STREAM_OPTION_END
+
+2012-05-20 15:06  harsha
+
+	* [r21552] src/testing/testing_new.c: testing system
+
+2012-05-15 14:07  harsha
+
+	* [r21499] src/lockmanager, src/lockmanager/lockmanager_api.c,
+	  src/lockmanager/test_lockmanager_api.c,
+	  src/lockmanager/test_lockmanager_api_servercrash.c: handling
+	  replies continuously from server
+
+2012-05-15 13:09  harsha
+
+	* [r21497] src/lockmanager/Makefile.am,
+	  src/lockmanager/lockmanager_api.c,
+	  src/lockmanager/test_lockmanager_api_servercrash.c: server crash
+	  test case
+
+2012-05-15 10:00  wachs
+
+	* [r21492] src/transport/gnunet-service-transport_neighbours.c: fix
+	  for mantis 2356
+
+2012-05-15 09:11  wachs
+
+	* [r21491] src/transport/plugin_transport_wlan.c: fix memleak
+
+2012-05-15 08:09  wachs
+
+	* [r21490] src/transport/gnunet-service-transport_neighbours.c: fix
+	  for mantis 2355
+
+2012-05-14 13:32  harsha
+
+	* [r21476] src/lockmanager/lockmanager_api.c: removed local
+	  function
+
+2012-05-14 13:04  harsha
+
+	* [r21475] src/stream/stream_api.c,
+	  src/stream/test_stream_2peers_halfclose.c: warnings
+
+2012-05-14 09:06  wachs
+
+	* [r21469] src/transport/plugin_transport_udp.c: fix for mantis
+	  2346
+
+2012-05-13 18:07  harsha
+
+	* [r21463] src/include/gnunet_lockmanager_service.h,
+	  src/lockmanager/lockmanager_api.c: change in API documentation
+	  and function for finding lockingRequest in hashmap
+
+2012-05-13 17:21  harsha
+
+	* [r21462] src/lockmanager, src/lockmanager/Makefile.am,
+	  src/lockmanager/gnunet-service-lockmanager.c,
+	  src/lockmanager/lockmanager_api.c,
+	  src/lockmanager/test_lockmanager_api.conf,
+	  src/lockmanager/test_lockmanager_api_lockrelease.c: clean
+	  shutdown in lockmanager, test case for lock release and message
+	  format checks for incoming msg in lockmanager API
+
+2012-05-12 08:40  harsha
+
+	* [r21447] src/stream/stream_api.c: peer ids in logging and
+	  indentation
+
+2012-05-11 21:50  harsha
+
+	* [r21442] src/lockmanager/gnunet-service-lockmanager.c: inlining
+	  of helper functions
+
+2012-05-11 13:55  grothoff
+
+	* [r21440] src/lockmanager/gnunet-service-lockmanager.c,
+	  src/transport/plugin_transport_wlan.c: doxygen
+
+2012-05-11 08:18  harsha
+
+	* [r21435] src/stream/stream_api.c: logging and indentation
+
+2012-05-10 16:26  wachs
+
+	* [r21421] src/transport/plugin_transport_wlan.c: fixing WLAN
+
+2012-05-10 15:44  harsha
+
+	* [r21420] src/lockmanager/gnunet-service-lockmanager.c: NULL check
+	  on disconnect handler
+
+2012-05-10 15:26  harsha
+
+	* [r21419] src/lockmanager/gnunet-service-lockmanager.c:
+	  lockmanager with new datastructure
+
+2012-05-09 14:29  szengel
+
+	* [r21387] src/regex/regex.c: fixes
+
+2012-05-09 13:32  wachs
+
+	* [r21383] src/util/server_nc.c: fix for mantis 2330#c5818
+	  GNUNET_SERVER_notification_context_destroy does not cancel
+	  transmit_ready
+
+2012-05-09 13:25  szengel
+
+	* [r21382] src/regex/regex.c: Fixed warning
+
+2012-05-09 09:59  harsha
+
+	* [r21369] src/lockmanager/gnunet-service-lockmanager.c: processing
+	  upon lock release
+
+2012-05-09 08:29  harsha
+
+	* [r21367] src/lockmanager/gnunet-service-lockmanager.c: lock
+	  acquire and release
+
+2012-05-09 07:09  harsha
+
+	* [r21366] src/lockmanager/gnunet-service-lockmanager.c: added list
+	  processing
+
+2012-05-08 17:10  bartpolot
+
+	* [r21352] src/arm/gnunet-service-arm.c,
+	  src/ats/test_ats_api_bandwidth_consumption.c,
+	  src/ats/test_ats_api_scheduling.c, src/chat/test_chat.c,
+	  src/chat/test_chat_private.c, src/core/test_core_api.c,
+	  src/core/test_core_api_reliability.c,
+	  src/core/test_core_api_send_to_self.c,
+	  src/core/test_core_api_start_only.c,
+	  src/core/test_core_quota_compliance.c,
+	  src/datastore/perf_datastore_api.c,
+	  src/datastore/test_datastore_api.c,
+	  src/datastore/test_datastore_api_management.c,
+	  src/dht/test_dht_api.c, src/fs/test_fs.c,
+	  src/fs/test_fs_download.c, src/fs/test_fs_download_indexed.c,
+	  src/fs/test_fs_download_persistence.c,
+	  src/fs/test_fs_download_recursive.c,
+	  src/fs/test_fs_list_indexed.c, src/fs/test_fs_namespace.c,
+	  src/fs/test_fs_namespace_list_updateable.c,
+	  src/fs/test_fs_publish.c, src/fs/test_fs_publish_persistence.c,
+	  src/fs/test_fs_search.c, src/fs/test_fs_search_persistence.c,
+	  src/fs/test_fs_search_probes.c, src/fs/test_fs_search_ranking.c,
+	  src/fs/test_fs_start_stop.c, src/fs/test_fs_unindex.c,
+	  src/fs/test_fs_unindex_persistence.c,
+	  src/hostlist/test_gnunet_daemon_hostlist.c,
+	  src/hostlist/test_gnunet_daemon_hostlist_learning.c,
+	  src/hostlist/test_gnunet_daemon_hostlist_reconnect.c,
+	  src/include/gnunet_os_lib.h,
+	  src/lockmanager/test_lockmanager_api.c, src/mesh/test_mesh_api.c,
+	  src/mesh/test_mesh_local_1.c, src/mesh/test_mesh_local_2.c,
+	  src/namestore/test_namestore_api.c,
+	  src/namestore/test_namestore_api_create.c,
+	  src/namestore/test_namestore_api_create_update.c,
+	  src/namestore/test_namestore_api_lookup.c,
+	  src/namestore/test_namestore_api_lookup_specific_type.c,
+	  src/namestore/test_namestore_api_put.c,
+	  src/namestore/test_namestore_api_remove.c,
+	  src/namestore/test_namestore_api_remove_not_existing_record.c,
+	  src/namestore/test_namestore_api_zone_iteration.c,
+	  src/namestore/test_namestore_api_zone_iteration_specific_zone.c,
+	  src/namestore/test_namestore_api_zone_iteration_stop.c,
+	  src/namestore/test_namestore_api_zone_to_name.c, src/nat/nat.c,
+	  src/nat/nat_mini.c, src/nat/test_nat_test.c,
+	  src/nse/test_nse_api.c, src/peerinfo/perf_peerinfo_api.c,
+	  src/peerinfo/test_peerinfo_api.c,
+	  src/statistics/test_statistics_api.c,
+	  src/statistics/test_statistics_api_loop.c,
+	  src/statistics/test_statistics_api_watch.c,
+	  src/statistics/test_statistics_api_watch_zero_value.c,
+	  src/stream/test_stream_api.c, src/stream/test_stream_local.c,
+	  src/testing/test_testing_large_topology.c,
+	  src/testing/test_testing_topology.c, src/testing/testing.c,
+	  src/testing/testing_group.c,
+	  src/transport/gnunet-transport-certificate-creation.c,
+	  src/transport/gnunet-transport.c,
+	  src/transport/plugin_transport_http_server.c,
+	  src/transport/plugin_transport_wlan.c,
+	  src/transport/transport-testing.c, src/util/crypto_random.c,
+	  src/util/helper.c, src/util/os_priority.c,
+	  src/util/test_common_logging_runtime_loglevels.c,
+	  src/util/test_os_start_process.c, src/util/test_resolver_api.c,
+	  src/vpn/test_gnunet_vpn.c: Renamed GNUNET_OS_process_close to
+	  GNUNET_OS_process_destroy
+
+2012-05-07 17:31  szengel
+
+	* [r21330] src/regex/regex.c, src/regex/test_regex_iterate_api.c:
+	  Fixed compilation warnings
+
+2012-05-07 13:35  grothoff
+
+	* [r21324] contrib/Makefile.am, contrib/timeout_watchdog_w32.c:
+	  LRN: creating watchdog helper binary for W32
+
+2012-05-07 08:25  wachs
+
+	* [r21315] src/transport/gnunet-service-transport_neighbours.c: fix
+	  for mantis 2320
+
+2012-05-04 12:57  bartpolot
+
+	* [r21271] src/dht/dht.h, src/dht/dht_api.c,
+	  src/dht/gnunet-service-dht_clients.c: Added stop operation for
+	  dht monitoring
+
+2012-05-03 13:49  grothoff
+
+	* [r21248] src/peerinfo/peerinfo_api.c: doxygen
+
+2012-05-03 11:36  grothoff
+
+	* [r21244] src/peerinfo/perf_peerinfo_api.c,
+	  src/peerinfo/test_peerinfo_api.c: f-xi
+
+2012-05-02 13:24  wachs
+
+	* [r21223] src/peerinfo-tool/gnunet-peerinfo.c: fix 2297
+
+2012-04-27 13:44  wachs
+
+	* [r21203] src/transport/plugin_transport_unix.c: working string
+	  toaddress
+
+2012-04-22 19:52  grothoff
+
+	* [r21075] src/arm/gnunet-service-arm.c,
+	  src/ats/gnunet-service-ats.c, src/include/gnunet_server_lib.h,
+	  src/include/gnunet_service_lib.h,
+	  src/namestore/gnunet-service-namestore.c,
+	  src/peerinfo/gnunet-service-peerinfo.c,
+	  src/statistics/gnunet-service-statistics.c,
+	  src/transport/gnunet-service-transport.c,
+	  src/transport/gnunet-service-transport_blacklist.c,
+	  src/transport/gnunet-service-transport_clients.c,
+	  src/transport/plugin_transport_tcp.c, src/util/server.c,
+	  src/util/service.c: introducing soft shutdown concept for
+	  services; during soft shutdown, services that are still managing
+	  non-monitor clients continue to run until those clients
+	  disconnect; however, the services do stop to accept new
+	  connections (will stop listening); soft shutdown is now used by
+	  ats, transport, peerinfo, namestore and most importantly
+	  statistics; this should fix #2197
+
+2012-04-21 18:16  grothoff
+
+	* [r21060] src/include/gnunet_container_lib.h,
+	  src/util/container_bloomfilter.c: changing bloomfilter to allow
+	  GNUNET_CONTAINER_bloomfilter_init with sizes that are not powers
+	  of 2 -- GNUNET_CONTAINER_bloomfilter_load will continue to round
+	  up to power of two
+
+2012-04-20 12:35  szengel
+
+	* [r21054] src/regex/regex.c, src/regex/test_regex_iterate_api.c:
+	  recursion for dfa construction
+
+2012-04-19 11:39  szengel
+
+	* [r21025] src/regex/regex.c, src/regex/test_regex_eval_api.c,
+	  src/regex/test_regex_iterate_api.c: dfa minimization fix
+
+2012-04-18 14:02  szengel
+
+	* [r21011] src/include/gnunet_regex_lib.h, src/regex/Makefile.am,
+	  src/regex/regex.c, src/regex/test_regex.c,
+	  src/regex/test_regex_eval_api.c,
+	  src/regex/test_regex_iterate_api.c: test update
+
+2012-04-18 13:49  wachs
+
+	* [r21009] src/statistics/statistics_api.c: fix 2273
+
+2012-04-18 09:55  wachs
+
+	* [r21005] src/statistics/Makefile.am,
+	  src/statistics/gnunet-service-statistics.c,
+	  src/statistics/test_statistics_api_watch_zero_value.c: fixing bug
+	  2272: added functionality for watch to notifz about fresh created
+	  entries with value 0
+
+2012-04-18 09:30  szengel
+
+	* [r21004] src/include/gnunet_regex_lib.h, src/regex/regex.c: added
+	  accepting state info to api
+
+2012-04-17 20:43  szengel
+
+	* [r21001] src/include/gnunet_regex_lib.h, src/regex/regex.c: api
+	  changes
+
+2012-04-12 13:28  szengel
+
+	* [r20965] src/regex/regex.c: bugfix
+
+2012-04-12 11:48  szengel
+
+	* [r20959] src/regex/regex.c, src/regex/test_regex.c: Added '?'
+	  operator
+
+2012-04-11 15:30  szengel
+
+	* [r20947] src/regex/regex.c: comments
+
+2012-04-11 14:13  szengel
+
+	* [r20943] src/regex/regex.c: doxygen fix
+
+2012-04-10 14:37  szengel
+
+	* [r20925] src/regex/regex.c, src/regex/test_regex.c: fix
+
+2012-04-10 14:30  szengel
+
+	* [r20924] src/regex/regex.c, src/regex/test_regex.c: dfa
+	  minimization wip
+
+2012-04-09 14:56  szengel
+
+	* [r20911] src/regex/regex.c, src/regex/test_regex.c: fixes
+
+2012-04-05 14:28  szengel
+
+	* [r20905] src/regex/regex.c, src/regex/test_regex.c: removing
+	  unreachable states
+
+2012-04-05 12:38  szengel
+
+	* [r20904] src/regex/test_regex.c: better testing
+
+2012-04-05 11:46  szengel
+
+	* [r20902] src/regex/regex.c, src/regex/test_regex.c: Automatic
+	  regex generation for testing
+
+2012-04-04 08:21  grothoff
+
+	* [r20893] configure.ac, src/fs/fs.conf.in: adding configure option
+	  to run GNUnet with monkey
+
+2012-04-03 13:46  szengel
+
+	* [r20883] src/include/gnunet_regex_lib.h, src/regex/Makefile.am,
+	  src/regex/regex.c, src/regex/regex.h, src/regex/test_regex.c: fix
+
+2012-04-02 11:20  wachs
+
+	* [r20848] src/transport/plugin_transport_http.c,
+	  src/transport/transport.conf.in: fixing 0002249: report only new
+	  addresses
+
+2012-04-02 10:19  szengel
+
+	* [r20847] src/regex/regex.c, src/regex/test_regex.c: NFA
+	  evaluation
+
+2012-04-02 09:39  szengel
+
+	* [r20845] src/include/gnunet_regex_lib.h, src/regex/regex.c,
+	  src/regex/test_regex.c: DFA evaluation
+
+2012-04-01 09:13  grothoff
+
+	* [r20826] src/core/gnunet-service-core_kx.c: implementing
+	  rekeying, some code cleanup
+
+2012-04-01 07:56  grothoff
+
+	* [r20825] doc/man/Makefile.am, doc/man/gnunet-core.1,
+	  src/core/Makefile.am, src/core/gnunet-core-list-connections.c,
+	  src/core/gnunet-core.c, src/include/gnunet_fs_service.h: renaming
+	  gnunet-core-list-connections to gnunet-core, adding man page
+
+2012-03-30 15:43  wachs
+
+	* [r20819] src/transport/gnunet-service-transport_neighbours.c:
+
+2012-03-28 19:27  szengel
+
+	* [r20801] src/include/gnunet_regex_lib.h, src/regex/regex.c:
+	  doxygen fix
+
+2012-03-28 15:49  szengel
+
+	* [r20800] src/include/gnunet_regex_lib.h, src/regex/regex.c,
+	  src/regex/test_regex.c: api changes
+
+2012-03-27 16:37  szengel
+
+	* [r20790] src/regex/regex.c, src/regex/test_regex.c: formatting
+
+2012-03-24 19:13  grothoff
+
+	* [r20751] src/fs/fs_api.c, src/fs/fs_publish.c, src/fs/fs_tree.c:
+	  fixing issue with gnunet-publish not closing files early enough
+	  when publishing directories with more than FD_MAX files (#2239)
+
+2012-03-24 09:05  harsha
+
+	* [r20740] src/include/gnunet_stream_lib.h,
+	  src/stream/stream_api.c: fixed compile error from r20729
+
+2012-03-23 17:40  szengel
+
+	* [r20738] src/include/gnunet_regex_lib.h, src/regex/regex.c,
+	  src/regex/test_regex.c: towards dfa
+
+2012-03-23 11:15  harsha
+
+	* [r20714] src/stream/stream_api.c: bugfix
+
+2012-03-23 10:58  harsha
+
+	* [r20711] src/stream/stream_api.c, src/stream/stream_protocol.h:
+	  fixed read packets removal after read processor,
+	  byte ordering bugs,
+	  ack_bitmap handling in handle_ack
+	  ack_task cancelling in socket close
+
+2012-03-23 08:04  szengel
+
+	* [r20699] src/regex/regex.c: fix
+
+2012-03-22 21:25  szengel
+
+	* [r20698] src/regex/regex.c: cleanup
+
+2012-03-22 19:41  szengel
+
+	* [r20697] configure.ac, pkgconfig/gnunetregex.pc,
+	  src/include/gnunet_regex_lib.h, src/regex/Makefile.am,
+	  src/regex/regex.c, src/regex/regex.h, src/regex/test_regex.c:
+	  Added initial version of regex lib
+
+2012-03-22 18:47  grothoff
+
+	* [r20693] configure.ac, src/Makefile.am,
+	  src/datacache/Makefile.am,
+	  src/datacache/plugin_datacache_postgres.c,
+	  src/datastore/plugin_datastore_postgres.c,
+	  src/include/Makefile.am, src/include/gnunet_mysql_lib.h,
+	  src/include/gnunet_postgres_lib.h, src/postgres,
+	  src/postgres/Makefile.am, src/postgres/postgres.c: adding
+	  libgnunetpostgres for shared postgres functionality between
+	  postgres datastore/datacache backends
+
+2012-03-22 11:05  wachs
+
+	* [r20670] src/include/gnunet_namestore_service.h,
+	  src/namestore/gnunet-service-namestore.c,
+	  src/namestore/namestore.h, src/namestore/namestore_common.c:
+
+2012-03-21 12:32  harsha
+
+	* [r20644] src/stream/stream_api.c, src/stream/test_stream_local.c:
+	  fixed read timeout problem and added ack sending incase of
+	  ignored data messages
+
+2012-03-21 09:43  grothoff
+
+	* [r20643] src/Makefile.am, src/include/Makefile.am, src/mysql,
+	  src/mysql/Makefile.am, src/mysql/mysql.c: creating mysql helper
+	  library for the various mysql backends
+
+2012-03-21 07:06  harsha
+
+	* [r20639] src/stream/stream_api.c, src/stream/test_stream_local.c:
+	  fixed listen callback to happen after reaching ESTABLISHED state
+
+2012-03-19 14:53  grothoff
+
+	* [r20606] configure.ac, src/core/core.conf.in,
+	  src/dht/dht.conf.in, src/nse/nse.conf.in,
+	  src/statistics/statistics.conf.in: add configure option
+	  --enable-javaports to open ports of services with Java bindings
+	  by default (#2228)
+
+2012-03-19 10:17  grothoff
+
+	* [r20598] doc/man/gnunet-rsa.1, src/datastore/datastore.h,
+	  src/exit/exit.h, src/fs/gnunet-service-fs.h,
+	  src/include/block_dns.h, src/include/gnunet_common.h,
+	  src/include/gnunet_crypto_lib.h,
+	  src/include/gnunet_strings_lib.h, src/util/crypto_hash.c,
+	  src/util/gnunet-rsa.c, src/util/strings.c, src/vpn/vpn.h: adding
+	  API for short (256-bit) hash codes
+
+2012-03-16 14:47  grothoff
+
+	* [r20570] src/gns/gnunet-gns-fcfsd.c: fix
+
+2012-03-15 21:24  wachs
+
+	* [r20551] src/namestore/gnunet-namestore.c:
+
+2012-03-15 18:22  wachs
+
+	* [r20548] src/namestore/gnunet-service-namestore.c: fix segfault
+
+2012-03-15 10:59  grothoff
+
+	* [r20515] doc/man/gnunet-rsa.1, src/util/gnunet-rsa.c: add -P
+	  option for printing peer identities with gnunet-rsa
+
+2012-03-11 22:51  grothoff
+
+	* [r20445] src/hostlist/hostlist-server.c,
+	  src/hostlist/hostlist.conf: vminko: implementing BINDTO option
+	  for hostlist service (#2140)
+
+2012-03-10 23:17  grothoff
+
+	* [r20431] src/include/gnunet_transport_plugin.h,
+	  src/transport/plugin_transport_http.c,
+	  src/transport/plugin_transport_tcp.c,
+	  src/transport/plugin_transport_udp.c,
+	  src/transport/plugin_transport_unix.c,
+	  src/transport/plugin_transport_wlan.c: add support for stub-mode
+	  for transport plugins
+
+2012-03-10 15:09  harsha
+
+	* [r20424] src/stream/stream_api.c: using
+	  GNUNET_STREAM_ACK_BITMAP_BIT_LENGTH
+
+2012-03-10 09:13  harsha
+
+	* [r20423] src/stream/stream_api.c, src/stream/test_stream_local.c:
+	  fixed retransmission task
+
+2012-03-09 15:16  grothoff
+
+	* [r20415] src/fs/fs_api.c, src/fs/fs_api.h, src/fs/fs_unindex.c:
+	  implementing removal of KBlocks during unindex operation (#1926)
+
+2012-03-09 12:53  harsha
+
+	* [r20407] src/stream/stream_api.c, src/stream/stream_protocol.h,
+	  src/stream/test_stream_local.c: fixed byte conversion bugs
+
+2012-03-09 11:39  grothoff
+
+	* [r20398] src/arm/gnunet-service-arm.c: adding code to measure and
+	  report shutdown time for services to gnunet-service-arm at INFO
+	  level logging
+
+2012-03-09 08:50  harsha
+
+	* [r20390] src/stream/stream_api.c: corrected HELLO_ACK message
+	  size
+
+2012-03-08 17:26  wachs
+
+	* [r20375] src/namestore/gnunet-service-namestore.c,
+	  src/namestore/hostkey, src/namestore/hostkey2,
+	  src/namestore/namestore.conf.in,
+	  src/namestore/test_namestore_api.c,
+	  src/namestore/test_namestore_api.conf,
+	  src/namestore/test_namestore_api_create.c,
+	  src/namestore/test_namestore_api_create_update.c,
+	  src/namestore/test_namestore_api_lookup.c,
+	  src/namestore/test_namestore_api_lookup_specific_type.c,
+	  src/namestore/test_namestore_api_put.c,
+	  src/namestore/test_namestore_api_remove.c,
+	  src/namestore/test_namestore_api_remove_not_existing_record.c,
+	  src/namestore/test_namestore_api_sign_verify.c,
+	  src/namestore/test_namestore_api_zone_iteration.c,
+	  src/namestore/test_namestore_api_zone_iteration_specific_zone.c,
+	  src/namestore/test_namestore_api_zone_iteration_stop.c,
+	  src/namestore/test_namestore_api_zone_to_name.c,
+	  src/namestore/zonefiles,
+	  src/namestore/zonefiles/4UCICULTINKC87UO4326KEEDQ9MTEP2AJT88MJFVGTGNK12QNGMQI2S41VI07UUU6EO19BTB06PDL0HE6VP1OM50HOJEI75RHP4JP80.zone,
+	  src/namestore/zonefiles/KJI3AL00K91EDPFJF58DAJM7H61D189TLP70N56JL8SVDCJE1SJ3SNNBOQPPONTL37FMHPS39SMK2NMVC0GQMGA6QCMHITT78O8GF80.zone:
+	  namestore manages zonekey files with private keys
+
+2012-03-08 16:30  harsha
+
+	* [r20373] src/stream/stream_api.c: peer interning
+
+2012-03-08 13:23  harsha
+
+	* [r20365] src/stream/stream_api.c, src/stream/test_stream_local.c:
+	  more assertions
+
+2012-03-08 07:45  harsha
+
+	* [r20362] src/stream/stream_api.c, src/stream/test_stream_local.c:
+	  Data message retransmissions
+
+2012-03-07 12:45  wachs
+
+	* [r20336] src/gns/gnunet-gns-fcfsd.c,
+	  src/gns/namestore_stub_api.c,
+	  src/gns/test_gns_dht_delegated_lookup.c,
+	  src/gns/test_gns_simple_delegated_lookup.c,
+	  src/gns/test_gns_simple_lookup.c, src/gns/test_gns_twopeer.c,
+	  src/include/gnunet_namestore_service.h,
+	  src/namestore/gnunet-namestore.c,
+	  src/namestore/gnunet-service-namestore.c,
+	  src/namestore/namestore_api.c,
+	  src/namestore/test_namestore_api.conf,
+	  src/namestore/test_namestore_api_create.c,
+	  src/namestore/test_namestore_api_create_update.c,
+	  src/namestore/test_namestore_api_zone_iteration.c,
+	  src/namestore/test_namestore_api_zone_iteration_specific_zone.c,
+	  src/namestore/test_namestore_api_zone_iteration_stop.c: namestore
+	  api change: include block expiration time in record create
+
+2012-03-07 10:11  grothoff
+
+	* [r20329] src/namestore/namestore_common.c: implementing more of
+	  GNUNET_NAMESTORE_value_to_string
+
+2012-03-06 09:50  grothoff
+
+	* [r20302] src/namestore/namestore.h: breaking stuff
+
+2012-03-05 21:04  grothoff
+
+	* [r20294] src/statistics/gnunet-service-statistics.c: fix
+
+2012-03-05 15:38  grothoff
+
+	* [r20282] src/include/gnunet_gns_service.h: fix
+
+2012-03-04 22:55  grothoff
+
+	* [r20258] src/fs/fs.conf.in, src/fs/fs_api.c: adding fs/ to all
+	  default directory names relating to file sharing
+
+2012-03-04 22:10  grothoff
+
+	* [r20252] src/fs/fs_api.c: fixing #1927 by further limiting the
+	  time a download probe can be active at a time in the download
+	  queue; this is equivalent to it having a low priority
+
+2012-03-04 20:59  grothoff
+
+	* [r20246] src/statistics/gnunet-service-statistics.c,
+	  src/statistics/statistics.h, src/statistics/statistics_api.c:
+	  make gnunet-service-statistics not exit on external shutdown
+	  signal as long as there are connected clients to be managed
+
+2012-03-04 15:02  grothoff
+
+	* [r20241] doc/man/Makefile.am, doc/man/gnunet-gns.1,
+	  src/gns/Makefile.am, src/gns/gnunet-gns.c: adding gnunet-gns, a
+	  new tool for zone manipulations
+
+2012-03-04 14:37  grothoff
+
+	* [r20237] doc/man/Makefile.am, doc/man/gnunet-rsa.1,
+	  src/util/Makefile.am, src/util/gnunet-rsa.c: adding gnunet-rsa, a
+	  new tool to create RSA keys and to print the public key
+
+2012-03-04 13:51  grothoff
+
+	* [r20232] src/include/gnunet_crypto_lib.h, src/util/crypto_hash.c:
+	  LRN: adding generic functions for conversion of binary data to
+	  ascii and back: GNUNET_CRYPTO_string_to_data and
+	  GNUNET_CRYPTO_data_to_string
+
+2012-03-02 17:29  wachs
+
+	* [r20206] src/namestore/Makefile.am,
+	  src/namestore/gnunet-service-namestore.c,
+	  src/namestore/namestore.h, src/namestore/namestore_api.c,
+	  src/namestore/test_namestore_api_put.c:
+
+2012-03-02 15:39  wachs
+
+	* [r20205] src/transport/plugin_transport_tcp.c: fix for mantis
+	  2189
+
+2012-03-01 11:58  szengel
+
+	* [r20164] src/arm/gnunet-service-arm.c: Using GNUNET_snprintf.
+
+2012-03-01 08:24  grothoff
+
+	* [r20154] src/chat/gnunet-chat.c, src/fs/fs_uri.c,
+	  src/fs/gnunet-pseudonym.c, src/include/gnunet_pseudonym_lib.h,
+	  src/util/pseudonym.c, src/util/test_pseudonym.c: LRN: updates to
+	  pseudonym API from #1952, change pseudonym management
+
+2012-02-29 19:21  wachs
+
+	* [r20150] src/include/gnunet_crypto_lib.h, src/util/crypto_rsa.c:
+	  serialize privat key
+
+2012-02-29 12:50  grothoff
+
+	* [r20143] src/include/gnunet_common.h,
+	  src/include/gnunet_dnsparser_lib.h, src/include/gnunet_tun_lib.h:
+	  LRN: Enforce GCC bitfield layout for some structs on W32
+
+2012-02-29 11:11  wachs
+
+	* [r20142] src/include/gnunet_namestore_plugin.h,
+	  src/include/gnunet_namestore_service.h,
+	  src/namestore/gnunet-service-namestore.c,
+	  src/namestore/namestore_api.c,
+	  src/namestore/plugin_namestore_sqlite.c,
+	  src/namestore/test_namestore_api_lookup.c: nametore api change
+
+2012-02-29 08:59  szengel
+
+	* [r20135] src/arm/arm.h, src/arm/arm_api.c, src/arm/gnunet-arm.c,
+	  src/arm/gnunet-service-arm.c, src/include/gnunet_arm_service.h,
+	  src/include/gnunet_protocols.h: Adding arm list/info feature.
+
+2012-02-28 19:08  grothoff
+
+	* [r20127] src/include/gnunet_crypto_lib.h, src/util/crypto_rsa.c,
+	  src/vpn/test_gnunet_vpn.c: adding GNUNET_CRYPTO_setup_hostkey to
+	  setup a hostkey ahead of time, using this function in the VPN
+	  testcases to avoid timeouts in cases where creating a hostkey
+	  just takes too long --- such as on our UltraSprac
+
 2012-02-28 17:29  grothoff
 
 	* [r20121] src/util/os_priority.c: LRN: Apparently cleanup is not

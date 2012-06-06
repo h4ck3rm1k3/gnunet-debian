@@ -27,6 +27,7 @@
 #include "platform.h"
 #include "gnunet_getopt_lib.h"
 #include "gnunet_program_lib.h"
+#include "gnunet_util_lib.h"
 #include "gnunet_statistics_service.h"
 #include "statistics.h"
 
@@ -53,9 +54,15 @@ static char *name;
 static int persistent;
 
 /**
+ * Watch value continuously
+ */
+static int watch;
+
+/**
  * Quiet mode
  */
 static int quiet;
+
 
 /**
  * Callback function to process statistic values.
@@ -71,9 +78,26 @@ static int
 printer (void *cls, const char *subsystem, const char *name, uint64_t value,
          int is_persistent)
 {
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get();
+  char * now_str;
   if (quiet == GNUNET_NO)
-    FPRINTF (stdout, "%s%-12s %-50s: %16llu\n", is_persistent ? "!" : " ",
-           subsystem, _(name), (unsigned long long) value);
+  {
+    if (GNUNET_YES == watch)
+    {
+      now_str = GNUNET_STRINGS_absolute_time_to_string(now);
+      FPRINTF (stdout, "%24s %s%12s %50s: %16llu \n",
+               now_str,
+               is_persistent ? "!" : " ",
+               subsystem, _(name), (unsigned long long) value);
+      GNUNET_free (now_str);
+    }
+    else
+    {
+      FPRINTF (stdout, "%s%12s %50s: %16llu \n",
+               is_persistent ? "!" : " ",
+               subsystem, _(name), (unsigned long long) value);
+    }
+  }
   else
     FPRINTF (stdout, "%llu\n", (unsigned long long) value);
 
@@ -98,8 +122,25 @@ cleanup (void *cls, int success)
     FPRINTF (stderr, "%s", _("Failed to obtain statistics.\n"));
     ret = 1;
   }
-  if (h != NULL)
+  if (NULL != h)
+  {
     GNUNET_STATISTICS_destroy (h, GNUNET_NO);
+    h = NULL;
+  }
+}
+
+
+static void
+shutdown_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  struct GNUNET_STATISTICS_Handle *h = cls;
+
+  GNUNET_STATISTICS_watch_cancel (h, subsystem, name, &printer, h);
+  if (NULL != h)
+  {
+    GNUNET_STATISTICS_destroy (h, GNUNET_NO);
+    h = NULL;
+  }
 }
 
 
@@ -128,25 +169,47 @@ run (void *cls, char *const *args, const char *cfgfile,
       return;
     }
     h = GNUNET_STATISTICS_create (subsystem, cfg);
-    if (h == NULL)
+    if (NULL == h)
     {
       ret = 1;
       return;
     }
     GNUNET_STATISTICS_set (h, name, (uint64_t) val, persistent);
     GNUNET_STATISTICS_destroy (h, GNUNET_YES);
+    h = NULL;
     return;
   }
   h = GNUNET_STATISTICS_create ("gnunet-statistics", cfg);
-  if (h == NULL)
+  if (NULL == h)
   {
     ret = 1;
     return;
   }
-  if (NULL ==
+  if (GNUNET_NO == watch)
+  {
+    if (NULL ==
       GNUNET_STATISTICS_get (h, subsystem, name, GET_TIMEOUT, &cleanup,
                              &printer, h))
     cleanup (h, GNUNET_SYSERR);
+  }
+  else
+  {
+    if ((NULL == subsystem) || (NULL == name))
+    {
+      printf (_("No subsystem or name given\n"));
+      if (h != NULL)
+        GNUNET_STATISTICS_destroy (h, GNUNET_NO);
+      ret = 1;
+      return;
+    }
+    if (GNUNET_OK != GNUNET_STATISTICS_watch (h, subsystem, name, &printer, h))
+    {
+      fprintf (stderr, _("Failed to initialize watch routine\n"));
+      GNUNET_SCHEDULER_add_now (&shutdown_task, h);
+      return;
+    }
+    GNUNET_SCHEDULER_add_delayed(GNUNET_TIME_UNIT_FOREVER_REL, &shutdown_task, h);
+  }
 }
 
 /**
@@ -172,6 +235,9 @@ main (int argc, char *const *argv)
     {'q', "quiet", NULL,
      gettext_noop ("just print the statistics value"), 0,
      &GNUNET_GETOPT_set_one, &quiet},
+    {'w', "watch", NULL,
+     gettext_noop ("watch value continously"), 0,
+     &GNUNET_GETOPT_set_one, &watch},
     GNUNET_GETOPT_OPTION_END
   };
   return (GNUNET_OK ==

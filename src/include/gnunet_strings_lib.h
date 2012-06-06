@@ -66,12 +66,12 @@ GNUNET_STRINGS_fancy_size_to_bytes (const char *fancy_size,
  * Convert a given fancy human-readable time to our internal
  * representation.
  *
- * @param fancy_size human readable string (i.e. 1 minute)
+ * @param fancy_time human readable string (i.e. 1 minute)
  * @param rtime set to the relative time
  * @return GNUNET_OK on success, GNUNET_SYSERR on error
  */
 int
-GNUNET_STRINGS_fancy_time_to_relative (const char *fancy_size,
+GNUNET_STRINGS_fancy_time_to_relative (const char *fancy_time,
                                        struct GNUNET_TIME_Relative *rtime);
 
 
@@ -120,6 +120,27 @@ GNUNET_STRINGS_to_utf8 (const char *input, size_t len, const char *charset);
  */
 char *
 GNUNET_STRINGS_from_utf8 (const char *input, size_t len, const char *charset);
+
+/**
+ * Convert the utf-8 input string to lowercase
+ * Output needs to be allocated appropriately
+ *
+ * @param input input string
+ * @param output output buffer
+ */
+void
+GNUNET_STRINGS_utf8_tolower(const char* input, char** output);
+
+
+/**
+ * Convert the utf-8 input string to lowercase
+ * Output needs to be allocated appropriately
+ *
+ * @param input input string
+ * @param output output buffer
+ */
+void
+GNUNET_STRINGS_utf8_toupper(const char* input, char** output);
 
 
 /**
@@ -213,12 +234,160 @@ GNUNET_STRINGS_relative_time_to_string (struct GNUNET_TIME_Relative delta);
 const char *
 GNUNET_STRINGS_get_short_name (const char *filename);
 
+
+/**
+ * Convert binary data to ASCII encoding.  The ASCII encoding is rather
+ * GNUnet specific.  It was chosen such that it only uses characters
+ * in [0-9A-V], can be produced without complex arithmetics and uses a
+ * small number of characters.  The GNUnet encoding uses 103 characters.
+ * Does not append 0-terminator, but returns a pointer to the place where
+ * it should be placed, if needed.
+ *
+ * @param data data to encode
+ * @param size size of data (in bytes)
+ * @param out buffer to fill
+ * @param out_size size of the buffer. Must be large enough to hold
+ * ((size*8) + (((size*8) % 5) > 0 ? 5 - ((size*8) % 5) : 0)) / 5
+ * @return pointer to the next byte in 'out' or NULL on error.
+ */
+char *
+GNUNET_STRINGS_data_to_string (const unsigned char *data, size_t size,
+			       char *out, size_t out_size);
+
+
+/**
+ * Convert ASCII encoding back to data
+ * out_size must match exactly the size of the data before it was encoded.
+ *
+ * @param enc the encoding
+ * @param enclen number of characters in 'enc' (without 0-terminator, which can be missing)
+ * @param out location where to store the decoded data
+ * @param out_size sizeof the output buffer
+ * @return GNUNET_OK on success, GNUNET_SYSERR if result has the wrong encoding
+ */
+int
+GNUNET_STRINGS_string_to_data (const char *enc, size_t enclen,
+                              unsigned char *out, size_t out_size);
+
+
 #if 0                           /* keep Emacsens' auto-indent happy */
 {
 #endif
 #ifdef __cplusplus
 }
 #endif
+
+enum GNUNET_STRINGS_FilenameCheck
+{
+  GNUNET_STRINGS_CHECK_EXISTS = 0x00000001,
+  GNUNET_STRINGS_CHECK_IS_DIRECTORY = 0x00000002,
+  GNUNET_STRINGS_CHECK_IS_LINK = 0x00000004,
+  GNUNET_STRINGS_CHECK_IS_ABSOLUTE = 0x00000008
+};
+
+/**
+ * Parse a path that might be an URI.
+ *
+ * @param path path to parse. Must be NULL-terminated.
+ * @param scheme_part a pointer to 'char *' where a pointer to a string that
+ *        represents the URI scheme will be stored. Can be NULL. The string is
+ *        allocated by the function, and should be freed by GNUNET_free() when
+ *        it is no longer needed.
+ * @param path_part a pointer to 'const char *' where a pointer to the path
+ *        part of the URI will be stored. Can be NULL. Points to the same block
+ *        of memory as 'path', and thus must not be freed. Might point to '\0',
+ *        if path part is zero-length.
+ * @return GNUNET_YES if it's an URI, GNUNET_NO otherwise. If 'path' is not
+ *         an URI, '* scheme_part' and '*path_part' will remain unchanged
+ *         (if they weren't NULL).
+ */
+int
+GNUNET_STRINGS_parse_uri (const char *path, char **scheme_part,
+    const char **path_part);
+
+
+/**
+ * Check whether filename is absolute or not, and if it's an URI
+ *
+ * @param filename filename to check
+ * @param can_be_uri GNUNET_YES to check for being URI, GNUNET_NO - to
+ *        assume it's not URI
+ * @param r_is_uri a pointer to an int that is set to GNUNET_YES if 'filename'
+ *        is URI and to GNUNET_NO otherwise. Can be NULL. If 'can_be_uri' is
+ *        not GNUNET_YES, *r_is_uri is set to GNUNET_NO.
+ * @param r_uri_scheme a pointer to a char * that is set to a pointer to URI scheme.
+ *        The string is allocated by the function, and should be freed with
+ *        GNUNET_free (). Can be NULL.
+ * @return GNUNET_YES if 'filename' is absolute, GNUNET_NO otherwise.
+ */
+int
+GNUNET_STRINGS_path_is_absolute (const char *filename, 
+				 int can_be_uri,
+				 int *r_is_uri, 
+				 char **r_uri_scheme);
+
+
+/**
+ * Perform checks on 'filename;
+ * 
+ * @param filename file to check
+ * @param checks checks to perform
+ * @return GNUNET_YES if all checks pass, GNUNET_NO if at least one of them
+ *         fails, GNUNET_SYSERR when a check can't be performed
+ */
+int
+GNUNET_STRINGS_check_filename (const char *filename,
+			       enum GNUNET_STRINGS_FilenameCheck checks);
+
+
+/**
+ * Tries to convert 'zt_addr' string to an IPv6 address.
+ * The string is expected to have the format "[ABCD::01]:80".
+ * 
+ * @param zt_addr 0-terminated string. May be mangled by the function.
+ * @param addrlen length of zt_addr (not counting 0-terminator).
+ * @param r_buf a buffer to fill. Initially gets filled with zeroes,
+ *        then its sin6_port, sin6_family and sin6_addr are set appropriately.
+ * @return GNUNET_OK if conversion succeded. GNUNET_SYSERR otherwise, in which
+ *         case the contents of r_buf are undefined.
+ */
+int
+GNUNET_STRINGS_to_address_ipv6 (const char *zt_addr, 
+				uint16_t addrlen,
+				struct sockaddr_in6 *r_buf);
+
+
+/**
+ * Tries to convert 'zt_addr' string to an IPv4 address.
+ * The string is expected to have the format "1.2.3.4:80".
+ * 
+ * @param zt_addr 0-terminated string. May be mangled by the function.
+ * @param addrlen length of zt_addr (not counting 0-terminator).
+ * @param r_buf a buffer to fill.
+ * @return GNUNET_OK if conversion succeded. GNUNET_SYSERR otherwise, in which case
+ *         the contents of r_buf are undefined.
+ */
+int
+GNUNET_STRINGS_to_address_ipv4 (const char *zt_addr, 
+				uint16_t addrlen,
+				struct sockaddr_in *r_buf);
+
+
+/**
+ * Tries to convert 'addr' string to an IP (v4 or v6) address.
+ * Will automatically decide whether to treat 'addr' as v4 or v6 address.
+ * 
+ * @param addr a string, may not be 0-terminated.
+ * @param addrlen number of bytes in addr (if addr is 0-terminated,
+ *        0-terminator should not be counted towards addrlen).
+ * @param r_buf a buffer to fill.
+ * @return GNUNET_OK if conversion succeded. GNUNET_SYSERR otherwise, in which
+ *         case the contents of r_buf are undefined.
+ */
+int
+GNUNET_STRINGS_to_address_ip (const char *addr,
+			      uint16_t addrlen,
+			      struct sockaddr_storage *r_buf);
 
 
 /* ifndef GNUNET_UTIL_STRING_H */

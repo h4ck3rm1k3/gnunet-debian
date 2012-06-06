@@ -33,11 +33,6 @@
 
 #define DEBUG_TRANSPORT GNUNET_EXTRA_LOGGING
 
-#define DEBUG_TRANSPORT_TIMEOUT GNUNET_EXTRA_LOGGING
-
-#define DEBUG_TRANSPORT_DISCONNECT GNUNET_EXTRA_LOGGING
-
-#define DEBUG_TRANSPORT_API GNUNET_EXTRA_LOGGING
 
 /**
  * For how long do we allow unused bandwidth
@@ -289,7 +284,7 @@ struct AddressLookupMessage
 {
 
   /**
-   * Type will be GNUNET_MESSAGE_TYPE_TRANSPORT_ADDRESS_LOOKUP
+   * Type will be GNUNET_MESSAGE_TYPE_TRANSPORT_ADDRESS_TO_STRING
    */
   struct GNUNET_MessageHeader header;
 

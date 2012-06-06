@@ -136,7 +136,7 @@ typedef struct
  * @param addrlen length of the address
  * @return ATS Information containing the network type
  */
-typedef const struct GNUNET_ATS_Information
+typedef struct GNUNET_ATS_Information
 (*GNUNET_TRANSPORT_AddressToType) (void *cls,
                                    const struct sockaddr *addr,
                                    size_t addrlen);
@@ -218,7 +218,11 @@ struct GNUNET_TRANSPORT_PluginEnvironment
 
   /**
    * Function that should be called by the transport plugin
-   * whenever a message is received.
+   * whenever a message is received.  If this field is "NULL",
+   * the plugin should load in 'stub' mode and NOT fully
+   * initialize and instead only return an API with the 
+   * 'address_pretty_printer', 'address_to_string' and
+   * 'string_to_address' functions.
    */
   GNUNET_TRANSPORT_PluginReceiveCallback receive;
 
@@ -309,11 +313,12 @@ typedef void (*GNUNET_TRANSPORT_TransmitContinuation) (void *cls,
  *         and does NOT mean that the message was not transmitted (DV)
  */
 typedef ssize_t (*GNUNET_TRANSPORT_TransmitFunction) (void *cls,
-    struct Session *session,
-    const char *msgbuf, size_t msgbuf_size,
-    unsigned int priority,
-    struct GNUNET_TIME_Relative to,
-    GNUNET_TRANSPORT_TransmitContinuation cont, void *cont_cls);
+						      struct Session *session,
+						      const char *msgbuf, size_t msgbuf_size,
+						      unsigned int priority,
+						      struct GNUNET_TIME_Relative to,
+						      GNUNET_TRANSPORT_TransmitContinuation cont,
+						      void *cont_cls);
 
 
 /**
@@ -423,6 +428,24 @@ typedef const char *(*GNUNET_TRANSPORT_AddressToString) (void *cls,
                                                          const void *addr,
                                                          size_t addrlen);
 
+/**
+ * Function called to convert a string address to
+ * a binary address.
+ *
+ * @param cls closure ('struct Plugin*')
+ * @param addr string address
+ * @param addrlen length of the address
+ * @param buf location to store the buffer
+ *        If the function returns GNUNET_SYSERR, its contents are undefined.
+ * @param added length of created address
+ * @return GNUNET_OK on success, GNUNET_SYSERR on failure
+ */
+typedef int (*GNUNET_TRANSPORT_StringToAddress) (void *cls,
+                                                 const char *addr,
+                                                 uint16_t addrlen,
+                                                 void **buf,
+                                                 size_t *added);
+
 
 /**
  * Each plugin is required to return a pointer to a struct of this
@@ -475,6 +498,12 @@ struct GNUNET_TRANSPORT_PluginFunctions
    * to a string (numeric conversion only).
    */
   GNUNET_TRANSPORT_AddressToString address_to_string;
+
+  /**
+   * Function that will be called to convert a string address
+   * to binary (numeric conversion only).
+   */
+  GNUNET_TRANSPORT_StringToAddress string_to_address;
 
   /**
    * Function that will be called tell the plugin to create a session

@@ -127,10 +127,8 @@ struct GNUNET_STREAM_AckMessage
   GNUNET_STREAM_AckBitmap bitmap GNUNET_PACKED;
 
   /**
-   * The sequence number of the Data Message upto which the receiver has filled
-   * its buffer without any missing packets
-   *
-   * FIXME: Do we need this?
+   * The sequence number of the next Data Message receiver is
+   * anticipating. Data messages less than this number are received by receiver
    */
   uint32_t base_sequence_number GNUNET_PACKED;
 
@@ -163,7 +161,7 @@ struct GNUNET_STREAM_HelloAckMessage
    *
    * FIXME: Remove if not needed
    */
-  uint32_t receive_window_size;
+  uint32_t receiver_window_size;
 };
 
 

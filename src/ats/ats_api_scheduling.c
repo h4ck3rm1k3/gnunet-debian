@@ -27,7 +27,6 @@
 #include "gnunet_ats_service.h"
 #include "ats.h"
 
-#define DEBUG_ATS GNUNET_EXTRA_LOGGING
 
 #define INTERFACE_PROCESSING_INTERVALL GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 1)
 
@@ -146,7 +145,6 @@ struct GNUNET_ATS_SchedulingHandle
    */
   struct ATS_Network * net_tail;
 
-
   /**
    * Array of session objects (we need to translate them to numbers and back
    * for the protocol; the offset in the array is the session number on the
@@ -163,7 +161,6 @@ struct GNUNET_ATS_SchedulingHandle
   /**
    * Task retrieving interfaces from the system
    */
-
   GNUNET_SCHEDULER_TaskIdentifier interface_task;
 
 
@@ -213,7 +210,7 @@ static void
 force_reconnect (struct GNUNET_ATS_SchedulingHandle *sh)
 {
   sh->reconnect = GNUNET_NO;
-  GNUNET_CLIENT_disconnect (sh->client, GNUNET_NO);
+  GNUNET_CLIENT_disconnect (sh->client);
   sh->client = NULL;
   sh->task =
       GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_SECONDS, &reconnect_task,
@@ -319,10 +316,11 @@ static struct Session *
 find_session (struct GNUNET_ATS_SchedulingHandle *sh, uint32_t session_id,
               const struct GNUNET_PeerIdentity *peer)
 {
-#if DEBUG_ATS
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Find session %u from peer %s in %p\n",
+
+  GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
+              "Find session %u from peer %s in %p\n",
               (unsigned int) session_id, GNUNET_i2s (peer), sh);
-#endif
+
   if (session_id >= sh->session_array_size)
   {
     GNUNET_break (0);
@@ -366,11 +364,11 @@ get_session_id (struct GNUNET_ATS_SchedulingHandle *sh, struct Session *session,
   unsigned int i;
   unsigned int f;
 
-#if DEBUG_ATS
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+
+  GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
               "Get session ID for session %p from peer %s in %p\n", session,
               GNUNET_i2s (peer), sh);
-#endif
+
   if (NULL == session)
     return 0;
   f = 0;
@@ -396,11 +394,11 @@ get_session_id (struct GNUNET_ATS_SchedulingHandle *sh, struct Session *session,
   sh->session_array[f].session = session;
   sh->session_array[f].peer = *peer;
   sh->session_array[f].slot_used = GNUNET_YES;
-#if DEBUG_ATS
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+
+  GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
               "Assigning session ID %u for session %p of peer %s in %p\n", f,
               session, GNUNET_i2s (peer), sh);
-#endif
+
   return f;
 }
 
@@ -417,11 +415,13 @@ static void
 remove_session (struct GNUNET_ATS_SchedulingHandle *sh, uint32_t session_id,
                 const struct GNUNET_PeerIdentity *peer)
 {
-#if DEBUG_ATS
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Remove sessionID %u from peer %s in %p\n",
+  GNUNET_assert (peer != NULL);
+  GNUNET_assert (sh != NULL);
+
+  GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
+              "Release sessionID %u from peer %s in %p\n",
               (unsigned int) session_id, GNUNET_i2s (peer), sh);
-#endif
+
   if (0 == session_id)
     return;
   GNUNET_assert (session_id < sh->session_array_size);
@@ -445,11 +445,11 @@ static void
 release_session (struct GNUNET_ATS_SchedulingHandle *sh, uint32_t session_id,
                  const struct GNUNET_PeerIdentity *peer)
 {
-#if DEBUG_ATS
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+
+  GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
               "Release sessionID %u from peer %s in %p\n",
               (unsigned int) session_id, GNUNET_i2s (peer), sh);
-#endif
+
   if (session_id >= sh->session_array_size)
   {
     GNUNET_break (0);
@@ -552,11 +552,10 @@ process_ats_message (void *cls, const struct GNUNET_MessageHeader *msg)
     s = find_session (sh, session_id, &m->peer);
     if (s == NULL)
     {
-#if DEBUG_ATS
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+
+      GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
                   "ATS tries to use outdated session `%s'\n",
                   GNUNET_i2s (&m->peer));
-#endif
       GNUNET_CLIENT_receive (sh->client, &process_ats_message, sh,
                              GNUNET_TIME_UNIT_FOREVER_REL);
       return;
@@ -618,10 +617,10 @@ reconnect (struct GNUNET_ATS_SchedulingHandle *sh)
   do_transmit (sh);
 }
 
+
 /**
  * delete the current network list
  */
-
 static void
 delete_networks (struct GNUNET_ATS_SchedulingHandle *sh)
 {
@@ -734,7 +733,6 @@ interface_proc (void *cls, const char *name,
 }
 
 
-
 /**
  * Periodically get list of addresses
  * @param cls closure
@@ -752,15 +750,16 @@ get_addresses (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
                                                      sh);
 }
 
+
 /**
  * Returns where the address is located: LAN or WAN or ...
+ *
  * @param sh the scheduling handle
  * @param addr address
  * @param addrlen address length
  * @return location as GNUNET_ATS_Information
  */
-
-const struct GNUNET_ATS_Information
+struct GNUNET_ATS_Information
 GNUNET_ATS_address_get_type (struct GNUNET_ATS_SchedulingHandle * sh, const struct sockaddr * addr, socklen_t addrlen)
 {
   GNUNET_assert (sh != NULL);
@@ -807,7 +806,8 @@ GNUNET_ATS_address_get_type (struct GNUNET_ATS_SchedulingHandle * sh, const stru
       if (((a4->sin_addr.s_addr & mask4->sin_addr.s_addr)) == net4->sin_addr.s_addr)
       {
         char * net = GNUNET_strdup (GNUNET_a2s ((const struct sockaddr *) net4, addrlen));
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "`%s' is in network `%s'\n",
+        GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "ats-scheduling-api",
+            "`%s' is in network `%s'\n",
             GNUNET_a2s ((const struct sockaddr *)a4, addrlen),
             net);
         GNUNET_free (net);
@@ -845,32 +845,11 @@ GNUNET_ATS_address_get_type (struct GNUNET_ATS_SchedulingHandle * sh, const stru
   /* no local network found for this address, default: WAN */
   if (type == GNUNET_ATS_NET_UNSPECIFIED)
     type = GNUNET_ATS_NET_WAN;
-
-#if VERBOSE
-  const char * range;
-  switch (type) {
-    case GNUNET_ATS_NET_WAN:
-        range = "WAN";
-      break;
-    case GNUNET_ATS_NET_LAN:
-        range = "LAN";
-      break;
-    case GNUNET_ATS_NET_LOOPBACK:
-        range = "LOOPBACK";
-      break;
-    default:
-
-      break;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "`%s' is in network `%s'\n",
-        GNUNET_a2s ((const struct sockaddr *) addr, addrlen),
-        range);
-#endif
-
   ats.type = htonl (GNUNET_ATS_NETWORK_TYPE);
   ats.value = htonl (type);
   return (const struct GNUNET_ATS_Information) ats;
 }
+
 
 /**
  * Initialize the ATS subsystem.
@@ -918,7 +897,7 @@ GNUNET_ATS_scheduling_done (struct GNUNET_ATS_SchedulingHandle *sh)
   }
   if (NULL != sh->client)
   {
-    GNUNET_CLIENT_disconnect (sh->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (sh->client);
     sh->client = NULL;
   }
   if (GNUNET_SCHEDULER_NO_TASK != sh->task)
@@ -938,6 +917,32 @@ GNUNET_ATS_scheduling_done (struct GNUNET_ATS_SchedulingHandle *sh)
   sh = NULL;
 }
 
+/**
+ * We would like to reset the address suggestion block time for this
+ * peer
+ *
+ * @param sh handle
+ * @param peer identity of the peer we want to reset
+ */
+void
+GNUNET_ATS_reset_backoff (struct GNUNET_ATS_SchedulingHandle *sh,
+                          const struct GNUNET_PeerIdentity *peer)
+{
+  struct PendingMessage *p;
+  struct ResetBackoffMessage *m;
+
+  p = GNUNET_malloc (sizeof (struct PendingMessage) +
+                     sizeof (struct ResetBackoffMessage));
+  p->size = sizeof (struct ResetBackoffMessage);
+  p->is_init = GNUNET_NO;
+  m = (struct ResetBackoffMessage *) &p[1];
+  m->header.type = htons (GNUNET_MESSAGE_TYPE_ATS_RESET_BACKOFF);
+  m->header.size = htons (sizeof (struct ResetBackoffMessage));
+  m->reserved = htonl (0);
+  m->peer = *peer;
+  GNUNET_CONTAINER_DLL_insert_tail (sh->pending_head, sh->pending_tail, p);
+  do_transmit (sh);
+}
 
 /**
  * We would like to establish a new connection with a peer.  ATS
@@ -953,6 +958,8 @@ GNUNET_ATS_suggest_address (struct GNUNET_ATS_SchedulingHandle *sh,
   struct PendingMessage *p;
   struct RequestAddressMessage *m;
 
+  // FIXME: ATS needs to remember this in case of
+  // a disconnect!
   p = GNUNET_malloc (sizeof (struct PendingMessage) +
                      sizeof (struct RequestAddressMessage));
   p->size = sizeof (struct RequestAddressMessage);
@@ -992,6 +999,7 @@ GNUNET_ATS_suggest_address_cancel (struct GNUNET_ATS_SchedulingHandle *sh,
   GNUNET_CONTAINER_DLL_insert_tail (sh->pending_head, sh->pending_tail, p);
   do_transmit (sh);
 }
+
 
 /**
  * We have updated performance statistics for a given address.  Note
@@ -1117,9 +1125,9 @@ GNUNET_ATS_address_in_use (struct GNUNET_ATS_SchedulingHandle *sh,
   memcpy (pm, address->address, address->address_length);
   memcpy (&pm[address->address_length], address->transport_name, namelen);
   GNUNET_CONTAINER_DLL_insert_tail (sh->pending_head, sh->pending_tail, p);
-
   do_transmit (sh);
 }
+
 
 /**
  * A session got destroyed, stop including it as a valid address.

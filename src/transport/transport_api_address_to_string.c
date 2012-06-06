@@ -71,7 +71,7 @@ address_response_processor (void *cls, const struct GNUNET_MessageHeader *msg)
   if (msg == NULL)
   {
     alucb->cb (alucb->cb_cls, NULL);
-    GNUNET_CLIENT_disconnect (alucb->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (alucb->client);
     GNUNET_free (alucb);
     return;
   }
@@ -82,7 +82,7 @@ address_response_processor (void *cls, const struct GNUNET_MessageHeader *msg)
   {
     /* done! */
     alucb->cb (alucb->cb_cls, NULL);
-    GNUNET_CLIENT_disconnect (alucb->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (alucb->client);
     GNUNET_free (alucb);
     return;
   }
@@ -92,7 +92,7 @@ address_response_processor (void *cls, const struct GNUNET_MessageHeader *msg)
     /* invalid reply */
     GNUNET_break (0);
     alucb->cb (alucb->cb_cls, NULL);
-    GNUNET_CLIENT_disconnect (alucb->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (alucb->client);
     GNUNET_free (alucb);
     return;
   }
@@ -141,13 +141,9 @@ GNUNET_TRANSPORT_address_to_string (const struct GNUNET_CONFIGURATION_Handle
     GNUNET_break (0);
     return NULL;
   }
-
   client = GNUNET_CLIENT_connect ("transport", cfg);
-  if (client == NULL)
+  if (NULL == client)
     return NULL;
-#if DEBUG_TRANSPORT
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "GNUNET_TRANSPORT_address_to_string\n");
-#endif
   msg = GNUNET_malloc (len);
   msg->header.size = htons (len);
   msg->header.type = htons (GNUNET_MESSAGE_TYPE_TRANSPORT_ADDRESS_TO_STRING);
@@ -183,7 +179,7 @@ GNUNET_TRANSPORT_address_to_string_cancel (struct
                                            GNUNET_TRANSPORT_AddressToStringContext
                                            *alc)
 {
-  GNUNET_CLIENT_disconnect (alc->client, GNUNET_NO);
+  GNUNET_CLIENT_disconnect (alc->client);
   GNUNET_free (alc);
 }
 

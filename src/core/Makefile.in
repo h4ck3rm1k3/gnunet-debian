@@ -37,8 +37,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-bin_PROGRAMS = gnunet-service-core$(EXEEXT) \
-	gnunet-core-list-connections$(EXEEXT)
+bin_PROGRAMS = gnunet-service-core$(EXEEXT) gnunet-core$(EXEEXT)
 check_PROGRAMS = test_core_api_start_only$(EXEEXT) \
 	test_core_api$(EXEEXT) test_core_api_reliability$(EXEEXT) \
 	test_core_quota_compliance_symmetric$(EXEEXT) \
@@ -95,7 +94,8 @@ am__DEPENDENCIES_1 =
 libgnunetcore_la_DEPENDENCIES =  \
 	$(top_builddir)/src/util/libgnunetutil.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
-am_libgnunetcore_la_OBJECTS = core_api.lo core_api_iterate_peers.lo
+am_libgnunetcore_la_OBJECTS = core_api.lo core_api_iterate_peers.lo \
+	core_api_is_connected.lo
 libgnunetcore_la_OBJECTS = $(am_libgnunetcore_la_OBJECTS)
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
@@ -105,10 +105,8 @@ libgnunetcore_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_CFLAGS) $(CFLAGS) $(libgnunetcore_la_LDFLAGS) $(LDFLAGS) \
 	-o $@
 PROGRAMS = $(bin_PROGRAMS)
-am_gnunet_core_list_connections_OBJECTS =  \
-	gnunet-core-list-connections.$(OBJEXT)
-gnunet_core_list_connections_OBJECTS =  \
-	$(am_gnunet_core_list_connections_OBJECTS)
+am_gnunet_core_OBJECTS = gnunet-core.$(OBJEXT)
+gnunet_core_OBJECTS = $(am_gnunet_core_OBJECTS)
 am_gnunet_service_core_OBJECTS = gnunet-service-core.$(OBJEXT) \
 	gnunet-service-core_clients.$(OBJEXT) \
 	gnunet-service-core_neighbours.$(OBJEXT) \
@@ -203,8 +201,7 @@ am__v_CCLD_0 = @echo "  CCLD  " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libgnunetcore_la_SOURCES) \
-	$(gnunet_core_list_connections_SOURCES) \
+SOURCES = $(libgnunetcore_la_SOURCES) $(gnunet_core_SOURCES) \
 	$(gnunet_service_core_SOURCES) $(test_core_api_SOURCES) \
 	$(test_core_api_reliability_SOURCES) \
 	$(test_core_api_send_to_self_SOURCES) \
@@ -212,8 +209,7 @@ SOURCES = $(libgnunetcore_la_SOURCES) \
 	$(test_core_quota_compliance_asymmetric_recv_limited_SOURCES) \
 	$(test_core_quota_compliance_asymmetric_send_limited_SOURCES) \
 	$(test_core_quota_compliance_symmetric_SOURCES)
-DIST_SOURCES = $(libgnunetcore_la_SOURCES) \
-	$(gnunet_core_list_connections_SOURCES) \
+DIST_SOURCES = $(libgnunetcore_la_SOURCES) $(gnunet_core_SOURCES) \
 	$(gnunet_service_core_SOURCES) $(test_core_api_SOURCES) \
 	$(test_core_api_reliability_SOURCES) \
 	$(test_core_api_send_to_self_SOURCES) \
@@ -282,6 +278,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -315,6 +312,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -444,7 +442,8 @@ lib_LTLIBRARIES = \
 
 libgnunetcore_la_SOURCES = \
   core_api.c core.h \
-  core_api_iterate_peers.c
+  core_api_iterate_peers.c \
+  core_api_is_connected.c 
 
 libgnunetcore_la_LIBADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
@@ -470,16 +469,14 @@ gnunet_service_core_LDADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
   $(GN_LIBINTL) -lz
 
-gnunet_core_list_connections_SOURCES = \
- gnunet-core-list-connections.c         
+gnunet_core_SOURCES = \
+ gnunet-core.c         
 
-gnunet_core_list_connections_LDADD = \
+gnunet_core_LDADD = \
   $(top_builddir)/src/core/libgnunetcore.la \
-  $(top_builddir)/src/transport/libgnunettransport.la \
-  $(top_builddir)/src/hello/libgnunethello.la \
   $(top_builddir)/src/util/libgnunetutil.la
 
-gnunet_core_list_connections_DEPENDENCIES = \
+gnunet_core_DEPENDENCIES = \
   libgnunetcore.la
 
 @ENABLE_TEST_RUN_TRUE@TESTS = $(check_PROGRAMS)
@@ -675,9 +672,9 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
-gnunet-core-list-connections$(EXEEXT): $(gnunet_core_list_connections_OBJECTS) $(gnunet_core_list_connections_DEPENDENCIES) 
-	@rm -f gnunet-core-list-connections$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(gnunet_core_list_connections_OBJECTS) $(gnunet_core_list_connections_LDADD) $(LIBS)
+gnunet-core$(EXEEXT): $(gnunet_core_OBJECTS) $(gnunet_core_DEPENDENCIES) 
+	@rm -f gnunet-core$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gnunet_core_OBJECTS) $(gnunet_core_LDADD) $(LIBS)
 gnunet-service-core$(EXEEXT): $(gnunet_service_core_OBJECTS) $(gnunet_service_core_DEPENDENCIES) 
 	@rm -f gnunet-service-core$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(gnunet_service_core_OBJECTS) $(gnunet_service_core_LDADD) $(LIBS)
@@ -710,8 +707,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/core_api.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/core_api_is_connected.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/core_api_iterate_peers.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-core-list-connections.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-core.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-core.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-core_clients.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-core_kx.Po@am__quote@

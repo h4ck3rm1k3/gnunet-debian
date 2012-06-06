@@ -37,8 +37,17 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-bin_PROGRAMS = gnunet-service-gns$(EXEEXT)
-check_PROGRAMS = test_gns_twopeer$(EXEEXT)
+bin_PROGRAMS = gnunet-service-gns$(EXEEXT) $(am__EXEEXT_1) \
+	$(am__EXEEXT_2) gnunet-gns$(EXEEXT)
+check_PROGRAMS = test_gns_simple_shorten$(EXEEXT) \
+	test_gns_simple_get_authority$(EXEEXT) \
+	test_gns_simple_lookup$(EXEEXT) \
+	test_gns_simple_delegated_lookup$(EXEEXT) \
+	test_gns_simple_mx_lookup$(EXEEXT) \
+	test_gns_simple_zkey_lookup$(EXEEXT) \
+	test_gns_dht_delegated_lookup$(EXEEXT) \
+	test_gns_pseu_shorten$(EXEEXT) test_gns_max_queries$(EXEEXT) \
+	test_gns_dht_threepeer$(EXEEXT)
 subdir = src/gns
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/gns.conf.in
@@ -101,18 +110,52 @@ libgnunetgns_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(AM_CFLAGS) $(CFLAGS) $(libgnunetgns_la_LDFLAGS) $(LDFLAGS) \
 	-o $@
-am_libgnunetnamestore_la_OBJECTS = namestore_stub_api.lo
-libgnunetnamestore_la_OBJECTS = $(am_libgnunetnamestore_la_OBJECTS)
-libgnunetnamestore_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(AM_CFLAGS) $(CFLAGS) $(libgnunetnamestore_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
+@HAVE_MHD_TRUE@am__EXEEXT_1 = gnunet-gns-fcfsd$(EXEEXT)
+@HAVE_MHD_TRUE@am__EXEEXT_2 = gnunet-gns-proxy$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
-am_gnunet_service_gns_OBJECTS = gnunet-service-gns.$(OBJEXT)
-gnunet_service_gns_OBJECTS = $(am_gnunet_service_gns_OBJECTS)
+am_gnunet_gns_OBJECTS = gnunet-gns.$(OBJEXT)
+gnunet_gns_OBJECTS = $(am_gnunet_gns_OBJECTS)
 am__DEPENDENCIES_1 =
-am_test_gns_twopeer_OBJECTS = test_gns_twopeer.$(OBJEXT)
-test_gns_twopeer_OBJECTS = $(am_test_gns_twopeer_OBJECTS)
+am_gnunet_gns_fcfsd_OBJECTS = gnunet-gns-fcfsd.$(OBJEXT)
+gnunet_gns_fcfsd_OBJECTS = $(am_gnunet_gns_fcfsd_OBJECTS)
+am_gnunet_gns_proxy_OBJECTS = gnunet-gns-proxy.$(OBJEXT)
+gnunet_gns_proxy_OBJECTS = $(am_gnunet_gns_proxy_OBJECTS)
+am_gnunet_service_gns_OBJECTS = gnunet-service-gns.$(OBJEXT) \
+	gnunet-service-gns_resolver.$(OBJEXT) \
+	gnunet-service-gns_interceptor.$(OBJEXT)
+gnunet_service_gns_OBJECTS = $(am_gnunet_service_gns_OBJECTS)
+am_test_gns_dht_delegated_lookup_OBJECTS =  \
+	test_gns_dht_delegated_lookup.$(OBJEXT)
+test_gns_dht_delegated_lookup_OBJECTS =  \
+	$(am_test_gns_dht_delegated_lookup_OBJECTS)
+am_test_gns_dht_threepeer_OBJECTS = test_gns_dht_threepeer.$(OBJEXT)
+test_gns_dht_threepeer_OBJECTS = $(am_test_gns_dht_threepeer_OBJECTS)
+am_test_gns_max_queries_OBJECTS = test_gns_max_queries.$(OBJEXT)
+test_gns_max_queries_OBJECTS = $(am_test_gns_max_queries_OBJECTS)
+am_test_gns_pseu_shorten_OBJECTS = test_gns_pseu_shorten.$(OBJEXT)
+test_gns_pseu_shorten_OBJECTS = $(am_test_gns_pseu_shorten_OBJECTS)
+am_test_gns_simple_delegated_lookup_OBJECTS =  \
+	test_gns_simple_delegated_lookup.$(OBJEXT)
+test_gns_simple_delegated_lookup_OBJECTS =  \
+	$(am_test_gns_simple_delegated_lookup_OBJECTS)
+am_test_gns_simple_get_authority_OBJECTS =  \
+	test_gns_simple_get_authority.$(OBJEXT)
+test_gns_simple_get_authority_OBJECTS =  \
+	$(am_test_gns_simple_get_authority_OBJECTS)
+am_test_gns_simple_lookup_OBJECTS = test_gns_simple_lookup.$(OBJEXT)
+test_gns_simple_lookup_OBJECTS = $(am_test_gns_simple_lookup_OBJECTS)
+am_test_gns_simple_mx_lookup_OBJECTS =  \
+	test_gns_simple_mx_lookup.$(OBJEXT)
+test_gns_simple_mx_lookup_OBJECTS =  \
+	$(am_test_gns_simple_mx_lookup_OBJECTS)
+am_test_gns_simple_shorten_OBJECTS =  \
+	test_gns_simple_shorten.$(OBJEXT)
+test_gns_simple_shorten_OBJECTS =  \
+	$(am_test_gns_simple_shorten_OBJECTS)
+am_test_gns_simple_zkey_lookup_OBJECTS =  \
+	test_gns_simple_zkey_lookup.$(OBJEXT)
+test_gns_simple_zkey_lookup_OBJECTS =  \
+	$(am_test_gns_simple_zkey_lookup_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -140,17 +183,77 @@ AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libgnunet_plugin_block_gns_la_SOURCES) \
-	$(libgnunetgns_la_SOURCES) $(libgnunetnamestore_la_SOURCES) \
-	$(gnunet_service_gns_SOURCES) $(test_gns_twopeer_SOURCES)
+	$(libgnunetgns_la_SOURCES) $(gnunet_gns_SOURCES) \
+	$(gnunet_gns_fcfsd_SOURCES) $(gnunet_gns_proxy_SOURCES) \
+	$(gnunet_service_gns_SOURCES) \
+	$(test_gns_dht_delegated_lookup_SOURCES) \
+	$(test_gns_dht_threepeer_SOURCES) \
+	$(test_gns_max_queries_SOURCES) \
+	$(test_gns_pseu_shorten_SOURCES) \
+	$(test_gns_simple_delegated_lookup_SOURCES) \
+	$(test_gns_simple_get_authority_SOURCES) \
+	$(test_gns_simple_lookup_SOURCES) \
+	$(test_gns_simple_mx_lookup_SOURCES) \
+	$(test_gns_simple_shorten_SOURCES) \
+	$(test_gns_simple_zkey_lookup_SOURCES)
 DIST_SOURCES = $(libgnunet_plugin_block_gns_la_SOURCES) \
-	$(libgnunetgns_la_SOURCES) $(libgnunetnamestore_la_SOURCES) \
-	$(gnunet_service_gns_SOURCES) $(test_gns_twopeer_SOURCES)
+	$(libgnunetgns_la_SOURCES) $(gnunet_gns_SOURCES) \
+	$(gnunet_gns_fcfsd_SOURCES) $(gnunet_gns_proxy_SOURCES) \
+	$(gnunet_service_gns_SOURCES) \
+	$(test_gns_dht_delegated_lookup_SOURCES) \
+	$(test_gns_dht_threepeer_SOURCES) \
+	$(test_gns_max_queries_SOURCES) \
+	$(test_gns_pseu_shorten_SOURCES) \
+	$(test_gns_simple_delegated_lookup_SOURCES) \
+	$(test_gns_simple_get_authority_SOURCES) \
+	$(test_gns_simple_lookup_SOURCES) \
+	$(test_gns_simple_mx_lookup_SOURCES) \
+	$(test_gns_simple_shorten_SOURCES) \
+	$(test_gns_simple_zkey_lookup_SOURCES)
+RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
+	html-recursive info-recursive install-data-recursive \
+	install-dvi-recursive install-exec-recursive \
+	install-html-recursive install-info-recursive \
+	install-pdf-recursive install-ps-recursive install-recursive \
+	installcheck-recursive installdirs-recursive pdf-recursive \
+	ps-recursive uninstall-recursive
 DATA = $(pkgcfg_DATA)
+RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
+  distclean-recursive maintainer-clean-recursive
+AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
+	$(RECURSIVE_CLEAN_TARGETS:-recursive=) tags TAGS ctags CTAGS \
+	distdir
 ETAGS = etags
 CTAGS = ctags
 am__tty_colors = \
 red=; grn=; lgn=; blu=; std=
+DIST_SUBDIRS = . nss
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+am__relativize = \
+  dir0=`pwd`; \
+  sed_first='s,^\([^/]*\)/.*$$,\1,'; \
+  sed_rest='s,^[^/]*/*,,'; \
+  sed_last='s,^.*/\([^/]*\)$$,\1,'; \
+  sed_butlast='s,/*[^/]*$$,,'; \
+  while test -n "$$dir1"; do \
+    first=`echo "$$dir1" | sed -e "$$sed_first"`; \
+    if test "$$first" != "."; then \
+      if test "$$first" = ".."; then \
+        dir2=`echo "$$dir0" | sed -e "$$sed_last"`/"$$dir2"; \
+        dir0=`echo "$$dir0" | sed -e "$$sed_butlast"`; \
+      else \
+        first2=`echo "$$dir2" | sed -e "$$sed_first"`; \
+        if test "$$first2" = "$$first"; then \
+          dir2=`echo "$$dir2" | sed -e "$$sed_rest"`; \
+        else \
+          dir2="../$$dir2"; \
+        fi; \
+        dir0="$$dir0"/"$$first"; \
+      fi; \
+    fi; \
+    dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
+  done; \
+  reldir="$$dir2"
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
@@ -206,6 +309,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -239,6 +343,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -356,6 +461,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 INCLUDES = -I$(top_srcdir)/src/include
+@HAVE_GLIBCNSS_TRUE@NSS_SUBDIR = nss
+SUBDIRS = . $(NSS_SUBDIR)
 @MINGW_TRUE@WINFLAGS = -Wl,--no-undefined -Wl,--export-all-symbols
 @USE_COVERAGE_TRUE@AM_CFLAGS = --coverage -O0
 pkgcfgdir = $(pkgdatadir)/config.d/
@@ -364,107 +471,275 @@ pkgcfg_DATA = \
   gns.conf
 
 lib_LTLIBRARIES = \
-  libgnunetgns.la libgnunetnamestore.la
+  libgnunetgns.la
 
+@HAVE_MHD_TRUE@DO_FCFSD = gnunet-gns-fcfsd
+@HAVE_MHD_TRUE@DO_PROXY = gnunet-gns-proxy
 
-#noinst_PROGRAMS = \
-#  gnunet-gns-lookup
-check_SCRIPTS = \
- test_gnunet_gns.sh
-
+#  test_gns_simple_lookup
+#  test_gns_simple_delegated_lookup
+#  test_gns_dht_delegated_lookup
 plugin_LTLIBRARIES = \
   libgnunet_plugin_block_gns.la
 
-test_gns_twopeer_SOURCES = \
-  test_gns_twopeer.c
+test_gns_dht_threepeer_SOURCES = \
+  test_gns_dht_threepeer.c
 
-test_gns_twopeer_LDADD = \
+test_gns_dht_threepeer_LDADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
   $(top_builddir)/src/testing/libgnunettesting.la
 
-test_gns_twopeer_DEPENDENCIES = \
+test_gns_dht_threepeer_DEPENDENCIES = \
   $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
   $(top_builddir)/src/testing/libgnunettesting.la
 
+test_gns_simple_lookup_SOURCES = \
+  test_gns_simple_lookup.c
 
-#gnunet_gns_lookup_SOURCES = \
-# gnunet-gns-lookup.c
-#gnunet_gns_lookup_LDADD = \
-#  $(top_builddir)/src/gns/libgnunetgns.la \
-#  $(top_builddir)/src/util/libgnunetutil.la \
-#  $(GN_LIBINTL)
-#gnunet_dns_lookup_DEPENDENCIES = \
-#  libgnunetgns.la
+test_gns_simple_lookup_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_lookup_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_delegated_lookup_SOURCES = \
+  test_gns_simple_delegated_lookup.c
+
+test_gns_simple_delegated_lookup_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_delegated_lookup_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_mx_lookup_SOURCES = \
+  test_gns_simple_mx_lookup.c
+
+test_gns_simple_mx_lookup_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_mx_lookup_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_zkey_lookup_SOURCES = \
+  test_gns_simple_zkey_lookup.c
+
+test_gns_simple_zkey_lookup_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_zkey_lookup_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_dht_delegated_lookup_SOURCES = \
+  test_gns_dht_delegated_lookup.c
+
+test_gns_dht_delegated_lookup_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/dht/libgnunetdht.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_dht_delegated_lookup_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/dht/libgnunetdht.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_shorten_SOURCES = \
+  test_gns_simple_shorten.c
+
+test_gns_simple_shorten_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_shorten_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_get_authority_SOURCES = \
+  test_gns_simple_get_authority.c
+
+test_gns_simple_get_authority_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_simple_get_authority_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_pseu_shorten_SOURCES = \
+  test_gns_pseu_shorten.c
+
+test_gns_pseu_shorten_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/dht/libgnunetdht.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_pseu_shorten_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/dht/libgnunetdht.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_max_queries_SOURCES = \
+  test_gns_max_queries.c
+
+test_gns_max_queries_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+test_gns_max_queries_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/testing/libgnunettesting.la
+
+gnunet_gns_SOURCES = \
+ gnunet-gns.c
+
+gnunet_gns_LDADD = \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(GN_LIBINTL)
+
+gnunet_gns_DEPENDENCIES = \
+  libgnunetgns.la
+
+gnunet_gns_proxy_SOURCES = \
+ gnunet-gns-proxy.c gns_proxy_proto.h 
+
+gnunet_gns_proxy_LDADD = -lmicrohttpd \
+  $(top_builddir)/src/gns/libgnunetgns.la \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(GN_LIBINTL)
+
+gnunet_gns_proxy_DEPENDENCIES = \
+  libgnunetgns.la
+
 gnunet_service_gns_SOURCES = \
- gnunet-service-gns.c 
+ gnunet-service-gns.c \
+ gnunet-service-gns_resolver.c gnunet-service-gns_resolver.h \
+ gnunet-service-gns_interceptor.c gnunet-service-gns_interceptor.h 
 
 gnunet_service_gns_LDADD = \
-  $(top_builddir)/src/tun/libgnunettun.la \
-  $(top_builddir)/src/mesh/libgnunetmesh.la \
   $(top_builddir)/src/statistics/libgnunetstatistics.la \
   $(top_builddir)/src/util/libgnunetutil.la \
 	$(top_builddir)/src/dns/libgnunetdns.la \
 	$(top_builddir)/src/dns/libgnunetdnsparser.la \
 	$(top_builddir)/src/dht/libgnunetdht.la \
-	$(top_builddir)/src/gns/libgnunetnamestore.la \
+	$(top_builddir)/src/namestore/libgnunetnamestore.la \
   $(GN_LIBINTL)
 
 gnunet_service_gns_DEPENDENCIES = \
-  $(top_builddir)/src/tun/libgnunettun.la \
-  $(top_builddir)/src/mesh/libgnunetmesh.la \
   $(top_builddir)/src/statistics/libgnunetstatistics.la \
   $(top_builddir)/src/util/libgnunetutil.la \
 	$(top_builddir)/src/dns/libgnunetdns.la \
 	$(top_builddir)/src/dns/libgnunetdnsparser.la \
 	$(top_builddir)/src/dht/libgnunetdht.la \
-	$(top_builddir)/src/gns/libgnunetnamestore.la
+	$(top_builddir)/src/namestore/libgnunetnamestore.la
+
+gnunet_gns_fcfsd_SOURCES = \
+ gnunet-gns-fcfsd.c 
+
+gnunet_gns_fcfsd_LDADD = -lmicrohttpd \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la \
+  $(GN_LIBINTL)
+
+gnunet_gns_fcfsd_DEPENDENCIES = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la
 
 libgnunetgns_la_SOURCES = \
  gns_api.c gns.h
 
 libgnunetgns_la_LIBADD = \
- $(top_builddir)/src/util/libgnunetutil.la $(XLIB)
+ $(top_builddir)/src/util/libgnunetutil.la $(XLIB) \
+ $(top_builddir)/src/namestore/libgnunetnamestore.la
 
 libgnunetgns_la_LDFLAGS = \
   $(GN_LIB_LDFLAGS)
 
 libgnunetgns_la_DEPENDENCIES = \
- $(top_builddir)/src/util/libgnunetutil.la
+ $(top_builddir)/src/util/libgnunetutil.la \
+ $(top_builddir)/src/namestore/libgnunetnamestore.la
 
 libgnunet_plugin_block_gns_la_SOURCES = \
   plugin_block_gns.c
 
 libgnunet_plugin_block_gns_la_LIBADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
-  $(top_builddir)/src/block/libgnunetblock.la
+  $(top_builddir)/src/block/libgnunetblock.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la
 
 libgnunet_plugin_block_gns_la_LDFLAGS = \
   $(GN_PLUGIN_LDFLAGS)
 
 libgnunet_plugin_block_gns_la_DEPENDENCIES = \
   $(top_builddir)/src/util/libgnunetutil.la \
-  $(top_builddir)/src/block/libgnunetblock.la
+  $(top_builddir)/src/block/libgnunetblock.la \
+  $(top_builddir)/src/namestore/libgnunetnamestore.la
 
 
 #Build stub api
-libgnunetnamestore_la_SOURCES = \
- namestore_stub_api.c
-
-libgnunetnamestore_la_LIBADD = \
- $(top_builddir)/src/util/libgnunetutil.la $(XLIB)
-
-libgnunetnamestore_la_LDFLAGS = \
-  $(GN_LIB_LDFLAGS)
-
-libgnunetnamestore_la_DEPENDENCIES = \
- $(top_builddir)/src/util/libgnunetutil.la
-
-@ENABLE_TEST_RUN_TRUE@TESTS = $(check_PROGRAMS)  $(check_SCRIPTS)
+#libgnunetnamestore_la_SOURCES = \
+# namestore_stub_api.c
+#libgnunetnamestore_la_LIBADD = \
+# $(top_builddir)/src/util/libgnunetutil.la $(XLIB)
+#libgnunetnamestore_la_LDFLAGS = \
+#  $(GN_LIB_LDFLAGS)
+#libgnunetnamestore_la_DEPENDENCIES = \
+# $(top_builddir)/src/util/libgnunetutil.la
+@ENABLE_TEST_RUN_TRUE@@LINUX_TRUE@TESTS = $(check_PROGRAMS)
 EXTRA_DIST = \
-  $(check_SCRIPTS) \
-  test_gns_twopeer.conf
+  test_gns_defaults.conf \
+  test_gns_simple_lookup.conf \
+  test_gns_dht_default.conf
 
-all: all-am
+all: all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .c .lo .o .obj
@@ -566,8 +841,6 @@ libgnunet_plugin_block_gns.la: $(libgnunet_plugin_block_gns_la_OBJECTS) $(libgnu
 	$(AM_V_CCLD)$(libgnunet_plugin_block_gns_la_LINK) -rpath $(plugindir) $(libgnunet_plugin_block_gns_la_OBJECTS) $(libgnunet_plugin_block_gns_la_LIBADD) $(LIBS)
 libgnunetgns.la: $(libgnunetgns_la_OBJECTS) $(libgnunetgns_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libgnunetgns_la_LINK) -rpath $(libdir) $(libgnunetgns_la_OBJECTS) $(libgnunetgns_la_LIBADD) $(LIBS)
-libgnunetnamestore.la: $(libgnunetnamestore_la_OBJECTS) $(libgnunetnamestore_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(libgnunetnamestore_la_LINK) -rpath $(libdir) $(libgnunetnamestore_la_OBJECTS) $(libgnunetnamestore_la_LIBADD) $(LIBS)
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
@@ -620,12 +893,48 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+gnunet-gns$(EXEEXT): $(gnunet_gns_OBJECTS) $(gnunet_gns_DEPENDENCIES) 
+	@rm -f gnunet-gns$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gnunet_gns_OBJECTS) $(gnunet_gns_LDADD) $(LIBS)
+gnunet-gns-fcfsd$(EXEEXT): $(gnunet_gns_fcfsd_OBJECTS) $(gnunet_gns_fcfsd_DEPENDENCIES) 
+	@rm -f gnunet-gns-fcfsd$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gnunet_gns_fcfsd_OBJECTS) $(gnunet_gns_fcfsd_LDADD) $(LIBS)
+gnunet-gns-proxy$(EXEEXT): $(gnunet_gns_proxy_OBJECTS) $(gnunet_gns_proxy_DEPENDENCIES) 
+	@rm -f gnunet-gns-proxy$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gnunet_gns_proxy_OBJECTS) $(gnunet_gns_proxy_LDADD) $(LIBS)
 gnunet-service-gns$(EXEEXT): $(gnunet_service_gns_OBJECTS) $(gnunet_service_gns_DEPENDENCIES) 
 	@rm -f gnunet-service-gns$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(gnunet_service_gns_OBJECTS) $(gnunet_service_gns_LDADD) $(LIBS)
-test_gns_twopeer$(EXEEXT): $(test_gns_twopeer_OBJECTS) $(test_gns_twopeer_DEPENDENCIES) 
-	@rm -f test_gns_twopeer$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(test_gns_twopeer_OBJECTS) $(test_gns_twopeer_LDADD) $(LIBS)
+test_gns_dht_delegated_lookup$(EXEEXT): $(test_gns_dht_delegated_lookup_OBJECTS) $(test_gns_dht_delegated_lookup_DEPENDENCIES) 
+	@rm -f test_gns_dht_delegated_lookup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_dht_delegated_lookup_OBJECTS) $(test_gns_dht_delegated_lookup_LDADD) $(LIBS)
+test_gns_dht_threepeer$(EXEEXT): $(test_gns_dht_threepeer_OBJECTS) $(test_gns_dht_threepeer_DEPENDENCIES) 
+	@rm -f test_gns_dht_threepeer$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_dht_threepeer_OBJECTS) $(test_gns_dht_threepeer_LDADD) $(LIBS)
+test_gns_max_queries$(EXEEXT): $(test_gns_max_queries_OBJECTS) $(test_gns_max_queries_DEPENDENCIES) 
+	@rm -f test_gns_max_queries$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_max_queries_OBJECTS) $(test_gns_max_queries_LDADD) $(LIBS)
+test_gns_pseu_shorten$(EXEEXT): $(test_gns_pseu_shorten_OBJECTS) $(test_gns_pseu_shorten_DEPENDENCIES) 
+	@rm -f test_gns_pseu_shorten$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_pseu_shorten_OBJECTS) $(test_gns_pseu_shorten_LDADD) $(LIBS)
+test_gns_simple_delegated_lookup$(EXEEXT): $(test_gns_simple_delegated_lookup_OBJECTS) $(test_gns_simple_delegated_lookup_DEPENDENCIES) 
+	@rm -f test_gns_simple_delegated_lookup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_simple_delegated_lookup_OBJECTS) $(test_gns_simple_delegated_lookup_LDADD) $(LIBS)
+test_gns_simple_get_authority$(EXEEXT): $(test_gns_simple_get_authority_OBJECTS) $(test_gns_simple_get_authority_DEPENDENCIES) 
+	@rm -f test_gns_simple_get_authority$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_simple_get_authority_OBJECTS) $(test_gns_simple_get_authority_LDADD) $(LIBS)
+test_gns_simple_lookup$(EXEEXT): $(test_gns_simple_lookup_OBJECTS) $(test_gns_simple_lookup_DEPENDENCIES) 
+	@rm -f test_gns_simple_lookup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_simple_lookup_OBJECTS) $(test_gns_simple_lookup_LDADD) $(LIBS)
+test_gns_simple_mx_lookup$(EXEEXT): $(test_gns_simple_mx_lookup_OBJECTS) $(test_gns_simple_mx_lookup_DEPENDENCIES) 
+	@rm -f test_gns_simple_mx_lookup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_simple_mx_lookup_OBJECTS) $(test_gns_simple_mx_lookup_LDADD) $(LIBS)
+test_gns_simple_shorten$(EXEEXT): $(test_gns_simple_shorten_OBJECTS) $(test_gns_simple_shorten_DEPENDENCIES) 
+	@rm -f test_gns_simple_shorten$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_simple_shorten_OBJECTS) $(test_gns_simple_shorten_LDADD) $(LIBS)
+test_gns_simple_zkey_lookup$(EXEEXT): $(test_gns_simple_zkey_lookup_OBJECTS) $(test_gns_simple_zkey_lookup_DEPENDENCIES) 
+	@rm -f test_gns_simple_zkey_lookup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_gns_simple_zkey_lookup_OBJECTS) $(test_gns_simple_zkey_lookup_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -634,10 +943,23 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gns_api.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-gns-fcfsd.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-gns-proxy.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-gns.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-gns.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/namestore_stub_api.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-gns_interceptor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-gns_resolver.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plugin_block_gns.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_twopeer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_dht_delegated_lookup.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_dht_threepeer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_max_queries.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_pseu_shorten.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_simple_delegated_lookup.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_simple_get_authority.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_simple_lookup.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_simple_mx_lookup.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_simple_shorten.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gns_simple_zkey_lookup.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -689,6 +1011,76 @@ uninstall-pkgcfgDATA:
 	echo " ( cd '$(DESTDIR)$(pkgcfgdir)' && rm -f" $$files ")"; \
 	cd "$(DESTDIR)$(pkgcfgdir)" && rm -f $$files
 
+# This directory's subdirectories are mostly independent; you can cd
+# into them and run `make' without going through this Makefile.
+# To change the values of `make' variables: instead of editing Makefiles,
+# (1) if the variable is set in `config.status', edit `config.status'
+#     (which will cause the Makefiles to be regenerated when you run `make');
+# (2) otherwise, pass the desired values on the `make' command line.
+$(RECURSIVE_TARGETS):
+	@fail= failcom='exit 1'; \
+	for f in x $$MAKEFLAGS; do \
+	  case $$f in \
+	    *=* | --[!k]*);; \
+	    *k*) failcom='fail=yes';; \
+	  esac; \
+	done; \
+	dot_seen=no; \
+	target=`echo $@ | sed s/-recursive//`; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    dot_seen=yes; \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done; \
+	if test "$$dot_seen" = "no"; then \
+	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
+	fi; test -z "$$fail"
+
+$(RECURSIVE_CLEAN_TARGETS):
+	@fail= failcom='exit 1'; \
+	for f in x $$MAKEFLAGS; do \
+	  case $$f in \
+	    *=* | --[!k]*);; \
+	    *k*) failcom='fail=yes';; \
+	  esac; \
+	done; \
+	dot_seen=no; \
+	case "$@" in \
+	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
+	  *) list='$(SUBDIRS)' ;; \
+	esac; \
+	rev=''; for subdir in $$list; do \
+	  if test "$$subdir" = "."; then :; else \
+	    rev="$$subdir $$rev"; \
+	  fi; \
+	done; \
+	rev="$$rev ."; \
+	target=`echo $@ | sed s/-recursive//`; \
+	for subdir in $$rev; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done && test -z "$$fail"
+tags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) tags); \
+	done
+ctags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) ctags); \
+	done
+
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
@@ -699,10 +1091,23 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+TAGS: tags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	set x; \
 	here=`pwd`; \
+	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
+	  include_option=--etags-include; \
+	  empty_fix=.; \
+	else \
+	  include_option=--include; \
+	  empty_fix=; \
+	fi; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test ! -f $$subdir/TAGS || \
+	      set "$$@" "$$include_option=$$here/$$subdir/TAGS"; \
+	  fi; \
+	done; \
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
@@ -721,7 +1126,7 @@ TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	  fi; \
 	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+CTAGS: ctags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
@@ -863,26 +1268,55 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test -d "$(distdir)/$$subdir" \
+	    || $(MKDIR_P) "$(distdir)/$$subdir" \
+	    || exit 1; \
+	  fi; \
+	done
+	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    dir1=$$subdir; dir2="$(distdir)/$$subdir"; \
+	    $(am__relativize); \
+	    new_distdir=$$reldir; \
+	    dir1=$$subdir; dir2="$(top_distdir)"; \
+	    $(am__relativize); \
+	    new_top_distdir=$$reldir; \
+	    echo " (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir="$$new_top_distdir" distdir="$$new_distdir" \\"; \
+	    echo "     am__remove_distdir=: am__skip_length_check=: am__skip_mode_fix=: distdir)"; \
+	    ($(am__cd) $$subdir && \
+	      $(MAKE) $(AM_MAKEFLAGS) \
+	        top_distdir="$$new_top_distdir" \
+	        distdir="$$new_distdir" \
+		am__remove_distdir=: \
+		am__skip_length_check=: \
+		am__skip_mode_fix=: \
+	        distdir) \
+	      || exit 1; \
+	  fi; \
+	done
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS) $(check_SCRIPTS)
+	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
-check: check-am
+check: check-recursive
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(DATA)
 install-binPROGRAMS: install-libLTLIBRARIES
 
-installdirs:
+installdirs: installdirs-recursive
+installdirs-am:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(plugindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkgcfgdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-am
-install-exec: install-exec-am
-install-data: install-data-am
-uninstall: uninstall-am
+install: install-recursive
+install-exec: install-exec-recursive
+install-data: install-data-recursive
+uninstall: uninstall-recursive
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-am
+installcheck: installcheck-recursive
 install-strip:
 	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
 	  install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
@@ -899,85 +1333,87 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-clean: clean-am
+clean: clean-recursive
 
 clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
 	clean-libLTLIBRARIES clean-libtool clean-pluginLTLIBRARIES \
 	mostlyclean-am
 
-distclean: distclean-am
+distclean: distclean-recursive
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
 
-dvi: dvi-am
+dvi: dvi-recursive
 
 dvi-am:
 
-html: html-am
+html: html-recursive
 
 html-am:
 
-info: info-am
+info: info-recursive
 
 info-am:
 
 install-data-am: install-pkgcfgDATA install-pluginLTLIBRARIES
 
-install-dvi: install-dvi-am
+install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
 install-exec-am: install-binPROGRAMS install-libLTLIBRARIES
 
-install-html: install-html-am
+install-html: install-html-recursive
 
 install-html-am:
 
-install-info: install-info-am
+install-info: install-info-recursive
 
 install-info-am:
 
 install-man:
 
-install-pdf: install-pdf-am
+install-pdf: install-pdf-recursive
 
 install-pdf-am:
 
-install-ps: install-ps-am
+install-ps: install-ps-recursive
 
 install-ps-am:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-am
+maintainer-clean: maintainer-clean-recursive
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-am
+mostlyclean: mostlyclean-recursive
 
 mostlyclean-am: mostlyclean-compile mostlyclean-generic \
 	mostlyclean-libtool
 
-pdf: pdf-am
+pdf: pdf-recursive
 
 pdf-am:
 
-ps: ps-am
+ps: ps-recursive
 
 ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 	uninstall-pkgcfgDATA uninstall-pluginLTLIBRARIES
 
-.MAKE: check-am install-am install-strip
+.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) check-am \
+	ctags-recursive install-am install-strip tags-recursive
 
-.PHONY: CTAGS GTAGS all all-am check check-TESTS check-am clean \
-	clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
-	clean-libLTLIBRARIES clean-libtool clean-pluginLTLIBRARIES \
-	ctags distclean distclean-compile distclean-generic \
+.PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
+	all all-am check check-TESTS check-am clean clean-binPROGRAMS \
+	clean-checkPROGRAMS clean-generic clean-libLTLIBRARIES \
+	clean-libtool clean-pluginLTLIBRARIES ctags ctags-recursive \
+	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-binPROGRAMS \
 	install-data install-data-am install-dvi install-dvi-am \
@@ -986,11 +1422,12 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 	install-man install-pdf install-pdf-am install-pkgcfgDATA \
 	install-pluginLTLIBRARIES install-ps install-ps-am \
 	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags uninstall uninstall-am \
-	uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
-	uninstall-pkgcfgDATA uninstall-pluginLTLIBRARIES
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
+	uninstall uninstall-am uninstall-binPROGRAMS \
+	uninstall-libLTLIBRARIES uninstall-pkgcfgDATA \
+	uninstall-pluginLTLIBRARIES
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
