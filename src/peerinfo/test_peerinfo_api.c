@@ -96,7 +96,7 @@ add_peer ()
   memset (&pkey, 32, sizeof (pkey));
   GNUNET_CRYPTO_hash (&pkey, sizeof (pkey), &pid.hashPubKey);
   h2 = GNUNET_HELLO_create (&pkey, &address_generator, &agc);
-  GNUNET_PEERINFO_add_peer (h, h2);
+  GNUNET_PEERINFO_add_peer (h, h2, NULL, NULL);
   GNUNET_free (h2);
 
 }
@@ -170,9 +170,6 @@ check ()
   char *const argv[] = { "test-peerinfo-api",
     "-c",
     "test_peerinfo_api_data.conf",
-#if DEBUG_PEERINFO
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -181,9 +178,6 @@ check ()
   proc =
     GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-peerinfo",
                                "gnunet-service-peerinfo",
-#if DEBUG_PEERINFO
-                               "-L", "DEBUG",
-#endif
                                "-c", "test_peerinfo_api_data.conf", NULL);
   GNUNET_assert (NULL != proc);
   GNUNET_PROGRAM_run ((sizeof (argv) / sizeof (char *)) - 1, argv,
@@ -194,7 +188,7 @@ check ()
     ok = 1;
   }
   GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_close (proc);
+  GNUNET_OS_process_destroy (proc);
   proc = NULL;
   return ok;
 }
@@ -205,12 +199,9 @@ main (int argc, char *argv[])
 {
   int ret = 0;
 
+  GNUNET_DISK_directory_remove ("/tmp/test-gnunet-peerinfo");
   GNUNET_log_setup ("test_peerinfo_api",
-#if DEBUG_PEERINFO
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   ret = check ();
   GNUNET_DISK_directory_remove ("/tmp/test-gnunet-peerinfo");

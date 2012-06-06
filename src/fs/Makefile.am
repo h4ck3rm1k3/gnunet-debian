@@ -50,7 +50,7 @@ libgnunetfs_la_LIBADD = \
 
 libgnunetfs_la_LDFLAGS = \
   $(GN_LIB_LDFLAGS)  $(WINFLAGS) \
-  -version-info 2:0:0
+  -version-info 2:1:0
 
 
 libgnunetfstest_a_SOURCES = \
@@ -206,6 +206,7 @@ check_PROGRAMS = \
  test_fs_publish \
  test_fs_publish_persistence \
  test_fs_search \
+ test_fs_search_probes \
  test_fs_search_persistence \
  test_fs_start_stop \
  test_fs_test_lib \
@@ -225,6 +226,11 @@ check_SCRIPTS = \
  test_gnunet_fs_ns.py 
 endif
 
+if ENABLE_MONKEY
+ TESTS_ENVIRONMENT = @MONKEYPREFIX@
+ AM_LDFLAGS = -no-install
+endif
+
 
 if ENABLE_TEST_RUN
 TESTS = \
@@ -239,6 +245,7 @@ TESTS = \
  test_fs_publish \
  test_fs_publish_persistence \
  test_fs_search \
+ test_fs_search_probes \
  test_fs_search_persistence \
  test_fs_start_stop \
  test_fs_unindex \
@@ -327,6 +334,11 @@ test_fs_publish_persistence_LDADD = \
 test_fs_search_SOURCES = \
  test_fs_search.c
 test_fs_search_LDADD = $(top_builddir)/src/fs/libgnunetfs.la	\
+  $(top_builddir)/src/util/libgnunetutil.la
+
+test_fs_search_probes_SOURCES = \
+ test_fs_search_probes.c
+test_fs_search_probes_LDADD = $(top_builddir)/src/fs/libgnunetfs.la	\
   $(top_builddir)/src/util/libgnunetutil.la
 
 test_fs_search_persistence_SOURCES = \

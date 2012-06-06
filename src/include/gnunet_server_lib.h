@@ -55,11 +55,15 @@ extern "C"
  */
 struct GNUNET_SERVER_Handle;
 
-
 /**
  * @brief opaque handle for a client of the server
  */
 struct GNUNET_SERVER_Client;
+
+/**
+ * @brief opaque handle server returns for aborting transmission to a client.
+ */
+struct GNUNET_SERVER_TransmitHandle;
 
 
 /**
@@ -151,12 +155,22 @@ GNUNET_SERVER_create (GNUNET_CONNECTION_AccessCheck access, void *access_cls,
 
 
 /**
- * Free resources held by this server.
+ * Stop the listen socket and get ready to shutdown the server
+ * once only 'monitor' clients are left.
  *
- * @param s server to destroy
+ * @param server server to stop listening on
  */
 void
-GNUNET_SERVER_destroy (struct GNUNET_SERVER_Handle *s);
+GNUNET_SERVER_stop_listening (struct GNUNET_SERVER_Handle *server);
+
+
+/**
+ * Free resources held by this server.
+ *
+ * @param server server to destroy
+ */
+void
+GNUNET_SERVER_destroy (struct GNUNET_SERVER_Handle *server);
 
 
 /**
@@ -190,15 +204,40 @@ GNUNET_SERVER_add_handlers (struct GNUNET_SERVER_Handle *server,
  * @param callback_cls closure for callback
  * @return non-NULL if the notify callback was queued; can be used
  *           to cancel the request using
- *           GNUNET_CONNECTION_notify_transmit_ready_cancel.
+ *           GNUNET_SERVER_notify_transmit_ready_cancel.
  *         NULL if we are already going to notify someone else (busy)
  */
-struct GNUNET_CONNECTION_TransmitHandle *
+struct GNUNET_SERVER_TransmitHandle *
 GNUNET_SERVER_notify_transmit_ready (struct GNUNET_SERVER_Client *client,
                                      size_t size,
                                      struct GNUNET_TIME_Relative timeout,
                                      GNUNET_CONNECTION_TransmitReadyNotify
                                      callback, void *callback_cls);
+
+
+/**
+ * Abort transmission request.
+ *
+ * @param th request to abort
+ */
+void
+GNUNET_SERVER_notify_transmit_ready_cancel (struct GNUNET_SERVER_TransmitHandle *th);
+
+
+/**
+ * Set the 'monitor' flag on this client.  Clients which have been
+ * marked as 'monitors' won't prevent the server from shutting down
+ * once 'GNUNET_SERVER_stop_listening' has been invoked.  The idea is
+ * that for "normal" clients we likely want to allow them to process
+ * their requests; however, monitor-clients are likely to 'never'
+ * disconnect during shutdown and thus will not be considered when
+ * determining if the server should continue to exist after
+ * 'GNUNET_SERVER_destroy' has been called.
+ *
+ * @param client the client to set the 'monitor' flag on
+ */
+void
+GNUNET_SERVER_client_mark_monitor (struct GNUNET_SERVER_Client *client);
 
 
 /**
@@ -209,6 +248,7 @@ GNUNET_SERVER_notify_transmit_ready (struct GNUNET_SERVER_Client *client,
  */
 void
 GNUNET_SERVER_client_persist_ (struct GNUNET_SERVER_Client *client);
+
 
 /**
  * Resume receiving from this client, we are done processing the
@@ -237,14 +277,6 @@ GNUNET_SERVER_receive_done (struct GNUNET_SERVER_Client *client, int success);
 void
 GNUNET_SERVER_client_set_timeout (struct GNUNET_SERVER_Client *client,
                                   struct GNUNET_TIME_Relative timeout);
-
-
-/**
- * Set if a client should finish a pending write when disconnecting.
- */
-void
-GNUNET_SERVER_client_set_finish_pending_write (struct GNUNET_SERVER_Client *client,
-                                               int finish);
 
 
 /**
@@ -389,22 +421,6 @@ GNUNET_SERVER_disconnect_notify_cancel (struct GNUNET_SERVER_Handle *server,
  */
 void
 GNUNET_SERVER_client_disconnect (struct GNUNET_SERVER_Client *client);
-
-
-/**
- * Configure this server's connections to continue handling client
- * requests as usual even after we get a shutdown signal.  The change
- * only applies to clients that connect to the server from the outside
- * using TCP after this call.  Clients managed previously or those
- * added using GNUNET_SERVER_connect_socket and
- * GNUNET_SERVER_connect_callback are not affected by this option.
- *
- * @param h server handle
- * @param do_ignore GNUNET_YES to ignore, GNUNET_NO to restore default
- */
-void
-GNUNET_SERVER_ignore_shutdown (struct GNUNET_SERVER_Handle *h, int do_ignore);
-
 
 
 /**
@@ -591,11 +607,15 @@ struct GNUNET_SERVER_MessageStreamTokenizer;
  * Functions with this signature are called whenever a
  * complete message is received by the tokenizer.
  *
+ * Do not call GNUNET_SERVER_mst_destroy in callback
+ *
  * @param cls closure
  * @param client identification of the client
  * @param message the actual message
+ *
+ * @return GNUNET_OK on success, GNUNET_SYSERR to stop further processing
  */
-typedef void (*GNUNET_SERVER_MessageTokenizerCallback) (void *cls, void *client,
+typedef int (*GNUNET_SERVER_MessageTokenizerCallback) (void *cls, void *client,
                                                         const struct
                                                         GNUNET_MessageHeader *
                                                         message);

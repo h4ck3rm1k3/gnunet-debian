@@ -112,7 +112,6 @@ struct ConnectNotifyMessage
 
   /**
    * Number of ATS key-value pairs that follow this struct
-   * (excluding the 0-terminator).
    */
   uint32_t ats_count GNUNET_PACKED;
 
@@ -222,12 +221,11 @@ struct NotifyTrafficMessage
    */
   struct GNUNET_PeerIdentity peer;
 
-  /**
-   * First of the ATS information blocks (we must have at least
-   * one due to the 0-termination requirement).
+  /* Followed by ATS information blocks:
+   * struct GNUNET_ATS_Information ats[ats_count]
    */
-  struct GNUNET_ATS_Information ats;
 
+  /* Followed by payload (message or just header), variable size */
 };
 
 
@@ -332,7 +330,7 @@ struct SendMessage
   struct GNUNET_TIME_AbsoluteNBO deadline;
 
   /**
-   * Identity of the receiver or sender.
+   * Identity of the intended receiver.
    */
   struct GNUNET_PeerIdentity peer;
 
@@ -349,32 +347,6 @@ struct SendMessage
 };
 
 
-/**
- * Client asking core to connect to a particular target.  There is no
- * response from the core to this type of request (however, if an
- * actual connection is created or destroyed, be it because of this
- * type request or not, the core generally needs to notify the
- * clients).
- */
-struct ConnectMessage
-{
-  /**
-   * Header with type GNUNET_MESSAGE_TYPE_REQUEST_CONNECT or
-   * GNUNET_MESSAGE_TYPE_REQUEST_DISCONNECT.
-   */
-  struct GNUNET_MessageHeader header;
-
-  /**
-   * For alignment.
-   */
-  uint32_t reserved GNUNET_PACKED;
-
-  /**
-   * Identity of the other peer.
-   */
-  struct GNUNET_PeerIdentity peer;
-
-};
 GNUNET_NETWORK_STRUCT_END
 #endif
 /* end of core.h */

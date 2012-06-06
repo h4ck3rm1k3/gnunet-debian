@@ -227,7 +227,7 @@ GNUNET_OS_process_kill (struct GNUNET_OS_Process *proc, int sig);
  * @param proc pointer to process structure
  */
 void
-GNUNET_OS_process_close (struct GNUNET_OS_Process *proc);
+GNUNET_OS_process_destroy (struct GNUNET_OS_Process *proc);
 
 
 /**
@@ -364,7 +364,8 @@ GNUNET_OS_command_run (GNUNET_OS_LineProcessor proc, void *proc_cls,
 
 
 /**
- * Retrieve the status of a process.  Nonblocking version.
+ * Retrieve the status of a process, waiting on him if dead.
+ * Nonblocking version.
  *
  * @param proc pointer to process structure
  * @param type status type

@@ -39,6 +39,9 @@
  */
 struct GNUNET_STATISTICS_Handle *GSA_stats;
 
+static struct GNUNET_SERVER_Handle *GSA_server;
+
+
 /**
  * We have received a 'ClientStartMessage' from a client.  Find out which
  * type of client it is and notify the respective subsystem.
@@ -54,7 +57,6 @@ handle_ats_start (void *cls, struct GNUNET_SERVER_Client *client,
   const struct ClientStartMessage *msg =
       (const struct ClientStartMessage *) message;
   enum StartFlag flag;
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Received `%s' message\n", "ATS_START");
   flag = ntohl (msg->start_flag);
   switch (flag)
@@ -111,6 +113,7 @@ cleanup_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   GAS_scheduling_done ();
   GAS_performance_done ();
   GAS_reservations_done ();
+  GNUNET_SERVER_disconnect_notify_cancel (GSA_server, &client_disconnect_handler, NULL);
   if (NULL != GSA_stats)
   {
     GNUNET_STATISTICS_destroy (GSA_stats, GNUNET_NO);
@@ -150,8 +153,12 @@ run (void *cls, struct GNUNET_SERVER_Handle *server,
      sizeof (struct ReservationRequestMessage)},
     {&GAS_handle_preference_change, NULL,
      GNUNET_MESSAGE_TYPE_ATS_PREFERENCE_CHANGE, 0},
+    {&GAS_handle_reset_backoff, NULL,
+     GNUNET_MESSAGE_TYPE_ATS_RESET_BACKOFF,
+     sizeof (struct ResetBackoffMessage)},
     {NULL, NULL, 0, 0}
   };
+  GSA_server = server;
   GSA_stats = GNUNET_STATISTICS_create ("ats", cfg);
   GAS_reservations_init ();
   GAS_performance_init (server);

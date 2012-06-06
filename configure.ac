@@ -22,13 +22,13 @@
 #
 AC_PREREQ(2.61)
 # Checks for programs.
-AC_INIT([gnunet], [0.9.2],[bug-gnunet@gnu.org])
+AC_INIT([gnunet], [0.9.3],[bug-gnunet@gnu.org])
 
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 AC_CANONICAL_SYSTEM
 
-AM_INIT_AUTOMAKE([gnunet], [0.9.2])
+AM_INIT_AUTOMAKE([gnunet], [0.9.3])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_CONFIG_HEADERS([gnunet_config.h])
 AH_TOP([#define _GNU_SOURCE  1])
@@ -67,6 +67,8 @@ fi
 
 # Use Linux interface name unless the OS has a different preference
 DEFAULT_INTERFACE="\"eth0\""
+
+funcstocheck="socket select inet_ntoa getnameinfo gethostname gethostbyname gethostbyaddr getaddrinfo"
 
 # Check system type
 case "$host_os" in
@@ -152,12 +154,13 @@ netbsd*)
      LDFLAGS="$LDFLAGS -Wl,-no-undefined -Wl,--export-all-symbols"
      LIBS="$LIBS -lws2_32 -lplibc -lgnurx -lole32"
      CFLAGS="-mms-bitfields $CFLAGS"
-     CPPFLAGS="-D_WIN32_WINNT=0x0501 $CPPFLAGS"
+     CPPFLAGS="-D_WIN32_WINNT=0x0501 -DHAVE_STAT64=1 $CPPFLAGS"
      build_target="mingw"
      AC_PROG_CXX
      LIBPREFIX=lib
      DLLDIR=bin
      UNIXONLY=""
+     funcstocheck=""
      ;;
 *)
      AC_MSG_RESULT(Unrecognised OS $host_os)
@@ -171,6 +174,7 @@ AC_SUBST(DEFAULT_INTERFACE)
 # Disable TCP-based IPC on systems that support UNIX domain
 # sockets in default configuratin:
 AC_SUBST(UNIXONLY)
+
 
 AC_MSG_CHECKING([for build target])
 AM_CONDITIONAL(DARWIN,  test "$build_target" = "darwin")
@@ -333,6 +337,18 @@ else
 	AM_CONDITIONAL(HAVE_LIBGLPK, true)
 	AC_DEFINE([HAVE_LIBGLPK],[1],[Have GLPK])
 fi
+
+
+
+AC_CHECK_HEADERS([nss.h],[nss=true],[nss=false])
+if test x$nss = xfalse
+then
+	AM_CONDITIONAL(HAVE_GLIBCNSS, false)
+	AC_MSG_WARN([No GNU libc nss header, will not build NSS plugin])
+else
+	AM_CONDITIONAL(HAVE_GLIBCNSS, true)
+fi
+
 
 
 # test for kvm and kstat (for CPU stats under BSD/Solaris)
@@ -566,10 +582,17 @@ AC_ARG_WITH(microhttpd,
         AC_CHECK_HEADERS([microhttpd.h],
 	  AC_CHECK_DECL(MHD_OPTION_PER_IP_CONNECTION_LIMIT,
             AC_CHECK_LIB([microhttpd], [MHD_start_daemon],
-              lmhd=1),
-	    [],[#include "src/include/platform.h"
+              [AC_MSG_CHECKING([for libmicrohttpd >= 0.9.18])
+              AC_RUN_IFELSE([
+                #include "$srcdir/src/include/platform.h"
+                #include <microhttpd.h>
+                int main () { return MHD_VERSION >= 0x0091200 ? 0 : 1; }
+               ], [
+               AC_MSG_RESULT(ok)
+               lmhd=1],[AC_MSG_RESULT(failed)],lmhd=1)]),
+	    [],[#include "$srcdir/src/include/platform.h"
                 #include <microhttpd.h>]),,
-            [#include "src/include/platform.h"])
+            [#include "$srcdir/src/include/platform.h"])
         ;;
       *)
         LDFLAGS="-L$with_microhttpd/lib $LDFLAGS"
@@ -578,10 +601,17 @@ AC_ARG_WITH(microhttpd,
 	  AC_CHECK_DECL(MHD_OPTION_PER_IP_CONNECTION_LIMIT,
             AC_CHECK_LIB([microhttpd], [MHD_start_daemon],
               EXT_LIB_PATH="-L$with_microhttpd/lib $EXT_LIB_PATH"
-              lmhd=1),
-	    [],[#include "src/include/platform.h"
+              [AC_MSG_CHECKING([for libmicrohttpd >= 0.9.18])
+               AC_RUN_IFELSE([
+                #include "$srcdir/src/include/platform.h"
+                #include <microhttpd.h>
+                int main () { return MHD_VERSION >= 0x0091200 ? 0 : 1; }
+               ], [
+               AC_MSG_RESULT(ok)
+               lmhd=1],[AC_MSG_RESULT(failed)],lmhd=1)]),
+	    [],[#include "$srcdir/src/include/platform.h"
                 #include <microhttpd.h>]),,
-            [#include "src/include/platform.h"])
+            [#include "$srcdir/src/include/platform.h"])
         ;;
     esac
    ],
@@ -589,10 +619,17 @@ AC_ARG_WITH(microhttpd,
     AC_CHECK_HEADERS([microhttpd.h],
       AC_CHECK_DECL(MHD_OPTION_PER_IP_CONNECTION_LIMIT,
         AC_CHECK_LIB([microhttpd], [MHD_start_daemon],
-          lmhd=1),
-	[],[#include "src/include/platform.h"
+          [AC_MSG_CHECKING([for libmicrohttpd >= 0.9.18])
+              AC_RUN_IFELSE([
+                #include "$srcdir/src/include/platform.h"
+		#include <microhttpd.h>
+                int main () { return MHD_VERSION >= 0x0091200 ? 0 : 1; }
+               ], [
+               AC_MSG_RESULT(ok)
+               lmhd=1],[AC_MSG_RESULT(failed)],lmhd=1)]),
+	[],[#include "$srcdir/src/include/platform.h"
             #include <microhttpd.h>]),,
-       [#include "src/include/platform.h"])])
+       [#include "$srcdir/src/include/platform.h"])])
 AM_CONDITIONAL(HAVE_MHD, test x$lmhd = x1)
 AC_DEFINE_UNQUOTED([HAVE_MHD], $lmhd, [We have libmicrohttpd])
 
@@ -664,7 +701,7 @@ AC_FUNC_VPRINTF
 AC_HEADER_SYS_WAIT
 AC_TYPE_OFF_T
 AC_TYPE_UID_T
-AC_CHECK_FUNCS([floor gethostname memmove rmdir strncasecmp strrchr strtol atoll dup2 fdatasync ftruncate gettimeofday memset mkdir mkfifo select socket strcasecmp strchr strdup strerror strstr clock_gettime getrusage rand uname setlocale getcwd mktime gmtime_r gmtime strlcpy strlcat ftruncate stat64 sbrk mmap mremap setrlimit sysconf gethostbyaddr initgroups getifaddrs freeifaddrs getnameinfo getaddrinfo inet_ntoa localtime_r nl_langinfo putenv realpath strndup gethostbyname2 gethostbyname getpeerucred getpeereid setresuid])
+AC_CHECK_FUNCS([floor memmove rmdir strncasecmp strrchr strtol atoll dup2 fdatasync ftruncate gettimeofday memset mkdir mkfifo strcasecmp strchr strdup strerror strstr clock_gettime getrusage rand uname setlocale getcwd mktime gmtime_r gmtime strlcpy strlcat ftruncate stat64 sbrk mmap mremap setrlimit sysconf initgroups getifaddrs freeifaddrs localtime_r nl_langinfo putenv realpath strndup gethostbyname2 gethostbyname getpeerucred getpeereid setresuid $funcstocheck])
 
 # restore LIBS
 LIBS=$SAVE_LIBS
@@ -741,7 +778,7 @@ AC_ARG_WITH(sudo,
   ],
   [AC_MSG_RESULT([no])])
 AC_SUBST(SUDO_BINARY)
-
+AM_CONDITIONAL([HAVE_SUDO], [test "x$SUDO_BINARY" != "x" -o -w /])
 
 # test for gnunetdns group name
 GNUNETDNS_GROUP=gnunetdns
@@ -774,14 +811,47 @@ AC_ARG_ENABLE([testruns],
 AC_MSG_RESULT($enable_test_run)
 AM_CONDITIONAL([ENABLE_TEST_RUN], [test "x$enable_tests_run" = "xyes"])
 
+
+# should monkey be used when running (certain) services?
+AC_MSG_CHECKING(whether to run with monkey)
+AC_ARG_ENABLE([monkey],
+   [AS_HELP_STRING([--enable-monkey], [enable running with monkey])],
+   [enable_monkey=${enableval}],
+   [enable_monkey=no])
+AC_MSG_RESULT($enable_monkey)
+AM_CONDITIONAL([ENABLE_MONKEY], [test "x$enable_monkey" = "xyes"])
+if test "x$enable_monkey" = "xyes"
+then
+  MONKEYPREFIX="monkey"
+else
+  MONKEYPREFIX=""
+fi
+AC_SUBST(MONKEYPREFIX)
+
+
 # should expensive tests be run?
 AC_MSG_CHECKING(whether to run expensive tests)
 AC_ARG_ENABLE([expensivetests],
-   [AS_HELP_STRING([--enable-expensive-tests], [enable running expensive testcases])],
+   [AS_HELP_STRING([--enable-expensivetests], [enable running expensive testcases])],
    [enable_expensive=${enableval}],
    [enable_expensive=no])
 AC_MSG_RESULT($enable_expensive)
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [test "x$enable_expensive" = "xyes"])
+
+# should ports be open for Java services?
+AC_MSG_CHECKING(whether to enable ports for gnunet-java)
+AC_ARG_ENABLE([javaports],
+   [AS_HELP_STRING([--enable-javaports], [use non-zero ports for services with Java bindings (default is NO)])],
+   [enable_java_ports=${enableval}],
+   [enable_java_ports=no])
+AC_MSG_RESULT($enable_java_ports)
+if test "x$enable_java_ports" = "xyes"
+then
+  JAVAPORT=""
+else
+  JAVAPORT="$UNIXONLY"
+fi
+AC_SUBST(JAVAPORT)
 
 # should benchmarks be run?
 AC_MSG_CHECKING(whether to run benchmarks during make check)
@@ -806,6 +876,96 @@ AM_CONDITIONAL([HAVE_EXPERIMENTAL], [test "x$enable_experimental" = "xyes"])
 if test $build_target = "mingw"
 then
 	workarounds=1
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  int s = socket (0, 0, 0);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_SOCKET],1,[Define this if socket() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_SOCKET],0,[Define this if socket() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  int s = select (0, NULL, NULL, NULL, NULL);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_SELECT],1,[Define this if select() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_SELECT],0,[Define this if select() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  struct in_addr i;
+  char *s = inet_ntoa (i);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_INET_NTOA],1,[Define this if inet_ntoa() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_INET_NTOA],0,[Define this if inet_ntoa() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  int s = getnameinfo (NULL, 0, NULL, 0, NULL, 0, 0);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETNAMEINFO],1,[Define this if getnameinfo() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETNAMEINFO],0,[Define this if getnameinfo() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  int s = gethostname (NULL, 0);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETHOSTNAME],1,[Define this if gethostname() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETHOSTNAME],0,[Define this if gethostname() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  void *s = gethostbyname (NULL);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETHOSTBYNAME],1,[Define this if gethostbyname() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETHOSTBYNAME],0,[Define this if gethostbyname() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  void *s = gethostbyaddr (NULL, 0, 0);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETHOSTBYADDR],1,[Define this if gethostbyaddr() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETHOSTBYADDR],0,[Define this if gethostbyaddr() is available])
+ ])
+
+AC_LINK_IFELSE(
+ [AC_LANG_PROGRAM(
+  [#include <ws2tcpip.h>
+  ],[
+  int s = getaddrinfo (NULL, NULL, NULL, NULL);])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETADDRINFO],1,[Define this if getaddrinfo() is available])
+ ],[
+  AC_DEFINE_UNQUOTED([HAVE_GETADDRINFO],1,[Define this if getaddrinfo() is available])
+ ])
+
 else
   AC_MSG_CHECKING(whether to enable windows workarounds)
   AC_ARG_ENABLE([windows_workarounds], 
@@ -865,12 +1025,16 @@ src/fs/Makefile
 src/fs/fs.conf
 src/gns/Makefile
 src/gns/gns.conf
+src/gns/nss/Makefile
 src/hello/Makefile
 src/include/Makefile
 src/include/gnunet_directories.h
 src/hostlist/Makefile
+src/lockmanager/Makefile
+src/lockmanager/lockmanager.conf
 src/mesh/Makefile
 src/mesh/mesh.conf
+src/mysql/Makefile
 src/namestore/Makefile
 src/namestore/namestore.conf
 src/nat/Makefile
@@ -879,11 +1043,14 @@ src/nse/nse.conf
 src/peerinfo/Makefile
 src/peerinfo/peerinfo.conf
 src/peerinfo-tool/Makefile
+src/postgres/Makefile
 src/pt/Makefile
+src/regex/Makefile
 src/statistics/Makefile
 src/statistics/statistics.conf
 src/stream/Makefile
 src/template/Makefile
+src/testbed/Makefile
 src/testing/Makefile
 src/topology/Makefile
 src/transport/Makefile
@@ -909,6 +1076,7 @@ pkgconfig/gnunethello.pc
 pkgconfig/gnunetnat.pc
 pkgconfig/gnunetnse.pc
 pkgconfig/gnunetpeerinfo.pc
+pkgconfig/gnunetregex.pc
 pkgconfig/gnunetstatistics.pc
 pkgconfig/gnunettesting.pc
 pkgconfig/gnunettransport.pc
@@ -930,6 +1098,12 @@ then
   AC_MSG_NOTICE([NOTICE: sqlite not found.  sqLite support will not be compiled.])
 fi
 
+# java ports
+if test "x$enable_java_ports" = "xyes"
+then
+  AC_MSG_NOTICE([NOTICE: opening ports for gnunet-java bindings by default.])
+fi
+
 if test "x$lmhd" != "x1"
 then
  AC_MSG_NOTICE([NOTICE: libmicrohttpd not found, http transport will not be installed.])
@@ -940,6 +1114,11 @@ AC_MSG_NOTICE([NOTICE: Database support is set to MySQL: $mysql, SQLite: $sqlite
 if test "$enable_framework_build" = "yes"
 then
   AC_MSG_NOTICE([NOTICE: Mac OS X framework build enabled.])
+fi
+
+if test "x$SUDO_BINARY" = "x" -a ! -w /
+then
+  AC_MSG_NOTICE([NOTICE: --with-sudo not specified and not running as 'root', will not install GNS NSS library])
 fi
 
 AC_MSG_NOTICE([********************************************

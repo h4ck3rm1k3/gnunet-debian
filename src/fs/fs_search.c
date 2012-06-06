@@ -1,6 +1,6 @@
 /*
      This file is part of GNUnet.
-     (C) 2001-2006, 2008-2011 Christian Grothoff (and other contributing authors)
+     (C) 2001-2006, 2008-2012 Christian Grothoff (and other contributing authors)
 
      GNUnet is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -14,10 +14,9 @@
 
      You should have received a copy of the GNU General Public License
      along with GNUnet; see the file COPYING.  If not, write to the
-     Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+     Free Software Foundation, Inc., 59 Tem ple Place - Suite 330,
      Boston, MA 02111-1307, USA.
 */
-
 /**
  * @file fs/fs_search.c
  * @brief Helper functions for searching.
@@ -30,7 +29,6 @@
 #include "gnunet_protocols.h"
 #include "fs_api.h"
 
-#define DEBUG_SEARCH GNUNET_EXTRA_LOGGING
 
 /**
  * Number of availability trials we perform per search result.
@@ -54,7 +52,7 @@ GNUNET_FS_search_make_status_ (struct GNUNET_FS_ProgressInfo *pi,
   pi->value.search.sc = sc;
   pi->value.search.cctx = sc->client_info;
   pi->value.search.pctx =
-      (sc->psearch_result == NULL) ? NULL : sc->psearch_result->client_info;
+      (NULL == sc->psearch_result) ? NULL : sc->psearch_result->client_info;
   pi->value.search.query = sc->uri;
   pi->value.search.duration =
       GNUNET_TIME_absolute_get_duration (sc->start_time);
@@ -121,7 +119,7 @@ notify_client_chk_update (struct GNUNET_FS_SearchContext *sc,
                           struct GNUNET_FS_SearchResult *sr)
 {
   struct GNUNET_FS_ProgressInfo pi;
-
+ 
   pi.status = GNUNET_FS_STATUS_SEARCH_UPDATE;
   pi.value.search.specifics.update.cctx = sr->client_info;
   pi.value.search.specifics.update.meta = sr->meta;
@@ -184,7 +182,7 @@ signal_probe_result (struct GNUNET_FS_SearchResult *sr)
 {
   struct GNUNET_FS_ProgressInfo pi;
 
-  pi.status = GNUNET_FS_STATUS_SEARCH_START;
+  pi.status = GNUNET_FS_STATUS_SEARCH_UPDATE;
   pi.value.search.specifics.update.cctx = sr->client_info;
   pi.value.search.specifics.update.meta = sr->meta;
   pi.value.search.specifics.update.uri = sr->uri;
@@ -192,7 +190,7 @@ signal_probe_result (struct GNUNET_FS_SearchResult *sr)
   pi.value.search.specifics.update.availability_certainty =
       sr->availability_trials;
   pi.value.search.specifics.update.applicability_rank = sr->optional_support;
-  sr->sc->client_info = GNUNET_FS_search_make_status_ (&pi, sr->sc);
+  sr->client_info = GNUNET_FS_search_make_status_ (&pi, sr->sc);
   GNUNET_FS_search_start_probe_ (sr);
 }
 
@@ -208,7 +206,10 @@ probe_failure_handler (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct GNUNET_FS_SearchResult *sr = cls;
 
+  sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
   sr->availability_trials++;
+  GNUNET_FS_download_stop (sr->probe_ctx, GNUNET_YES);
+  sr->probe_ctx = NULL;
   GNUNET_FS_search_result_sync_ (sr);
   signal_probe_result (sr);
 }
@@ -225,8 +226,11 @@ probe_success_handler (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct GNUNET_FS_SearchResult *sr = cls;
 
+  sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
   sr->availability_trials++;
   sr->availability_success++;
+  GNUNET_FS_download_stop (sr->probe_ctx, GNUNET_YES);
+  sr->probe_ctx = NULL;
   GNUNET_FS_search_result_sync_ (sr);
   signal_probe_result (sr);
 }
@@ -271,7 +275,7 @@ GNUNET_FS_search_probe_progress_ (void *cls,
     /* ignore */
     break;
   case GNUNET_FS_STATUS_DOWNLOAD_ERROR:
-    if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+    if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
     {
       GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
       sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
@@ -281,17 +285,16 @@ GNUNET_FS_search_probe_progress_ (void *cls,
                                       &probe_failure_handler, sr);
     break;
   case GNUNET_FS_STATUS_DOWNLOAD_COMPLETED:
-    if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+    if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
     {
       GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
       sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
     }
     sr->probe_cancel_task =
-        GNUNET_SCHEDULER_add_delayed (sr->remaining_probe_time,
-                                      &probe_success_handler, sr);
+        GNUNET_SCHEDULER_add_now (&probe_success_handler, sr);
     break;
   case GNUNET_FS_STATUS_DOWNLOAD_STOPPED:
-    if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+    if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
     {
       GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
       sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
@@ -299,14 +302,14 @@ GNUNET_FS_search_probe_progress_ (void *cls,
     sr = NULL;
     break;
   case GNUNET_FS_STATUS_DOWNLOAD_ACTIVE:
-    GNUNET_assert (sr->probe_cancel_task == GNUNET_SCHEDULER_NO_TASK);
+    GNUNET_assert (GNUNET_SCHEDULER_NO_TASK == sr->probe_cancel_task);
     sr->probe_active_time = GNUNET_TIME_absolute_get ();
     sr->probe_cancel_task =
         GNUNET_SCHEDULER_add_delayed (sr->remaining_probe_time,
                                       &probe_failure_handler, sr);
     break;
   case GNUNET_FS_STATUS_DOWNLOAD_INACTIVE:
-    if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+    if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
     {
       GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
       sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
@@ -335,16 +338,18 @@ GNUNET_FS_search_start_probe_ (struct GNUNET_FS_SearchResult *sr)
   uint64_t off;
   uint64_t len;
 
-  if (sr->probe_ctx != NULL)
+  if (NULL != sr->probe_ctx)
     return;
-  if (sr->download != NULL)
+  if (NULL != sr->download)
     return;
   if (0 == (sr->sc->h->flags & GNUNET_FS_FLAGS_DO_PROBES))
     return;
   if (sr->availability_trials > AVAILABILITY_TRIALS_MAX)
     return;
+  if ( (chk != sr->uri->type) && (loc != sr->uri->type))
+    return;
   len = GNUNET_FS_uri_chk_get_file_size (sr->uri);
-  if (len == 0)
+  if (0 == len)
     return;
   if ((len <= DBLOCK_SIZE) && (sr->availability_success > 0))
     return;
@@ -497,13 +502,65 @@ process_sks_result (struct GNUNET_FS_SearchContext *sc, const char *id_update,
   /* notify client */
   notify_client_chk_result (sc, sr);
   /* search for updates */
-  if (strlen (id_update) == 0)
+  if (0 == strlen (id_update))
     return;                     /* no updates */
   uu.type = sks;
   uu.data.sks.namespace = sc->uri->data.sks.namespace;
   uu.data.sks.identifier = GNUNET_strdup (id_update);
   (void) search_start (sc->h, &uu, sc->anonymity, sc->options, NULL, sr);
   GNUNET_free (uu.data.sks.identifier);
+}
+
+
+/**
+ * Decrypt a block using a 'keyword' as the passphrase.  Given the
+ * KSK public key derived from the keyword, this function looks up
+ * the original keyword in the search context and decrypts the
+ * given ciphertext block.
+ *
+ * @param sc search context with the keywords
+ * @param public_key public key to use to lookup the keyword
+ * @param edata encrypted data
+ * @param edata_size number of bytes in 'edata' (and 'data')
+ * @param data where to store the plaintext
+ * @return keyword index on success, GNUNET_SYSERR on error (no such 
+ *        keyword, internal error)
+ */
+static int
+decrypt_block_with_keyword (const struct GNUNET_FS_SearchContext *sc,
+			    const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *public_key,
+			    const void *edata,
+			    size_t edata_size,
+			    char *data)
+{ 
+  GNUNET_HashCode q;
+  struct GNUNET_CRYPTO_AesSessionKey skey;
+  struct GNUNET_CRYPTO_AesInitializationVector iv;
+  int i;
+
+  GNUNET_CRYPTO_hash (public_key,
+                      sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded),
+                      &q);
+  /* find key */
+  for (i = 0; i < sc->uri->data.ksk.keywordCount; i++)
+    if (0 == memcmp (&q, &sc->requests[i].query, sizeof (GNUNET_HashCode)))
+      break;
+  if (i == sc->uri->data.ksk.keywordCount)
+  {
+    /* oops, does not match any of our keywords!? */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* decrypt */
+  GNUNET_CRYPTO_hash_to_aes_key (&sc->requests[i].key, &skey, &iv);
+  if (-1 ==
+      GNUNET_CRYPTO_aes_decrypt (edata, edata_size, &skey,
+                                 &iv, data))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return i;
 }
 
 
@@ -518,39 +575,20 @@ static void
 process_kblock (struct GNUNET_FS_SearchContext *sc, const struct KBlock *kb,
                 size_t size)
 {
-  unsigned int i;
   size_t j;
-  GNUNET_HashCode q;
   char pt[size - sizeof (struct KBlock)];
-  struct GNUNET_CRYPTO_AesSessionKey skey;
-  struct GNUNET_CRYPTO_AesInitializationVector iv;
   const char *eos;
   struct GNUNET_CONTAINER_MetaData *meta;
   struct GNUNET_FS_Uri *uri;
   char *emsg;
+  int i;
 
-  GNUNET_CRYPTO_hash (&kb->keyspace,
-                      sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded),
-                      &q);
-  /* find key */
-  for (i = 0; i < sc->uri->data.ksk.keywordCount; i++)
-    if (0 == memcmp (&q, &sc->requests[i].query, sizeof (GNUNET_HashCode)))
-      break;
-  if (i == sc->uri->data.ksk.keywordCount)
-  {
-    /* oops, does not match any of our keywords!? */
-    GNUNET_break (0);
+  if (-1 == (i = decrypt_block_with_keyword (sc,
+					     &kb->keyspace,
+					     &kb[1],
+					     size - sizeof (struct KBlock),
+					     pt)))
     return;
-  }
-  /* decrypt */
-  GNUNET_CRYPTO_hash_to_aes_key (&sc->requests[i].key, &skey, &iv);
-  if (-1 ==
-      GNUNET_CRYPTO_aes_decrypt (&kb[1], size - sizeof (struct KBlock), &skey,
-                                 &iv, pt))
-  {
-    GNUNET_break (0);
-    return;
-  }
   /* parse */
   eos = memchr (pt, 0, sizeof (pt));
   if (NULL == eos)
@@ -563,13 +601,13 @@ process_kblock (struct GNUNET_FS_SearchContext *sc, const struct KBlock *kb,
     meta = GNUNET_CONTAINER_meta_data_create ();
   else
     meta = GNUNET_CONTAINER_meta_data_deserialize (&pt[j], sizeof (pt) - j);
-  if (meta == NULL)
+  if (NULL == meta)
   {
     GNUNET_break_op (0);        /* kblock malformed */
     return;
   }
   uri = GNUNET_FS_uri_parse (pt, &emsg);
-  if (uri == NULL)
+  if (NULL == uri)
   {
     GNUNET_break_op (0);        /* kblock malformed */
     GNUNET_free_non_null (emsg);
@@ -596,39 +634,20 @@ static void
 process_nblock (struct GNUNET_FS_SearchContext *sc, const struct NBlock *nb,
                 size_t size)
 {
-  unsigned int i;
   size_t j;
-  GNUNET_HashCode q;
   char pt[size - sizeof (struct NBlock)];
-  struct GNUNET_CRYPTO_AesSessionKey skey;
-  struct GNUNET_CRYPTO_AesInitializationVector iv;
   const char *eos;
   struct GNUNET_CONTAINER_MetaData *meta;
   struct GNUNET_FS_Uri *uri;
   char *uris;
+  int i;
 
-  GNUNET_CRYPTO_hash (&nb->keyspace,
-                      sizeof (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded),
-                      &q);
-  /* find key */
-  for (i = 0; i < sc->uri->data.ksk.keywordCount; i++)
-    if (0 == memcmp (&q, &sc->requests[i].query, sizeof (GNUNET_HashCode)))
-      break;
-  if (i == sc->uri->data.ksk.keywordCount)
-  {
-    /* oops, does not match any of our keywords!? */
-    GNUNET_break (0);
+  if (-1 == (i = decrypt_block_with_keyword (sc,
+					     &nb->keyspace,
+					     &nb[1],
+					     size - sizeof (struct NBlock),
+					     pt)))
     return;
-  }
-  /* decrypt */
-  GNUNET_CRYPTO_hash_to_aes_key (&sc->requests[i].key, &skey, &iv);
-  if (-1 ==
-      GNUNET_CRYPTO_aes_decrypt (&nb[1], size - sizeof (struct NBlock), &skey,
-                                 &iv, pt))
-  {
-    GNUNET_break (0);
-    return;
-  }
   /* parse */
   eos = memchr (pt, 0, sizeof (pt));
   if (NULL == eos)
@@ -641,7 +660,7 @@ process_nblock (struct GNUNET_FS_SearchContext *sc, const struct NBlock *nb,
     meta = GNUNET_CONTAINER_meta_data_create ();
   else
     meta = GNUNET_CONTAINER_meta_data_deserialize (&pt[j], sizeof (pt) - j);
-  if (meta == NULL)
+  if (NULL == meta)
   {
     GNUNET_break_op (0);        /* nblock malformed */
     return;
@@ -703,7 +722,7 @@ process_sblock (struct GNUNET_FS_SearchContext *sc, const struct SBlock *sb,
   }
   /* parse */
   off = GNUNET_STRINGS_buffer_tokenize (pt, len, 2, &id, &uris);
-  if (off == 0)
+  if (0 == off)
   {
     GNUNET_break_op (0);        /* sblock malformed */
     return;
@@ -715,7 +734,7 @@ process_sblock (struct GNUNET_FS_SearchContext *sc, const struct SBlock *sb,
     return;
   }
   uri = GNUNET_FS_uri_parse (uris, &emsg);
-  if (uri == NULL)
+  if (NULL == uri)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Failed to parse URI `%s': %s\n", uris,
                 emsg);
@@ -914,7 +933,7 @@ build_result_set (void *cls, const GNUNET_HashCode * key, void *value)
   struct MessageBuilderContext *mbc = cls;
   struct GNUNET_FS_SearchResult *sr = value;
 
-  if ( (sr->keyword_bitmap != NULL) &&
+  if ( (NULL != sr->keyword_bitmap) &&
        (0 == (sr->keyword_bitmap[mbc->keyword_offset / 8] & (1 << (mbc->keyword_offset % 8)))) )
     return GNUNET_OK; /* have no match for this keyword yet */
   if (mbc->skip_cnt > 0)
@@ -922,7 +941,7 @@ build_result_set (void *cls, const GNUNET_HashCode * key, void *value)
     mbc->skip_cnt--;
     return GNUNET_OK;
   }
-  if (mbc->put_cnt == 0)
+  if (0 == mbc->put_cnt)
     return GNUNET_SYSERR;
   mbc->sc->search_request_map_offset++;
   mbc->xoff[--mbc->put_cnt] = *key;
@@ -946,7 +965,7 @@ find_result_set (void *cls, const GNUNET_HashCode * key, void *value)
   struct MessageBuilderContext *mbc = cls;
   struct GNUNET_FS_SearchResult *sr = value;
 
-  if ( (sr->keyword_bitmap != NULL) &&
+  if ( (NULL != sr->keyword_bitmap) &&
        (0 == (sr->keyword_bitmap[mbc->keyword_offset / 8] & (1 << (mbc->keyword_offset % 8)))) )
     return GNUNET_OK; /* have no match for this keyword yet */
   mbc->put_cnt++;
@@ -1133,7 +1152,7 @@ try_reconnect (struct GNUNET_FS_SearchContext *sc)
 {
   if (NULL != sc->client)
   {
-    GNUNET_CLIENT_disconnect (sc->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (sc->client);
     sc->client = NULL;
   }
   sc->task =
@@ -1168,7 +1187,7 @@ search_start (struct GNUNET_FS_Handle *h, const struct GNUNET_FS_Uri *uri,
   sc->uri = GNUNET_FS_uri_dup (uri);
   sc->anonymity = anonymity;
   sc->start_time = GNUNET_TIME_absolute_get ();
-  if (psearch != NULL)
+  if (NULL != psearch)
   {
     sc->psearch_result = psearch;
     psearch->update_search = sc;
@@ -1217,7 +1236,7 @@ GNUNET_FS_search_start_searching_ (struct GNUNET_FS_SearchContext *sc)
       keyword = &sc->uri->data.ksk.keywords[i][1];
       GNUNET_CRYPTO_hash (keyword, strlen (keyword), &hc);
       pk = GNUNET_CRYPTO_rsa_key_create_from_hash (&hc);
-      GNUNET_assert (pk != NULL);
+      GNUNET_assert (NULL != pk);
       GNUNET_CRYPTO_rsa_key_get_public (pk, &pub);
       GNUNET_CRYPTO_rsa_key_free (pk);
       GNUNET_CRYPTO_hash (&pub,
@@ -1253,17 +1272,17 @@ search_result_freeze_probes (void *cls, const GNUNET_HashCode * key,
 {
   struct GNUNET_FS_SearchResult *sr = value;
 
-  if (sr->probe_ctx != NULL)
+  if (NULL != sr->probe_ctx)
   {
     GNUNET_FS_download_stop (sr->probe_ctx, GNUNET_YES);
     sr->probe_ctx = NULL;
   }
-  if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
   {
     GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
     sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
   }
-  if (sr->update_search != NULL)
+  if (NULL != sr->update_search)
     GNUNET_FS_search_pause (sr->update_search);
   return GNUNET_OK;
 }
@@ -1284,7 +1303,7 @@ search_result_resume_probes (void *cls, const GNUNET_HashCode * key,
   struct GNUNET_FS_SearchResult *sr = value;
 
   GNUNET_FS_search_start_probe_ (sr);
-  if (sr->update_search != NULL)
+  if (NULL != sr->update_search)
     GNUNET_FS_search_continue (sr->update_search);
   return GNUNET_OK;
 }
@@ -1305,10 +1324,21 @@ search_result_suspend (void *cls, const GNUNET_HashCode * key, void *value)
   struct GNUNET_FS_SearchResult *sr = value;
   struct GNUNET_FS_ProgressInfo pi;
 
-  if (sr->download != NULL)
+  if (NULL != sr->download)
+  {
     GNUNET_FS_download_signal_suspend_ (sr->download);
-  if (sr->update_search != NULL)
+    sr->download = NULL;
+  }
+  if (NULL != sr->probe_ctx)
+  {
+    GNUNET_FS_download_stop (sr->probe_ctx, GNUNET_YES);
+    sr->probe_ctx = NULL;
+  }
+  if (NULL != sr->update_search)
+  {
     GNUNET_FS_search_signal_suspend_ (sr->update_search);
+    sr->update_search = NULL;
+  }
   pi.status = GNUNET_FS_STATUS_SEARCH_RESULT_SUSPEND;
   pi.value.search.specifics.result_suspend.cctx = sr->client_info;
   pi.value.search.specifics.result_suspend.meta = sr->meta;
@@ -1318,10 +1348,11 @@ search_result_suspend (void *cls, const GNUNET_HashCode * key, void *value)
   GNUNET_free_non_null (sr->serialization);
   GNUNET_FS_uri_destroy (sr->uri);
   GNUNET_CONTAINER_meta_data_destroy (sr->meta);
-  if (sr->probe_ctx != NULL)
-    GNUNET_FS_download_stop (sr->probe_ctx, GNUNET_YES);
-  if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
+  {
     GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
+    sr->probe_cancel_task = GNUNET_SCHEDULER_NO_TASK;
+  }
   GNUNET_free_non_null (sr->keyword_bitmap);
   GNUNET_free (sr);
   return GNUNET_OK;
@@ -1350,9 +1381,9 @@ GNUNET_FS_search_signal_suspend_ (void *cls)
   if (sc->task != GNUNET_SCHEDULER_NO_TASK)
     GNUNET_SCHEDULER_cancel (sc->task);
   if (NULL != sc->client)
-    GNUNET_CLIENT_disconnect (sc->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (sc->client);
   GNUNET_CONTAINER_multihashmap_destroy (sc->master_result_map);
-  if (sc->requests != NULL)
+  if (NULL != sc->requests)
   {
     GNUNET_assert (GNUNET_FS_uri_test_ksk (sc->uri));
     for (i = 0; i < sc->uri->data.ksk.keywordCount; i++)
@@ -1385,7 +1416,7 @@ GNUNET_FS_search_start (struct GNUNET_FS_Handle *h,
   struct GNUNET_FS_SearchContext *ret;
 
   ret = search_start (h, uri, anonymity, options, cctx, NULL);
-  if (ret == NULL)
+  if (NULL == ret)
     return NULL;
   ret->top = GNUNET_FS_make_top (h, &GNUNET_FS_search_signal_suspend_, ret);
   return ret;
@@ -1402,11 +1433,11 @@ GNUNET_FS_search_pause (struct GNUNET_FS_SearchContext *sc)
 {
   struct GNUNET_FS_ProgressInfo pi;
 
-  if (sc->task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != sc->task)
     GNUNET_SCHEDULER_cancel (sc->task);
   sc->task = GNUNET_SCHEDULER_NO_TASK;
   if (NULL != sc->client)
-    GNUNET_CLIENT_disconnect (sc->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (sc->client);
   sc->client = NULL;
   GNUNET_FS_search_sync_ (sc);
   GNUNET_CONTAINER_multihashmap_iterate (sc->master_result_map,
@@ -1426,8 +1457,8 @@ GNUNET_FS_search_continue (struct GNUNET_FS_SearchContext *sc)
 {
   struct GNUNET_FS_ProgressInfo pi;
 
-  GNUNET_assert (sc->client == NULL);
-  GNUNET_assert (sc->task == GNUNET_SCHEDULER_NO_TASK);
+  GNUNET_assert (NULL == sc->client);
+  GNUNET_assert (GNUNET_SCHEDULER_NO_TASK == sc->task);
   do_reconnect (sc, NULL);
   GNUNET_FS_search_sync_ (sc);
   pi.status = GNUNET_FS_STATUS_SEARCH_CONTINUED;
@@ -1438,7 +1469,7 @@ GNUNET_FS_search_continue (struct GNUNET_FS_SearchContext *sc)
 
 
 /**
- * Free the given search result.
+ * Signal stop for the given search result.
  *
  * @param cls the global FS handle
  * @param key the key for the search result (unused)
@@ -1446,7 +1477,7 @@ GNUNET_FS_search_continue (struct GNUNET_FS_SearchContext *sc)
  * @return GNUNET_OK
  */
 static int
-search_result_free (void *cls, const GNUNET_HashCode * key, void *value)
+search_result_stop (void *cls, const GNUNET_HashCode * key, void *value)
 {
   struct GNUNET_FS_SearchContext *sc = cls;
   struct GNUNET_FS_SearchResult *sr = value;
@@ -1470,23 +1501,40 @@ search_result_free (void *cls, const GNUNET_HashCode * key, void *value)
     GNUNET_FS_download_sync_ (sr->download);
     sr->download = NULL;
   }
-  if (NULL != sr->update_search)
-  {
-    GNUNET_FS_search_stop (sr->update_search);
-    GNUNET_assert (sr->update_search == NULL);
-  }
   pi.status = GNUNET_FS_STATUS_SEARCH_RESULT_STOPPED;
   pi.value.search.specifics.result_stopped.cctx = sr->client_info;
   pi.value.search.specifics.result_stopped.meta = sr->meta;
   pi.value.search.specifics.result_stopped.uri = sr->uri;
   sr->client_info = GNUNET_FS_search_make_status_ (&pi, sc);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Free the given search result.
+ *
+ * @param cls the global FS handle
+ * @param key the key for the search result (unused)
+ * @param value the search result to free
+ * @return GNUNET_OK
+ */
+static int
+search_result_free (void *cls, const GNUNET_HashCode * key, void *value)
+{
+  struct GNUNET_FS_SearchResult *sr = value;
+
+  if (NULL != sr->update_search)
+  {
+    GNUNET_FS_search_stop (sr->update_search);
+    GNUNET_assert (NULL == sr->update_search);
+  }
   GNUNET_break (NULL == sr->client_info);
   GNUNET_free_non_null (sr->serialization);
   GNUNET_FS_uri_destroy (sr->uri);
   GNUNET_CONTAINER_meta_data_destroy (sr->meta);
-  if (sr->probe_ctx != NULL)
+  if (NULL != sr->probe_ctx)
     GNUNET_FS_download_stop (sr->probe_ctx, GNUNET_YES);
-  if (sr->probe_cancel_task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != sr->probe_cancel_task)
     GNUNET_SCHEDULER_cancel (sr->probe_cancel_task);
   GNUNET_free_non_null (sr->keyword_bitmap);
   GNUNET_free (sr);
@@ -1505,13 +1553,13 @@ GNUNET_FS_search_stop (struct GNUNET_FS_SearchContext *sc)
   struct GNUNET_FS_ProgressInfo pi;
   unsigned int i;
 
-  if (sc->top != NULL)
+  if (NULL != sc->top)
     GNUNET_FS_end_top (sc->h, sc->top);
-  if (sc->psearch_result != NULL)
-    sc->psearch_result->update_search = NULL;
   GNUNET_CONTAINER_multihashmap_iterate (sc->master_result_map,
-                                         &search_result_free, sc);
-  if (sc->serialization != NULL)
+                                         &search_result_stop, sc);
+  if (NULL != sc->psearch_result)
+    sc->psearch_result->update_search = NULL;
+  if (NULL != sc->serialization)
   {
     GNUNET_FS_remove_sync_file_ (sc->h,
                                  (sc->psearch_result !=
@@ -1528,12 +1576,14 @@ GNUNET_FS_search_stop (struct GNUNET_FS_SearchContext *sc)
   pi.status = GNUNET_FS_STATUS_SEARCH_STOPPED;
   sc->client_info = GNUNET_FS_search_make_status_ (&pi, sc);
   GNUNET_break (NULL == sc->client_info);
-  if (sc->task != GNUNET_SCHEDULER_NO_TASK)
+  if (GNUNET_SCHEDULER_NO_TASK != sc->task)
     GNUNET_SCHEDULER_cancel (sc->task);
   if (NULL != sc->client)
-    GNUNET_CLIENT_disconnect (sc->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (sc->client);
+  GNUNET_CONTAINER_multihashmap_iterate (sc->master_result_map,
+                                         &search_result_free, sc);
   GNUNET_CONTAINER_multihashmap_destroy (sc->master_result_map);
-  if (sc->requests != NULL)
+  if (NULL != sc->requests)
   {
     GNUNET_assert (GNUNET_FS_uri_test_ksk (sc->uri));
     for (i = 0; i < sc->uri->data.ksk.keywordCount; i++)

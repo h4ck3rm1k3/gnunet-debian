@@ -291,6 +291,12 @@ publish_inspector (void *cls, struct GNUNET_FS_FileInformation *fi,
   }
   if (!do_disable_creation_time)
     GNUNET_CONTAINER_meta_data_add_publication_date (m);
+  if ( (disable_extractor) &&
+       (NULL != *uri) )
+  {
+    GNUNET_FS_uri_destroy (*uri);
+    *uri = NULL;
+  }
   if (extract_only)
   {
     fn = GNUNET_CONTAINER_meta_data_get_by_type (m,

@@ -290,6 +290,11 @@ struct TunnelState
 
 
 /**
+ * Global return value from 'main'.
+ */
+static int global_ret;
+
+/**
  * The configuration to use
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -535,7 +540,7 @@ request_done (struct RequestRecord *rr)
     return;    
   }
   {
-    char buf[reply_len];
+    char buf[reply_len] GNUNET_ALIGN;
     size_t off;
     struct GNUNET_TUN_IPv4Header ip4;
     struct GNUNET_TUN_IPv6Header ip6;
@@ -626,10 +631,10 @@ request_done (struct RequestRecord *rr)
     }
     /* final checks & sending */
     GNUNET_assert (off == reply_len);
-    GNUNET_HELPER_send (hijacker,
-			hdr,
-			GNUNET_YES,
-			NULL, NULL);
+    (void) GNUNET_HELPER_send (hijacker,
+			       hdr,
+			       GNUNET_YES,
+			       NULL, NULL);
     GNUNET_STATISTICS_update (stats,
 			      gettext_noop ("# DNS requests answered via TUN interface"),
 			      1, GNUNET_NO);
@@ -650,7 +655,7 @@ static void
 send_request_to_client (struct RequestRecord *rr,
 			struct GNUNET_SERVER_Client *client)
 {
-  char buf[sizeof (struct GNUNET_DNS_Request) + rr->payload_length];
+  char buf[sizeof (struct GNUNET_DNS_Request) + rr->payload_length] GNUNET_ALIGN;
   struct GNUNET_DNS_Request *req;
 
   if (sizeof (buf) >= GNUNET_SERVER_MAX_MESSAGE_SIZE)
@@ -729,7 +734,6 @@ get_request_socket (int af)
   if (NULL != rs->dnsout6)
     GNUNET_NETWORK_fdset_set (rset, rs->dnsout6);
   rs->read_task = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-					       GNUNET_SCHEDULER_NO_TASK,
 					       REQUEST_TIMEOUT,
 					       rset,
 					       NULL,
@@ -982,7 +986,7 @@ do_dns_read (struct GNUNET_NETWORK_Handle *dnsout)
 #endif
 
   {
-    unsigned char buf[len];
+    unsigned char buf[len] GNUNET_ALIGN;
 
     addrlen = sizeof (addr);
     memset (&addr, 0, sizeof (addr));  
@@ -1095,7 +1099,6 @@ read_response (void *cls,
   if (NULL != rs->dnsout6)
     GNUNET_NETWORK_fdset_set (rset, rs->dnsout6);
   rs->read_task = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-					       GNUNET_SCHEDULER_NO_TASK,
 					       GNUNET_TIME_absolute_get_remaining (rs->timeout),
 					       rset,
 					       NULL,
@@ -1193,10 +1196,8 @@ handle_client_response (void *cls GNUNET_UNUSED,
 	return;
       }
       GNUNET_free_non_null (rr->payload);
-#if DEBUG_DNS
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-		  _("Changing DNS reply according to client specifications\n"));
-#endif
+		  "Changing DNS reply according to client specifications\n");
       rr->payload = GNUNET_malloc (msize);
       rr->payload_length = msize;
       memcpy (rr->payload, &resp[1], msize);
@@ -1238,7 +1239,7 @@ handle_client_response (void *cls GNUNET_UNUSED,
  * @param client identification of the client
  * @param message the actual message, a DNS request we should handle
  */
-static void
+static int
 process_helper_messages (void *cls GNUNET_UNUSED, void *client,
 			 const struct GNUNET_MessageHeader *message)
 {
@@ -1259,7 +1260,7 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
   {
     /* non-IP packet received on TUN!? */
     GNUNET_break (0);
-    return;
+    return GNUNET_OK;
   }
   msize -= sizeof (struct GNUNET_MessageHeader);
   tun = (const struct GNUNET_TUN_Layer2PacketHeader *) &message[1];
@@ -1268,6 +1269,7 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
   {
   case ETH_P_IPV4:
     ip4 = (const struct GNUNET_TUN_IPv4Header *) &tun[1];
+    ip6 = NULL; /* make compiler happy */
     if ( (msize < sizeof (struct GNUNET_TUN_IPv4Header)) ||
 	 (ip4->version != 4) ||
 	 (ip4->header_length != sizeof (struct GNUNET_TUN_IPv4Header) / 4) ||
@@ -1277,12 +1279,13 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
       /* non-IP/UDP packet received on TUN (or with options) */
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  _("Received malformed IPv4-UDP packet on TUN interface.\n"));
-      return;
+      return GNUNET_OK;
     }
     udp = (const struct GNUNET_TUN_UdpHeader*) &ip4[1];
     msize -= sizeof (struct GNUNET_TUN_IPv4Header);
     break;
   case ETH_P_IPV6:
+    ip4 = NULL; /* make compiler happy */
     ip6 = (const struct GNUNET_TUN_IPv6Header *) &tun[1];
     if ( (msize < sizeof (struct GNUNET_TUN_IPv6Header)) ||
 	 (ip6->version != 6) ||
@@ -1292,7 +1295,7 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
       /* non-IP/UDP packet received on TUN (or with extensions) */
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  _("Received malformed IPv6-UDP packet on TUN interface.\n"));
-      return;
+      return GNUNET_OK;
     }
     udp = (const struct GNUNET_TUN_UdpHeader*) &ip6[1];
     msize -= sizeof (struct GNUNET_TUN_IPv6Header);
@@ -1303,7 +1306,7 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
 		_("Got non-IP packet with %u bytes and protocol %u from TUN\n"),
 		(unsigned int) msize,
 		ntohs (tun->proto));
-    return;
+    return GNUNET_OK;
   }
   if (msize <= sizeof (struct GNUNET_TUN_UdpHeader) + sizeof (struct GNUNET_TUN_DnsHeader))
   {    
@@ -1311,7 +1314,7 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
     GNUNET_STATISTICS_update (stats,
 			      gettext_noop ("# Non-DNS UDP packet received via TUN interface"),
 			      1, GNUNET_NO);
-    return;
+    return GNUNET_OK;
   }
   msize -= sizeof (struct GNUNET_TUN_UdpHeader);
   dns = (const struct GNUNET_TUN_DnsHeader*) &udp[1];
@@ -1378,6 +1381,7 @@ process_helper_messages (void *cls GNUNET_UNUSED, void *client,
 			    1, GNUNET_NO);
   /* start request processing state machine */
   next_phase (rr);
+  return GNUNET_OK;
 }
 
 
@@ -1404,7 +1408,7 @@ receive_dns_request (void *cls GNUNET_UNUSED, struct GNUNET_MESH_Tunnel *tunnel,
   const struct GNUNET_TUN_DnsHeader *dns;
   size_t mlen = ntohs (message->size);
   size_t dlen = mlen - sizeof (struct GNUNET_MessageHeader);
-  char buf[dlen];
+  char buf[dlen] GNUNET_ALIGN;
   struct GNUNET_TUN_DnsHeader *dout;
   struct sockaddr_in v4;
   struct sockaddr_in6 v6;
@@ -1550,6 +1554,16 @@ run (void *cls, struct GNUNET_SERVER_Handle *server,
   struct in6_addr dns_exit6;
 
   cfg = cfg_;
+  if (GNUNET_YES !=
+      GNUNET_OS_check_helper_binary ("gnunet-helper-dns"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		_("`%s' must be installed SUID, refusing to run\n"),
+		"gnunet-helper-dns");
+    global_ret = 1;
+    return;
+  }
+
   stats = GNUNET_STATISTICS_create ("dns", cfg);
   nc = GNUNET_SERVER_notification_context_create (server, 1);
   GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL, &cleanup_task,
@@ -1660,7 +1674,7 @@ main (int argc, char *const *argv)
 {
   return (GNUNET_OK ==
           GNUNET_SERVICE_run (argc, argv, "dns", GNUNET_SERVICE_OPTION_NONE,
-                              &run, NULL)) ? 0 : 1;
+                              &run, NULL)) ? global_ret : 1;
 }
 
 

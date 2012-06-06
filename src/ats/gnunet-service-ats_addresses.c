@@ -37,6 +37,8 @@
 
 #define VERBOSE GNUNET_NO
 
+#define ATS_BLOCKING_DELTA GNUNET_TIME_relative_multiply(GNUNET_TIME_UNIT_MILLISECONDS, 100)
+
 enum ATS_Mode
 {
   /*
@@ -66,6 +68,25 @@ static unsigned int active_addr_count;
 
 static int ats_mode;
 
+static int running;
+
+
+static void
+send_bw_notification (struct ATS_Address *aa)
+{
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "New bandwidth for peer %s is %u/%u\n",
+              GNUNET_i2s (&aa->peer), ntohl (aa->assigned_bw_in.value__),
+              ntohl (aa->assigned_bw_out.value__));
+  GAS_scheduling_transmit_address_suggestion (&aa->peer, aa->plugin, aa->addr,
+                                              aa->addr_len, aa->session_id,
+                                              aa->ats, aa->ats_count,
+                                              aa->assigned_bw_out,
+                                              aa->assigned_bw_in);
+  GAS_reservations_set_bandwidth (&aa->peer, aa->assigned_bw_in);
+  GAS_performance_notify_clients (&aa->peer, aa->plugin, aa->addr, aa->addr_len,
+                                  aa->ats, aa->ats_count, aa->assigned_bw_out,
+                                  aa->assigned_bw_in);
+}
 
 /**
  * Update a bandwidth assignment for a peer.  This trivial method currently
@@ -90,18 +111,8 @@ update_bw_simple_it (void *cls, const GNUNET_HashCode * key, void *value)
   aa->assigned_bw_in.value__ = htonl (wan_quota_in / active_addr_count);
   aa->assigned_bw_out.value__ = htonl (wan_quota_out / active_addr_count);
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "New bandwidth for peer %s is %u/%u\n",
-              GNUNET_i2s (&aa->peer), ntohl (aa->assigned_bw_in.value__),
-              ntohl (aa->assigned_bw_out.value__));
-  GAS_scheduling_transmit_address_suggestion (&aa->peer, aa->plugin, aa->addr,
-                                              aa->addr_len, aa->session_id,
-                                              aa->ats, aa->ats_count,
-                                              aa->assigned_bw_out,
-                                              aa->assigned_bw_in);
-  GAS_reservations_set_bandwidth (&aa->peer, aa->assigned_bw_in);
-  GAS_performance_notify_clients (&aa->peer, aa->plugin, aa->addr, aa->addr_len,
-                                  aa->ats, aa->ats_count, aa->assigned_bw_out,
-                                  aa->assigned_bw_in);
+  send_bw_notification (aa);
+
   return GNUNET_OK;
 }
 
@@ -159,9 +170,6 @@ create_address (const struct GNUNET_PeerIdentity *peer,
   memcpy (&aa[1], plugin_addr, plugin_addr_len);
   aa->plugin = GNUNET_strdup (plugin_name);
   aa->session_id = session_id;
-  aa->mlp_information = NULL;
-  aa->next = NULL;
-  aa->prev = NULL;
   return aa;
 }
 
@@ -332,6 +340,11 @@ GAS_addresses_update (const struct GNUNET_PeerIdentity *peer,
   struct ATS_Address *old;
   uint32_t i;
 
+  if (GNUNET_NO == running)
+    return;
+
+  GNUNET_assert (NULL != addresses);
+
   aa = create_address (peer,
                        plugin_name,
                        plugin_addr, plugin_addr_len,
@@ -342,11 +355,10 @@ GAS_addresses_update (const struct GNUNET_PeerIdentity *peer,
   aa->ats_count = atsi_count;
   memcpy (aa->ats, atsi, atsi_count * sizeof (struct GNUNET_ATS_Information));
 
-#if DEBUG_ATS
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Updating address for peer `%s' %u\n",
               GNUNET_i2s (peer),
               session_id);
-#endif
+
   /* Get existing address or address with session == 0 */
   old = find_address (peer, aa);
   if (old == NULL)
@@ -445,11 +457,11 @@ destroy_by_session_id (void *cls, const GNUNET_HashCode * key, void *value)
       (aa->addr_len == info->addr_len) &&
       (0 == memcmp (info->addr, aa->addr, aa->addr_len)))
   {
-#if VERBOSE
+
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Deleting address for peer `%s': `%s' %u\n",
                 GNUNET_i2s (&aa->peer), aa->plugin, aa->session_id);
-#endif
+
     if (GNUNET_YES == destroy_address (aa))
       recalculate_assigned_bw ();
     return GNUNET_OK;
@@ -503,6 +515,9 @@ GAS_addresses_destroy (const struct GNUNET_PeerIdentity *peer,
 {
   struct ATS_Address *aa;
 
+  if (GNUNET_NO == running)
+    return;
+
   GNUNET_break (0 < strlen (plugin_name));
   aa = create_address (peer, plugin_name, plugin_addr, plugin_addr_len, session_id);
 
@@ -529,6 +544,49 @@ find_address_it (void *cls, const GNUNET_HashCode * key, void *value)
   struct ATS_Address **ap = cls;
   struct ATS_Address *aa = (struct ATS_Address *) value;
   struct ATS_Address *ab = *ap;
+  struct GNUNET_TIME_Absolute now;
+
+  now = GNUNET_TIME_absolute_get();
+
+  if (aa->blocked_until.abs_value == GNUNET_TIME_absolute_max (now, aa->blocked_until).abs_value)
+  {
+    /* This address is blocked for suggestion */
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Address %p blocked for suggestion for %llu ms \n",
+                aa,
+                GNUNET_TIME_absolute_get_difference(now, aa->blocked_until).rel_value);
+    return GNUNET_OK;
+  }
+
+  aa->block_interval = GNUNET_TIME_relative_add (aa->block_interval, ATS_BLOCKING_DELTA);
+  aa->blocked_until = GNUNET_TIME_absolute_add (now, aa->block_interval);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Address %p ready for suggestion, block interval now %llu \n", aa, aa->block_interval);
+
+  /* FIXME this is a hack */
+
+
+  if (NULL != ab)
+  {
+    if ((0 == strcmp (ab->plugin, "tcp")) &&
+        (0 == strcmp (aa->plugin, "tcp")))
+    {
+      if ((0 != ab->addr_len) &&
+          (0 == aa->addr_len))
+      {
+        /* saved address was an outbound address, but we have an inbound address */
+        *ap = aa;
+        return GNUNET_OK;
+      }
+      if (0 == ab->addr_len)
+      {
+        /* saved address was an inbound address, so do not overwrite */
+        return GNUNET_OK;
+      }
+    }
+  }
+  /* FIXME end of hack */
 
   if (NULL == ab)
   {
@@ -559,7 +617,7 @@ find_address_it (void *cls, const GNUNET_HashCode * key, void *value)
 }
 
 
-void
+int
 GAS_addresses_in_use (const struct GNUNET_PeerIdentity *peer,
                       const char *plugin_name, const void *plugin_addr,
                       size_t plugin_addr_len, uint32_t session_id, int in_use)
@@ -573,19 +631,34 @@ GAS_addresses_in_use (const struct GNUNET_PeerIdentity *peer,
   struct ATS_Address *aa;
   struct ATS_Address *old;
 
+  if (GNUNET_NO == running)
+    return GNUNET_SYSERR;
 
-  aa = create_address(peer, plugin_name, plugin_addr, plugin_addr_len, session_id);
+  aa = create_address (peer, plugin_name, plugin_addr, plugin_addr_len, session_id);
   old = find_exact_address (peer, aa);
   free_address (aa);
 
-  GNUNET_assert (old != NULL);
-  GNUNET_assert (old->used != in_use);
+  if (NULL == old)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (old->used == in_use)
+  {
+    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Address in use called multiple times for peer `%s': %s -> %s \n",
+                GNUNET_i2s (peer),
+                (GNUNET_NO == old->used) ? "NO" : "YES",
+                (GNUNET_NO == in_use) ? "NO" : "YES");
+    return GNUNET_SYSERR;
+  }
   old->used = in_use;
-
 #if HAVE_LIBGLPK
   if (ats_mode == MLP)
      GAS_mlp_address_update (mlp, addresses, old);
 #endif
+  return GNUNET_OK;
 }
 
 
@@ -608,7 +681,7 @@ void request_address_mlp (const struct GNUNET_PeerIdentity *peer)
 
   if (aa == NULL)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG | GNUNET_ERROR_TYPE_BULK,
                 "Cannot suggest address for peer `%s'\n", GNUNET_i2s (peer));
     return;
   }
@@ -617,18 +690,7 @@ void request_address_mlp (const struct GNUNET_PeerIdentity *peer)
     aa->active = GNUNET_YES;
     active_addr_count++;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "New bandwidth for peer %s is %u/%u\n",
-                GNUNET_i2s (&aa->peer), ntohl (aa->assigned_bw_in.value__),
-                ntohl (aa->assigned_bw_out.value__));
-    GAS_scheduling_transmit_address_suggestion (&aa->peer, aa->plugin, aa->addr,
-                                                aa->addr_len, aa->session_id,
-                                                aa->ats, aa->ats_count,
-                                                aa->assigned_bw_out,
-                                                aa->assigned_bw_in);
-    GAS_reservations_set_bandwidth (&aa->peer, aa->assigned_bw_in);
-    GAS_performance_notify_clients (&aa->peer, aa->plugin, aa->addr, aa->addr_len,
-                                    aa->ats, aa->ats_count, aa->assigned_bw_out,
-                                    aa->assigned_bw_in);
+    send_bw_notification (aa);
   }
   else
   {
@@ -652,10 +714,13 @@ void request_address_simple (const struct GNUNET_PeerIdentity *peer)
                                               &find_address_it, &aa);
   if (aa == NULL)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG | GNUNET_ERROR_TYPE_BULK,
                 "Cannot suggest address for peer `%s'\n", GNUNET_i2s (peer));
     return;
   }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG | GNUNET_ERROR_TYPE_BULK,
+              "Suggesting address %p for peer `%s'\n", aa, GNUNET_i2s (peer));
 
   if (aa->active == GNUNET_NO)
   {
@@ -681,6 +746,9 @@ void request_address_simple (const struct GNUNET_PeerIdentity *peer)
 void
 GAS_addresses_request_address (const struct GNUNET_PeerIdentity *peer)
 {
+  if (GNUNET_NO == running)
+    return;
+
   if (ats_mode == SIMPLE)
   {
     request_address_simple (peer);
@@ -692,6 +760,30 @@ GAS_addresses_request_address (const struct GNUNET_PeerIdentity *peer)
 }
 
 
+static int
+reset_address_it (void *cls, const GNUNET_HashCode * key, void *value)
+{
+  struct ATS_Address *aa = value;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Resetting interval for peer `%s' address %p from %llu to 0\n", GNUNET_i2s (&aa->peer), aa, aa->block_interval);
+
+  aa->blocked_until = GNUNET_TIME_UNIT_ZERO_ABS;
+  aa->block_interval = GNUNET_TIME_UNIT_ZERO;
+  return GNUNET_OK;
+}
+
+void
+GAS_addresses_handle_backoff_reset (const struct GNUNET_PeerIdentity *peer)
+{
+  GNUNET_break (GNUNET_SYSERR != GNUNET_CONTAINER_multihashmap_get_multiple (addresses,
+                                              &peer->hashPubKey,
+                                              &reset_address_it,
+                                              NULL));
+}
+
+
+
 // FIXME: this function should likely end up in the LP-subsystem and
 // not with 'addresses' in the future...
 void
@@ -699,6 +791,8 @@ GAS_addresses_change_preference (const struct GNUNET_PeerIdentity *peer,
                                  enum GNUNET_ATS_PreferenceKind kind,
                                  float score)
 {
+  if (GNUNET_NO == running)
+    return;
 #if HAVE_LIBGLPK
   if (ats_mode == MLP)
     GAS_mlp_address_change_preference (mlp, peer, kind, score);
@@ -717,42 +811,86 @@ void
 GAS_addresses_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
                     const struct GNUNET_STATISTICS_Handle *stats)
 {
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONFIGURATION_get_value_size (cfg, "ats",
-                                                      "WAN_QUOTA_IN",
-                                                      &wan_quota_in));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONFIGURATION_get_value_size (cfg, "ats",
-                                                      "WAN_QUOTA_OUT",
-                                                      &wan_quota_out));
+  int mode;
 
-  switch (GNUNET_CONFIGURATION_get_value_yesno (cfg, "ats", "MLP"))
-  {
-	/* MLP = YES */
-	case GNUNET_YES:
-#if HAVE_LIBGLPK
-          ats_mode = MLP;
-          /* Init the MLP solver with default values */
-          mlp = GAS_mlp_init (cfg, stats, MLP_MAX_EXEC_DURATION, MLP_MAX_ITERATIONS);
-          break;
-#else
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "MLP mode was configured, but libglpk is not installed, switching to simple mode");
-          ats_mode = SIMPLE;
-          break;
-#endif
-	/* MLP = NO */
-	case GNUNET_NO:
-		ats_mode = SIMPLE;
-		break;
-	/* No configuration value */
-	case GNUNET_SYSERR:
-		ats_mode = SIMPLE;
-		break;
-	default:
-		break;
-  }
+  char *quota_wan_in_str;
+  char *quota_wan_out_str;
+
+  running = GNUNET_NO;
 
   addresses = GNUNET_CONTAINER_multihashmap_create (128);
+  GNUNET_assert (NULL != addresses);
+
+  if (GNUNET_OK == GNUNET_CONFIGURATION_get_value_string(cfg, "ats", "WAN_QUOTA_IN", &quota_wan_in_str))
+  {
+    if (0 == strcmp(quota_wan_in_str, "unlimited") ||
+        (GNUNET_SYSERR == GNUNET_STRINGS_fancy_size_to_bytes (quota_wan_in_str, &wan_quota_in)))
+      wan_quota_in = (UINT32_MAX) /10;
+
+    GNUNET_free (quota_wan_in_str);
+    quota_wan_in_str = NULL;
+  }
+  else
+  {
+    wan_quota_in = (UINT32_MAX) /10;
+  }
+
+  if (GNUNET_OK == GNUNET_CONFIGURATION_get_value_string(cfg, "ats", "WAN_QUOTA_OUT", &quota_wan_out_str))
+  {
+    if (0 == strcmp(quota_wan_out_str, "unlimited") ||
+        (GNUNET_SYSERR == GNUNET_STRINGS_fancy_size_to_bytes (quota_wan_out_str, &wan_quota_out)))
+      wan_quota_out = (UINT32_MAX) /10;
+
+    GNUNET_free (quota_wan_out_str);
+    quota_wan_out_str = NULL;
+  }
+  else
+  {
+    wan_quota_out = (UINT32_MAX) /10;
+  }
+
+  mode = GNUNET_CONFIGURATION_get_value_yesno (cfg, "ats", "MLP");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "MLP mode %u", mode);
+  switch (mode)
+  {
+    /* MLP = YES */
+    case GNUNET_YES:
+#if HAVE_LIBGLPK
+      ats_mode = MLP;
+      /* Init the MLP solver with default values */
+      mlp = GAS_mlp_init (cfg, stats, MLP_MAX_EXEC_DURATION, MLP_MAX_ITERATIONS);
+      if (NULL == mlp)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "MLP mode was configured, but libglpk is not installed, switching to simple mode\n");
+        GNUNET_STATISTICS_update (GSA_stats, "MLP mode enabled", 0, GNUNET_NO);
+        break;
+      }
+      else
+      {
+        GNUNET_STATISTICS_update (GSA_stats, "MLP enabled", 1, GNUNET_NO);
+        break;
+      }
+#else
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "MLP mode was configured, but libglpk is not installed, switching to simple mode");
+      GNUNET_STATISTICS_update (GSA_stats, "MLP enabled", 0, GNUNET_NO);
+      ats_mode = SIMPLE;
+      break;
+#endif
+    /* MLP = NO */
+    case GNUNET_NO:
+      GNUNET_STATISTICS_update (GSA_stats, "MLP enabled", 0, GNUNET_NO);
+      ats_mode = SIMPLE;
+      break;
+    /* No configuration value */
+    case GNUNET_SYSERR:
+      GNUNET_STATISTICS_update (GSA_stats, "MLP enabled", 0, GNUNET_NO);
+      ats_mode = SIMPLE;
+      break;
+    default:
+      break;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "ATS started with %s mode\n", (SIMPLE == ats_mode) ? "SIMPLE" : "MLP");
+  running = GNUNET_YES;
 }
 
 
@@ -777,6 +915,9 @@ free_address_it (void *cls, const GNUNET_HashCode * key, void *value)
 void
 GAS_addresses_destroy_all ()
 {
+  if (GNUNET_NO == running)
+    return;
+
   if (addresses != NULL)
     GNUNET_CONTAINER_multihashmap_iterate (addresses, &free_address_it, NULL);
   GNUNET_assert (active_addr_count == 0);
@@ -790,6 +931,7 @@ void
 GAS_addresses_done ()
 {
   GAS_addresses_destroy_all ();
+  running = GNUNET_NO;
   GNUNET_CONTAINER_multihashmap_destroy (addresses);
   addresses = NULL;
 #if HAVE_LIBGLPK

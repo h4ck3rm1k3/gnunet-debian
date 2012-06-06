@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!@PYTHON@
 #    This file is part of GNUnet.
 #    (C) 2010 Christian Grothoff (and other contributing authors)
 #
@@ -42,7 +42,6 @@ class Check:
                 neg += 1
             else:
                 pos += 1
-        self.test.p (str(pos) +' out of '+ str (pos+neg) + ' conditions fulfilled')
         return fulfilled
     def run_blocking (self, timeout, pos_cont, neg_cont):
         execs = 0;
@@ -51,10 +50,23 @@ class Check:
             res = self.run()
             time.sleep(1)
             execs += 1
-        if (res == False):
-            neg_cont (self)
+        if ((False == res) and (execs >= timeout)):
+           print ('Check had timeout after ' +str(timeout)+ ' seconds')
+           neg_cont (self)
+        elif ((False == res) and (execs >= timeout)):
+			neg_cont (self)
         else:
             pos_cont (self)
+        return res            
+    def run_once (self, pos_cont, neg_cont):
+        execs = 0;
+        res = False
+        res = self.run()
+        if ((res == False) and (neg_cont != None)):
+            neg_cont (self)
+        if ((res == True) and (pos_cont != None)):
+            pos_cont (self)            
+        return res
     def evaluate (self, failed_only):
         pos = 0
         neg = 0
@@ -65,6 +77,10 @@ class Check:
                 pos += 1
         print (str(pos) +' out of '+ str (pos+neg) + ' conditions fulfilled')
         return self.fulfilled
+    def reset (self):
+		self.fulfilled = False     
+		for c in self.conditions:
+			c.fulfilled = False
         
 class Condition:
     def __init__(self):
@@ -115,7 +131,7 @@ class StatisticsCondition (Condition):
         self.result = -1;
     def check(self):
         if (self.fulfilled == False):
-            self.result = self.peer.get_statistics_value (self.subsystem, self.name);
+            self.result = self.peer.get_statistics_value (self.subsystem, self.name)
             if (str(self.result) == str(self.value)):
                 self.fulfilled = True
                 return True
@@ -134,11 +150,52 @@ class StatisticsCondition (Condition):
         else: 
             fail = ""
             op = " == "
-        if ((self.fulfilled == False) and (failed_only == True)):
+        if (((self.fulfilled == False) and (failed_only == True)) or (failed_only == False)):
             print self.peer.id[:4] + " " +self.peer.cfg + " " +  str(self.type) + ' condition in subsystem "' + self.subsystem.ljust(12) +'" : "' + self.name.ljust(30) +'" : (expected/real value) ' + str(self.value) + op + res + fail
-        elif (failed_only == False): 
-            print self.peer.id[:4] + " " +self.peer.cfg + " " +  str(self.type) + ' condition in subsystem "' + self.subsystem.ljust(12) +'" : "' + self.name.ljust(30) +'" : (expected/real value) ' + str(self.value) + op + res + fail 
         return self.fulfilled    
+
+# Specify two statistic values and check if they are equal  
+class EqualStatisticsCondition (Condition):
+    def __init__(self, peer, subsystem, name, peer2, subsystem2, name2):
+        self.fulfilled = False
+        self.type = 'equalstatistics'
+        self.peer = peer;
+        self.subsystem = subsystem;
+        self.name = name;
+        self.result = -1;
+        self.peer2 = peer2;
+        self.subsystem2 = subsystem2;
+        self.name2 = name2;
+        self.result2 = -1;
+    def check(self):
+        if (self.fulfilled == False):
+            self.result = self.peer.get_statistics_value (self.subsystem, self.name);
+            self.result2 = self.peer2.get_statistics_value (self.subsystem2, self.name2);
+            if (str(self.result) == str(self.result2)):
+                self.fulfilled = True
+                return True
+            else:
+                return False
+        else:
+            return True
+    def evaluate (self, failed_only):
+        if (self.result == -1):
+            res = 'NaN'
+        else:
+            res = str(self.result)
+        if (self.result2 == -1):
+            res2 = 'NaN'
+        else:
+            res2 = str(self.result2)            
+        if (self.fulfilled == False):
+            fail = " FAIL!" 
+            op = " != "
+        else: 
+            fail = ""
+            op = " == "
+        if (((self.fulfilled == False) and (failed_only == True)) or (failed_only == False)):
+            print self.peer.id[:4] + ' "'  + self.subsystem.ljust(12) + '" "' + self.name.ljust(30) + '" == ' + str(self.result) +" " + self.peer2.id[:4] + ' "'  + self.subsystem2.ljust(12) + '" '+ self.name2.ljust(30) +  '" ' + str(self.result2) 
+        return self.fulfilled                    
         
 class Test:
     def __init__(self, testname, verbose):
@@ -224,7 +281,11 @@ class Peer:
         server.spawn (None, [self.test.gnunetstatistics, '-c', self.cfg ,'-q','-n', name, '-s', subsystem ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         #server.expect ("stdout", re.compile (r""))
         test = server.read("stdout", 10240)
-        tests = test.partition('\n')[0]
+        tests = test.partition('\n')
+        # On W32 GNUnet outputs with \r\n, rather than \n
+        if os.name == 'nt' and tests[1] == '\n' and tests[0][-1] == '\r':
+            tests = (tests[0][:-1], tests[1], tests[2])
+        tests = tests[0]
         if (tests.isdigit() == True):
             return tests
         else:

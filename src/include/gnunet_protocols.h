@@ -87,6 +87,15 @@ extern "C"
  */
 #define GNUNET_MESSAGE_TYPE_ARM_RESULT 11
 
+/**
+ * Request to ARM to list all currently running services
+ */
+#define GNUNET_MESSAGE_TYPE_ARM_LIST 12
+
+/**
+ * Response from ARM for listing currently running services
+ */
+#define GNUNET_MESSAGE_TYPE_ARM_LIST_RESULT 13
 
 /*******************************************************************************
  * HELLO message types
@@ -119,15 +128,18 @@ extern "C"
  ******************************************************************************/
 
 /**
- * Type of messages between the gnunet-wlan-helper and the daemon
- *
+ * Type of data messages from the plugin to the gnunet-wlan-helper 
  */
-#define GNUNET_MESSAGE_TYPE_WLAN_HELPER_DATA 40
+#define GNUNET_MESSAGE_TYPE_WLAN_DATA_TO_HELPER 39
 
 /**
- * Control messages between the gnunet-wlan-helper and the daemon
+ * Type of data messages from the gnunet-wlan-helper to the plugin
  */
+#define GNUNET_MESSAGE_TYPE_WLAN_DATA_FROM_HELPER 40
 
+/**
+ * Control message between the gnunet-wlan-helper and the daemon (with the MAC).
+ */
 #define GNUNET_MESSAGE_TYPE_WLAN_HELPER_CONTROL 41
 
 /**
@@ -241,12 +253,6 @@ extern "C"
  * Response from core to core client to INIT message.
  */
 #define GNUNET_MESSAGE_TYPE_CORE_INIT_REPLY 65
-
-/**
- * Notify clients about new peer-to-peer connections (before
- * key exchange and authentication).
- */
-#define GNUNET_MESSAGE_TYPE_CORE_NOTIFY_PRE_CONNECT 66
 
 /**
  * Notify clients about new peer-to-peer connections (triggered
@@ -518,24 +524,39 @@ extern "C"
 #define GNUNET_MESSAGE_TYPE_DHT_P2P_RESULT 148
 
 /**
- * Request / receive information about transiting GETs
+ * Receive information about transiting GETs
  */
 #define GNUNET_MESSAGE_TYPE_DHT_MONITOR_GET             149
 
 /**
- * Request / receive information about transiting GET responses
+ * Receive information about transiting GET responses
  */
 #define GNUNET_MESSAGE_TYPE_DHT_MONITOR_GET_RESP        150
 
 /**
- * Request / receive information about transiting PUTs
+ * Receive information about transiting PUTs
  */
 #define GNUNET_MESSAGE_TYPE_DHT_MONITOR_PUT             151
 
 /**
- * Request / receive information about transiting PUT responses (TODO)
+ * Receive information about transiting PUT responses (TODO)
  */
 #define GNUNET_MESSAGE_TYPE_DHT_MONITOR_PUT_RESP        152
+
+/**
+ * Request information about transiting messages
+ */
+#define GNUNET_MESSAGE_TYPE_DHT_MONITOR_START             153
+
+/**
+ * Stop information about transiting messages
+ */
+#define GNUNET_MESSAGE_TYPE_DHT_MONITOR_STOP             154
+
+/**
+ * Acknowledge receiving PUT request
+ */
+#define GNUNET_MESSAGE_TYPE_DHT_CLIENT_PUT_OK             155
 
 
 /*******************************************************************************
@@ -1007,7 +1028,11 @@ extern "C"
  */
 #define GNUNET_MESSAGE_TYPE_ATS_ADDRESS_IN_USE 351
 
-
+/**
+ * Type of the 'struct AddressUseMessage' sent by ATS to client
+ * to confirm that an address is used or not used anymore
+ */
+#define GNUNET_MESSAGE_TYPE_ATS_RESET_BACKOFF 352
 
 
 /*******************************************************************************
@@ -1260,8 +1285,27 @@ extern "C"
  */
 #define GNUNET_MESSAGE_TYPE_NAMESTORE_START 430
 
+/*******************************************************************************
+ * LOCKMANAGER message types
+ ******************************************************************************/
+
 /**
- *  Next available: 440
+ * Message to acquire Lock
+ */
+#define GNUNET_MESSAGE_TYPE_LOCKMANAGER_ACQUIRE 440
+
+/**
+ * Message to release lock
+ */
+#define GNUNET_MESSAGE_TYPE_LOCKMANAGER_RELEASE 441
+
+/**
+ * SUCESS reply from lockmanager
+ */
+#define GNUNET_MESSAGE_TYPE_LOCKMANAGER_SUCCESS 442
+
+/**
+ *  Next available: 450
  */
 
 /*******************************************************************************

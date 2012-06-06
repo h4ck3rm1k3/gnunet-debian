@@ -49,6 +49,11 @@
 #define START_TIMEOUT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 1)
 
 /**
+ * Timeout for listing all running services.
+ */
+#define LIST_TIMEOUT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 2)
+
+/**
  * Set if we are to shutdown all services (including ARM).
  */
 static int end;
@@ -72,6 +77,11 @@ static int delete;
  * Set if we should not print status messages.
  */
 static int quiet;
+
+/**
+ * Set if we should print a list of currently running services.
+ */
+static int list;
 
 /**
  * Set to the name of a service to start.
@@ -193,6 +203,29 @@ confirm_cb (void *cls,
 				     GNUNET_SCHEDULER_REASON_PREREQ_DONE);
 }
 
+/**
+ * Callback invoked with the list of running services.  
+ * Reports to the user and then runs the next phase in the FSM.
+ *
+ * @param cls currently not used
+ * @param result result of the operation
+ * @param count number of running services
+ * @param list copy of the list of running services
+ */
+static void
+list_cb (void *cls, int result, unsigned int count, const char *const*list)
+{
+  unsigned int i;
+
+  if ( (result != GNUNET_YES) || (NULL == list) )
+  {
+    FPRINTF (stderr, "%s", _("Error communicating with ARM. ARM not running?\n"));
+    return;
+  }
+  FPRINTF (stdout, "%s", _("Running services:\n"));
+  for (i=0; i<count; i++)
+    FPRINTF (stdout, "%s\n", list[i]);
+}
 
 /**
  * Main function that will be run by the scheduler.
@@ -318,7 +351,7 @@ cps_loop (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 	      start = 1;
 	      restart = 0;
 	      h = GNUNET_ARM_connect (cfg, NULL);
-	      if (h == NULL)
+	      if (NULL == h)
 		{
 		  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
 			      _("Fatal error initializing ARM API.\n"));
@@ -328,6 +361,25 @@ cps_loop (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 	      GNUNET_SCHEDULER_add_now (&cps_loop, NULL);
 	      return;
 	    }
+	  break;
+        case 5:
+          if (list) {
+              GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Going to list all running services controlled by ARM.\n");
+  
+              if (NULL == h) 
+              {
+               GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                              _("Fatal error initializing ARM API.\n"));
+               return;
+              }
+              
+              GNUNET_ARM_list_running_services (h, 
+                                                (0 == 
+                                                 timeout.rel_value) ? LIST_TIMEOUT : 
+                                                 timeout, &list_cb, NULL);
+            return;
+          }
 	  /* Fall through */
 	default:		/* last phase */
 	  GNUNET_ARM_disconnect (h);
@@ -371,6 +423,8 @@ main (int argc, char *const *argv)
     {'T', "timeout", NULL,
      gettext_noop ("timeout for completing current operation"),
      GNUNET_YES, &GNUNET_GETOPT_set_ulong, &temp_timeout_ms},
+    {'I', "info", NULL, gettext_noop ("List currently running services"),
+     GNUNET_NO, &GNUNET_GETOPT_set_one, &list},
     GNUNET_GETOPT_OPTION_END
   };
 

@@ -181,6 +181,11 @@ struct GNUNET_DHT_ClientPutMessage
   uint32_t desired_replication_level GNUNET_PACKED;
 
   /**
+   * Unique ID for the PUT message.
+   */
+  uint64_t unique_id GNUNET_PACKED;
+
+  /**
    * How long should this data persist?
    */
   struct GNUNET_TIME_AbsoluteNBO expiration;
@@ -196,20 +201,38 @@ struct GNUNET_DHT_ClientPutMessage
 
 
 /**
- * Message to monitor requests going through peer, clients <--> DHT service.
+ * Message to confirming receipt of PUT, sent from DHT service to clients.
  */
-struct GNUNET_DHT_MonitorMessage
+struct GNUNET_DHT_ClientPutConfirmationMessage
 {
   /**
-   * Type: GNUNET_MESSAGE_TYPE_DHT_MONITOR_{GET, PUT, GET_RESP, PUT_RESP*}
-   * (*) not yet implemented, necessary for key randomization
+   * Type: GNUNET_MESSAGE_TYPE_DHT_CLIENT_PUT_OK
    */
   struct GNUNET_MessageHeader header;
 
   /**
-   * The type of data in the request.
+   * Always zero.
    */
-  uint32_t type GNUNET_PACKED;
+  uint32_t reserved GNUNET_PACKED;
+
+  /**
+   * Unique ID from the PUT message that is being confirmed.
+   */
+  uint64_t unique_id GNUNET_PACKED;
+
+};
+
+
+
+/**
+ * Message to monitor put requests going through peer, DHT service -> clients.
+ */
+struct GNUNET_DHT_MonitorPutMessage
+{
+  /**
+   * Type: GNUNET_MESSAGE_TYPE_DHT_MONITOR_PUT
+   */
+  struct GNUNET_MessageHeader header;
 
   /**
    * Message options, actually an 'enum GNUNET_DHT_RouteOption' value.
@@ -217,34 +240,162 @@ struct GNUNET_DHT_MonitorMessage
   uint32_t options GNUNET_PACKED;
 
   /**
+   * The type of data in the request.
+   */
+  uint32_t type GNUNET_PACKED;
+
+  /**
+   * Hop count so far.
+   */
+  uint32_t hop_count GNUNET_PACKED;
+  
+  /**
    * Replication level for this message
    */
   uint32_t desired_replication_level GNUNET_PACKED;
 
   /**
    * Number of peers recorded in the outgoing path from source to the
-   * storgage location of this message.
+   * storage location of this message.
    */
   uint32_t put_path_length GNUNET_PACKED;
 
   /**
-   * The number of peer identities recorded from the storage location
-   * to this peer.
+   * How long should this data persist?
+   */
+  struct GNUNET_TIME_AbsoluteNBO expiration_time;
+
+  /**
+   * The key to store the value under.
+   */
+  GNUNET_HashCode key;
+
+  /* put path (if tracked) */
+
+  /* Payload */
+
+};
+
+
+/**
+ * Message to request monitoring messages, clients -> DHT service.
+ */
+struct GNUNET_DHT_MonitorStartStopMessage
+{
+  /**
+   * Type: GNUNET_MESSAGE_TYPE_DHT_MONITOR_(START|STOP)
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * The type of data desired, GNUNET_BLOCK_TYPE_ANY for all.
+   */
+  uint32_t type GNUNET_PACKED;
+
+  /**
+   * Flag whether to notify about GET messages.
+   */
+  int16_t get GNUNET_PACKED;
+
+  /**
+   * Flag whether to notify about GET_REPONSE messages.
+   */
+  int16_t get_resp GNUNET_PACKED;
+
+  /**
+   * Flag whether to notify about PUT messages.
+   */
+  int16_t put GNUNET_PACKED;
+
+  /**
+   * Flag whether to use the provided key to filter messages.
+   */
+  int16_t filter_key GNUNET_PACKED;
+
+  /**
+   * The key to filter messages by.
+   */
+  GNUNET_HashCode key;
+};
+
+
+/**
+ * Message to monitor get requests going through peer, DHT service -> clients.
+ */
+struct GNUNET_DHT_MonitorGetMessage
+{
+  /**
+   * Type: GNUNET_MESSAGE_TYPE_DHT_MONITOR_PUT
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * Message options, actually an 'enum GNUNET_DHT_RouteOption' value.
+   */
+  uint32_t options GNUNET_PACKED;
+
+  /**
+   * The type of data in the request.
+   */
+  uint32_t type GNUNET_PACKED;
+
+  /**
+   * Hop count
+   */
+  uint32_t hop_count GNUNET_PACKED;
+  
+  /**
+   * Replication level for this message
+   */
+  uint32_t desired_replication_level GNUNET_PACKED;
+
+  /**
+   * Number of peers recorded in the outgoing path from source to the
+   * storage location of this message.
    */
   uint32_t get_path_length GNUNET_PACKED;
 
   /**
-   * Unique ID for GET / GET responses.
-   */
-  uint64_t unique_id GNUNET_PACKED;
-
-  /**
-   * How long should this data persist?
-   */
-  struct GNUNET_TIME_AbsoluteNBO expiration;
-
-  /**
    * The key to store the value under.
+   */
+  GNUNET_HashCode key;
+
+  /* get path (if tracked) */
+
+};
+
+/**
+ * Message to monitor get results going through peer, DHT service -> clients.
+ */
+struct GNUNET_DHT_MonitorGetRespMessage
+{
+  /**
+   * Type: GNUNET_MESSAGE_TYPE_DHT_P2P_RESULT
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * Content type.
+   */
+  uint32_t type GNUNET_PACKED;
+
+  /**
+   * Length of the PUT path that follows (if tracked).
+   */
+  uint32_t put_path_length GNUNET_PACKED;
+
+  /**
+   * Length of the GET path that follows (if tracked).
+   */
+  uint32_t get_path_length GNUNET_PACKED;
+
+  /**
+   * When does the content expire?
+   */
+  struct GNUNET_TIME_AbsoluteNBO expiration_time;
+
+  /**
+   * The key of the corresponding GET request.
    */
   GNUNET_HashCode key;
 

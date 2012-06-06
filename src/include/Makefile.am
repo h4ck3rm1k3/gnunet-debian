@@ -51,7 +51,9 @@ gnunetinclude_HEADERS = \
   gnunet_hello_lib.h \
   gnunet_helper_lib.h \
   gnunet_load_lib.h \
+  gnunet_lockmanager_service.h \
   gnunet_mesh_service.h \
+  gnunet_mysql_lib.h \
   gnunet_namestore_plugin.h \
   gnunet_namestore_service.h \
   gnunet_nat_lib.h \
@@ -61,10 +63,12 @@ gnunetinclude_HEADERS = \
   gnunet_peer_lib.h \
   gnunet_peerinfo_service.h \
   gnunet_plugin_lib.h \
+  gnunet_postgres_lib.h \
   gnunet_program_lib.h \
   gnunet_protocols.h \
   gnunet_pseudonym_lib.h \
   gnunet_resolver_service.h \
+  gnunet_regex_lib.h \
   gnunet_scheduler_lib.h \
   gnunet_server_lib.h \
   gnunet_service_lib.h \
@@ -73,7 +77,9 @@ gnunetinclude_HEADERS = \
   gnunet_statistics_service.h \
   gnunet_stream_lib.h \
   gnunet_strings_lib.h \
+  gnunet_testbed_service.h \
   gnunet_testing_lib.h \
+  gnunet_testing_lib-new.h \
   gnunet_time_lib.h \
   gnunet_transport_service.h \
   gnunet_transport_plugin.h \

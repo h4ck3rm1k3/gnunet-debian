@@ -106,7 +106,23 @@ struct PrettyPrinterContext
  */
 struct Plugin;
 
+/**
+ * Start session timeout
+ */
+static void
+start_session_timeout (struct Session *s);
 
+/**
+ * Increment session timeout due to activity
+ */
+static void
+reschedule_session_timeout (struct Session *s);
+
+/**
+ * Cancel timeout
+ */
+static void
+stop_session_timeout (struct Session *s);
 
 /**
  * Append our port and forward the result.
@@ -149,6 +165,9 @@ append_port (void *cls, const char *hostname)
     GNUNET_snprintf (rbuf, sizeof (rbuf), "%s://%s:%u/", protocol, hostname, ppc->port);
   ppc->asc (ppc->asc_cls, rbuf);
 }
+
+
+
 
 
 /**
@@ -209,6 +228,12 @@ http_plugin_address_pretty_printer (void *cls, const char *type,
     sbs = sizeof (struct sockaddr_in);
     port = ntohs (a4->u4_port);
   }
+  else if (0 == addrlen)
+  {
+    asc (asc_cls, "<inbound connection>");
+    asc (asc_cls, NULL);
+    return;
+  }
   else
   {
     /* invalid address */
@@ -243,12 +268,9 @@ http_plugin_address_pretty_printer (void *cls, const char *type,
 static int
 http_plugin_address_suggested (void *cls, const void *addr, size_t addrlen)
 {
-
   struct Plugin *plugin = cls;
   struct IPv4HttpAddressWrapper *w_tv4 = plugin->ipv4_addr_head;
   struct IPv6HttpAddressWrapper *w_tv6 = plugin->ipv6_addr_head;
-
-
 
   GNUNET_assert (cls != NULL);
   if ((addrlen != sizeof (struct sockaddr_in)) ||
@@ -311,12 +333,112 @@ http_plugin_receive (void *cls, const struct GNUNET_PeerIdentity *peer,
   atsi[1].value = session->ats_address_network_type;
   GNUNET_break (session->ats_address_network_type != ntohl (GNUNET_ATS_NET_UNSPECIFIED));
 
+  reschedule_session_timeout (session);
+
   delay =
       plugin->env->receive (plugin->env->cls, &s->target, message,
                             (const struct GNUNET_ATS_Information *) &atsi,
                             2, s, s->addr, s->addrlen);
   return delay;
 }
+
+
+/**
+ * Function called to convert a string address to
+ * a binary address.
+ *
+ * @param cls closure ('struct Plugin*')
+ * @param addr string address
+ * @param addrlen length of the address
+ * @param buf location to store the buffer
+ *        If the function returns GNUNET_SYSERR, its contents are undefined.
+ * @param added length of created address
+ * @return GNUNET_OK on success, GNUNET_SYSERR on failure
+ */
+int 
+http_string_to_address (void *cls,
+			const char *addr,
+			uint16_t addrlen,
+			void **buf,
+			size_t *added)
+{
+#if !BUILD_HTTPS
+  char *protocol = "http";
+#else
+  char *protocol = "https";
+#endif
+  char *addr_str = NULL;
+  struct sockaddr_in addr_4;
+  struct sockaddr_in6 addr_6;
+  struct IPv4HttpAddress * http_4addr;
+  struct IPv6HttpAddress * http_6addr;
+
+  if ((NULL == addr) || (addrlen == 0))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if ('\0' != addr[addrlen - 1])
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (strlen (addr) != addrlen - 1)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* protocoll + "://" + ":" */
+  if (addrlen <= (strlen (protocol) + 4))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                     "Invalid address string `%s' to convert to address\n",
+                     addr);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (NULL == (addr_str = strstr(addr, "://")))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+               "Invalid address string `%s' to convert to address\n",
+               addr);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  addr_str = &addr_str[3];
+
+  if (addr_str[strlen(addr_str)-1] == '/')
+    addr_str[strlen(addr_str)-1] = '\0';
+
+  if (GNUNET_OK == GNUNET_STRINGS_to_address_ipv4(addr_str, strlen(addr_str), &addr_4))
+  {
+    http_4addr = GNUNET_malloc (sizeof (struct IPv4HttpAddress));
+    http_4addr->u4_port = addr_4.sin_port;
+    http_4addr->ipv4_addr = (uint32_t) addr_4.sin_addr.s_addr;
+    (*buf) = http_4addr;
+    (*added) = sizeof (struct IPv4HttpAddress);
+    return GNUNET_OK;
+  }
+  if (GNUNET_OK == GNUNET_STRINGS_to_address_ipv6(addr_str, strlen(addr_str), &addr_6))
+  {
+    http_6addr = GNUNET_malloc (sizeof (struct IPv6HttpAddress));
+    http_6addr->u6_port = addr_6.sin6_port;
+    http_6addr->ipv6_addr = addr_6.sin6_addr;
+    (*buf) = http_6addr;
+    (*added) = sizeof (struct IPv6HttpAddress);
+    return GNUNET_OK;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+	      "Invalid address string `%s' to convert to address\n",
+	      addr_str);
+  GNUNET_break (0);
+  return GNUNET_SYSERR;  
+}
+
 
 /**
  * Function called for a quick conversion of the binary address to
@@ -385,6 +507,7 @@ http_plugin_address_to_string (void *cls, const void *addr, size_t addrlen)
   return rbuf;
 }
 
+
 struct Session *
 lookup_session_old (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
                 struct Session *session, const void *addr, size_t addrlen,
@@ -398,11 +521,11 @@ lookup_session_old (struct Plugin *plugin, const struct GNUNET_PeerIdentity *tar
   {
 #if 0
     GNUNET_log_from (GNUNET_ERROR_TYPE_ERROR, plugin->name,
-                     "Comparing peer `%s' address `%s' len %i session %X to \n",
+                     "Comparing peer `%s' address `%s' len %i session %p to \n",
                      GNUNET_i2s (target), GNUNET_a2s (addr, addrlen), addrlen,
                      session);
     GNUNET_log_from (GNUNET_ERROR_TYPE_ERROR, plugin->name,
-                     "peer `%s' address `%s' len %i session %X \n\n",
+                     "peer `%s' address `%s' len %i session %p \n\n",
                      GNUNET_i2s (&t->target), GNUNET_a2s (t->addr, t->addrlen),
                      t->addrlen, t);
     GNUNET_log_from (GNUNET_ERROR_TYPE_ERROR, plugin->name, "memcmp %i \n",
@@ -430,6 +553,7 @@ lookup_session_old (struct Plugin *plugin, const struct GNUNET_PeerIdentity *tar
   return NULL;
 }
 
+
 struct Session *
 lookup_session (struct Plugin *plugin,
                 const struct GNUNET_HELLO_Address *address)
@@ -445,9 +569,28 @@ lookup_session (struct Plugin *plugin,
 }
 
 
+int
+exist_session (struct Plugin *plugin, struct Session *s)
+{
+  struct Session * head;
+
+  GNUNET_assert (NULL != plugin);
+  GNUNET_assert (NULL != s);
+
+  for (head = plugin->head; head != NULL; head = head->next)
+  {
+    if (head == s)
+      return GNUNET_YES;
+  }
+  return GNUNET_NO;
+}
+
+
 void
 delete_session (struct Session *s)
 {
+  stop_session_timeout(s);
+
   if (s->msg_tk != NULL)
   {
     GNUNET_SERVER_mst_destroy (s->msg_tk);
@@ -459,10 +602,10 @@ delete_session (struct Session *s)
   GNUNET_free (s);
 }
 
+
 struct Session *
 create_session (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
-                const void *addr, size_t addrlen,
-                GNUNET_TRANSPORT_TransmitContinuation cont, void *cont_cls)
+                const void *addr, size_t addrlen)
 {
   struct Session *s = NULL;
 
@@ -474,11 +617,11 @@ create_session (struct Plugin *plugin, const struct GNUNET_PeerIdentity *target,
   s->addr = GNUNET_malloc (addrlen);
   memcpy (s->addr, addr, addrlen);
   s->addrlen = addrlen;
-  s->next = NULL;
-  s->next_receive = GNUNET_TIME_absolute_get_zero ();
   s->ats_address_network_type = htonl (GNUNET_ATS_NET_UNSPECIFIED);
+  start_session_timeout(s);
   return s;
 }
+
 
 void
 notify_session_end (void *cls, const struct GNUNET_PeerIdentity *peer,
@@ -491,6 +634,7 @@ notify_session_end (void *cls, const struct GNUNET_PeerIdentity *peer,
   delete_session (s);
 }
 
+
 /**
  * Creates a new outbound session the transport service will use to send data to the
  * peer
@@ -499,7 +643,6 @@ notify_session_end (void *cls, const struct GNUNET_PeerIdentity *peer,
  * @param address the address
  * @return the session or NULL of max connections exceeded
  */
-
 static struct Session *
 http_get_session (void *cls,
                   const struct GNUNET_HELLO_Address *address)
@@ -535,16 +678,7 @@ http_get_session (void *cls,
   GNUNET_assert ((addrlen == sizeof (struct IPv6HttpAddress)) ||
                  (addrlen == sizeof (struct IPv4HttpAddress)));
 
-  s = GNUNET_malloc (sizeof (struct Session));
-  memcpy (&s->target, &address->peer, sizeof (struct GNUNET_PeerIdentity));
-  s->plugin = plugin;
-  s->addr = GNUNET_malloc (address->address_length);
-  memcpy (s->addr, address->address, address->address_length);
-  s->addrlen = addrlen;
-  s->next = NULL;
-  s->next_receive = GNUNET_TIME_absolute_get_zero ();
-  s->inbound = GNUNET_NO;
-  s->ats_address_network_type = htonl (GNUNET_ATS_NET_UNSPECIFIED);
+  s = create_session (plugin, &address->peer, address->address, address->address_length);
 
   /* Get ATS type */
   if (addrlen == sizeof (struct IPv4HttpAddress))
@@ -591,6 +725,7 @@ http_get_session (void *cls,
 
   return s;
 }
+
 
 /**
  * Function that can be used by the transport service to transmit
@@ -653,7 +788,6 @@ http_plugin_send (void *cls,
   }
 
   /* create new message and schedule */
-
   msg = GNUNET_malloc (sizeof (struct HTTP_Message) + msgbuf_size);
   msg->next = NULL;
   msg->size = msgbuf_size;
@@ -663,25 +797,21 @@ http_plugin_send (void *cls,
   msg->transmit_cont_cls = cont_cls;
   memcpy (msg->buf, msgbuf, msgbuf_size);
 
+  reschedule_session_timeout (session);
+
   if (session->inbound == GNUNET_NO)
   {
-#if DEBUG_HTTP
     GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
-                     "Using outbound client session %p to send to `%session'\n", session,
+                     "Using outbound client session %p to send to `%s'\n", session,
                      GNUNET_i2s (&session->target));
-#endif
-
     client_send (session, msg);
     res = msgbuf_size;
   }
   if (session->inbound == GNUNET_YES)
   {
-#if DEBUG_HTTP
     GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
-                     "Using inbound server %p session to send to `%session'\n", session,
+                     "Using inbound server %p session to send to `%s'\n", session,
                      GNUNET_i2s (&session->target));
-#endif
-
     server_send (session, msg);
     res = msgbuf_size;
   }
@@ -741,14 +871,13 @@ http_plugin_disconnect (void *cls, const struct GNUNET_PeerIdentity *target)
   }
 }
 
-static void
-nat_add_address (void *cls, int add_remove, const struct sockaddr *addr,
-                 socklen_t addrlen)
+
+static void *
+find_address (struct Plugin *plugin, const struct sockaddr *addr, socklen_t addrlen)
 {
-  struct Plugin *plugin = cls;
+  int af;
   struct IPv4HttpAddressWrapper *w_t4 = NULL;
   struct IPv6HttpAddressWrapper *w_t6 = NULL;
-  int af;
 
   af = addr->sa_family;
   switch (af)
@@ -773,25 +902,7 @@ nat_add_address (void *cls, int add_remove, const struct sockaddr *addr,
         break;
       w_t4 = w_t4->next;
     }
-    if (w_t4 == NULL)
-    {
-      w_t4 = GNUNET_malloc (sizeof (struct IPv4HttpAddressWrapper));
-      memcpy (&w_t4->addr.ipv4_addr, &a4->sin_addr, sizeof (struct in_addr));
-      w_t4->addr.u4_port = a4->sin_port;
-
-      GNUNET_CONTAINER_DLL_insert (plugin->ipv4_addr_head,
-                                   plugin->ipv4_addr_tail, w_t4);
-    }
-#if DEBUG_HTTP
-    GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
-                     "Notifying transport to add IPv4 address `%s'\n",
-                     http_plugin_address_to_string (NULL, &w_t4->addr,
-                                                    sizeof (struct
-                                                            IPv4HttpAddress)));
-#endif
-    plugin->env->notify_address (plugin->env->cls, add_remove, &w_t4->addr,
-                                 sizeof (struct IPv4HttpAddress));
-
+    return w_t4;
     break;
   case AF_INET6:
     w_t6 = plugin->ipv6_addr_head;
@@ -811,31 +922,75 @@ nat_add_address (void *cls, int add_remove, const struct sockaddr *addr,
         break;
       w_t6 = w_t6->next;
     }
+    return w_t6;
+    break;
+  default:
+    return NULL;
+  }
+  return NULL;
+}
+
+
+static void
+nat_add_address (void *cls, int add_remove, const struct sockaddr *addr,
+                 socklen_t addrlen)
+{
+  struct Plugin *plugin = cls;
+  struct IPv4HttpAddressWrapper *w_t4 = NULL;
+  struct IPv6HttpAddressWrapper *w_t6 = NULL;
+  int af;
+
+  af = addr->sa_family;
+  switch (af)
+  {
+  case AF_INET:
+    w_t4 = find_address (plugin, addr, addrlen);
+    if (w_t4 == NULL)
+    {
+      struct sockaddr_in *a4 = (struct sockaddr_in *) addr;
+      w_t4 = GNUNET_malloc (sizeof (struct IPv4HttpAddressWrapper));
+      memcpy (&w_t4->addr.ipv4_addr, &a4->sin_addr, sizeof (struct in_addr));
+      w_t4->addr.u4_port = a4->sin_port;
+
+      GNUNET_CONTAINER_DLL_insert (plugin->ipv4_addr_head,
+                                   plugin->ipv4_addr_tail, w_t4);
+
+    GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
+                     "Notifying transport to add IPv4 address `%s'\n",
+                     http_plugin_address_to_string (NULL, &w_t4->addr,
+                                                    sizeof (struct
+                                                            IPv4HttpAddress)));
+    plugin->env->notify_address (plugin->env->cls, add_remove, &w_t4->addr,
+                                 sizeof (struct IPv4HttpAddress));
+    }
+    break;
+  case AF_INET6:
+    w_t6 = find_address (plugin, addr, addrlen);
     if (w_t6 == NULL)
     {
       w_t6 = GNUNET_malloc (sizeof (struct IPv6HttpAddressWrapper));
-
+      struct sockaddr_in6 *a6 = (struct sockaddr_in6 *) addr;
       memcpy (&w_t6->addr6.ipv6_addr, &a6->sin6_addr, sizeof (struct in6_addr));
       w_t6->addr6.u6_port = a6->sin6_port;
 
       GNUNET_CONTAINER_DLL_insert (plugin->ipv6_addr_head,
                                    plugin->ipv6_addr_tail, w_t6);
-    }
-#if DEBUG_HTTP
-    GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
+
+      GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                      "Notifying transport to add IPv6 address `%s'\n",
                      http_plugin_address_to_string (NULL, &w_t6->addr6,
                                                     sizeof (struct
                                                             IPv6HttpAddress)));
-#endif
-    plugin->env->notify_address (plugin->env->cls, add_remove, &w_t6->addr6,
+      plugin->env->notify_address (plugin->env->cls, add_remove, &w_t6->addr6,
                                  sizeof (struct IPv6HttpAddress));
+    }
     break;
   default:
     return;
   }
 
 }
+
 
 static void
 nat_remove_address (void *cls, int add_remove, const struct sockaddr *addr,
@@ -850,35 +1005,16 @@ nat_remove_address (void *cls, int add_remove, const struct sockaddr *addr,
   switch (af)
   {
   case AF_INET:
-    w_t4 = plugin->ipv4_addr_head;
-    struct sockaddr_in *a4 = (struct sockaddr_in *) addr;
-
-    while (w_t4 != NULL)
-    {
-      int res = memcmp (&w_t4->addr.ipv4_addr,
-                        &a4->sin_addr,
-                        sizeof (struct in_addr));
-
-      if (res == 0)
-      {
-        if (a4->sin_port != w_t4->addr.u4_port)
-          res = -1;
-      }
-
-      if (0 == res)
-        break;
-      w_t4 = w_t4->next;
-    }
+    w_t4 = find_address (plugin, addr, addrlen);
     if (w_t4 == NULL)
       return;
 
-#if DEBUG_HTTP
+
     GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                      "Notifying transport to remove IPv4 address `%s'\n",
                      http_plugin_address_to_string (NULL, &w_t4->addr,
                                                     sizeof (struct
                                                             IPv4HttpAddress)));
-#endif
     plugin->env->notify_address (plugin->env->cls, add_remove, &w_t4->addr,
                                  sizeof (struct IPv4HttpAddress));
 
@@ -887,32 +1023,16 @@ nat_remove_address (void *cls, int add_remove, const struct sockaddr *addr,
     GNUNET_free (w_t4);
     break;
   case AF_INET6:
-    w_t6 = plugin->ipv6_addr_head;
-    struct sockaddr_in6 *a6 = (struct sockaddr_in6 *) addr;
-
-    while (w_t6)
-    {
-      int res = memcmp (&w_t6->addr6.ipv6_addr, &a6->sin6_addr,
-                        sizeof (struct in6_addr));
-
-      if (res == 0)
-      {
-        if (a6->sin6_port != w_t6->addr6.u6_port)
-          res = -1;
-      }
-      if (0 == res)
-        break;
-      w_t6 = w_t6->next;
-    }
+    w_t6 = find_address (plugin, addr, addrlen);
     if (w_t6 == NULL)
       return;
-#if DEBUG_HTTP
+
     GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                      "Notifying transport to remove IPv6 address `%s'\n",
                      http_plugin_address_to_string (NULL, &w_t6->addr6,
                                                     sizeof (struct
                                                             IPv6HttpAddress)));
-#endif
+
     plugin->env->notify_address (plugin->env->cls, add_remove, &w_t6->addr6,
                                  sizeof (struct IPv6HttpAddress));
 
@@ -923,8 +1043,8 @@ nat_remove_address (void *cls, int add_remove, const struct sockaddr *addr,
   default:
     return;
   }
-
 }
+
 
 /**
  * Our external IP address/port mapping has changed.
@@ -940,15 +1060,13 @@ nat_port_map_callback (void *cls, int add_remove, const struct sockaddr *addr,
                        socklen_t addrlen)
 {
   GNUNET_assert (cls != NULL);
-#if DEBUG_HTTP
   struct Plugin *plugin = cls;
-#endif
-#if DEBUG_HTTP
+
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                    "NPMC called %s to address `%s'\n",
                    (add_remove == GNUNET_NO) ? "remove" : "add",
                    GNUNET_a2s (addr, addrlen));
-#endif
+
   switch (add_remove)
   {
   case GNUNET_YES:
@@ -959,6 +1077,7 @@ nat_port_map_callback (void *cls, int add_remove, const struct sockaddr *addr,
     break;
   }
 }
+
 
 void
 http_check_ipv6 (struct Plugin *plugin)
@@ -992,6 +1111,7 @@ http_check_ipv6 (struct Plugin *plugin)
                      (plugin->ipv6 == GNUNET_YES) ? "successful" : "failed");
   }
 }
+
 
 int
 http_get_addresses (struct Plugin *plugin, const char *serviceName,
@@ -1203,6 +1323,7 @@ start_report_addresses (struct Plugin *plugin)
   }
 }
 
+
 static void
 stop_report_addresses (struct Plugin *plugin)
 {
@@ -1229,6 +1350,7 @@ stop_report_addresses (struct Plugin *plugin)
     GNUNET_free (w_t6);
   }
 }
+
 
 static int
 configure_plugin (struct Plugin *plugin)
@@ -1362,6 +1484,91 @@ fail:
   return res;
 }
 
+
+/**
+ * Session was idle, so disconnect it
+ */
+static void
+session_timeout (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  GNUNET_assert (NULL != cls);
+  struct Session *s = cls;
+
+  s->timeout_task = GNUNET_SCHEDULER_NO_TASK;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Session %p was idle for %llu, disconnecting\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+
+  /* call session destroy function */
+  if (s->inbound == GNUNET_NO)
+    GNUNET_assert (GNUNET_OK == client_disconnect (s));
+  else
+    GNUNET_assert (GNUNET_OK == server_disconnect (s));
+
+}
+
+
+/**
+ * Start session timeout
+ */
+static void
+start_session_timeout (struct Session *s)
+{
+  GNUNET_assert (NULL != s);
+  GNUNET_assert (GNUNET_SCHEDULER_NO_TASK == s->timeout_task);
+
+  s->timeout_task =  GNUNET_SCHEDULER_add_delayed (GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT,
+                                                   &session_timeout,
+                                                   s);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout for session %p set to %llu\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+}
+
+
+/**
+ * Increment session timeout due to activity
+ */
+static void
+reschedule_session_timeout (struct Session *s)
+{
+  GNUNET_assert (NULL != s);
+  GNUNET_assert (GNUNET_SCHEDULER_NO_TASK != s->timeout_task);
+
+  GNUNET_SCHEDULER_cancel (s->timeout_task);
+  s->timeout_task =  GNUNET_SCHEDULER_add_delayed (GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT,
+                                                   &session_timeout,
+                                                   s);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout rescheduled for session %p set to %llu\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+}
+
+
+/**
+ * Cancel timeout
+ */
+static void
+stop_session_timeout (struct Session *s)
+{
+  GNUNET_assert (NULL != s);
+
+  if (GNUNET_SCHEDULER_NO_TASK != s->timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (s->timeout_task);
+    s->timeout_task = GNUNET_SCHEDULER_NO_TASK;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout rescheduled for session %p canceled\n",
+      s, GNUNET_CONSTANTS_IDLE_CONNECTION_TIMEOUT.rel_value);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Timeout for session %p was not active\n",
+      s);
+  }
+}
+
+
 /**
  * Entry point for the plugin.
  */
@@ -1373,14 +1580,29 @@ LIBGNUNET_PLUGIN_TRANSPORT_INIT (void *cls)
   struct Plugin *plugin;
   int res;
 
+  if (NULL == env->receive)
+  {
+    /* run in 'stub' mode (i.e. as part of gnunet-peerinfo), don't fully
+       initialze the plugin or the API */
+    api = GNUNET_malloc (sizeof (struct GNUNET_TRANSPORT_PluginFunctions));
+    api->cls = NULL;
+    api->address_pretty_printer = &http_plugin_address_pretty_printer;
+    api->address_to_string = &http_plugin_address_to_string;
+    api->string_to_address = &http_string_to_address;
+    return api;
+  }
+
   plugin = GNUNET_malloc (sizeof (struct Plugin));
   plugin->env = env;
+  plugin->outbound_sessions = 0;
+  plugin->inbound_sessions = 0;
   api = GNUNET_malloc (sizeof (struct GNUNET_TRANSPORT_PluginFunctions));
   api->cls = plugin;
   api->disconnect = &http_plugin_disconnect;
   api->address_pretty_printer = &http_plugin_address_pretty_printer;
   api->check_address = &http_plugin_address_suggested;
   api->address_to_string = &http_plugin_address_to_string;
+  api->string_to_address = &http_string_to_address;
   api->get_session = &http_get_session;
   api->send = &http_plugin_send;
 
@@ -1435,11 +1657,8 @@ LIBGNUNET_PLUGIN_TRANSPORT_INIT (void *cls)
   /* Report addresses to transport service */
   start_report_addresses (plugin);
 
-#if DEBUG_HTTP
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                    "Plugin `%s' loaded\n", plugin->name);
-#endif
-
   return api;
 }
 
@@ -1452,7 +1671,13 @@ LIBGNUNET_PLUGIN_TRANSPORT_DONE (void *cls)
 {
   struct GNUNET_TRANSPORT_PluginFunctions *api = cls;
   struct Plugin *plugin = api->cls;
-  struct Session *s = NULL;
+  struct Session *s;
+
+  if (NULL == plugin)
+  {
+    GNUNET_free (api);
+    return NULL;
+  }
 
   /* Stop reporting addresses to transport service */
   stop_report_addresses (plugin);
@@ -1461,10 +1686,8 @@ LIBGNUNET_PLUGIN_TRANSPORT_DONE (void *cls)
   s = plugin->head;
   while (s != NULL)
   {
-#if DEBUG_HTTP
     GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                      "Disconnecting `%s' \n", GNUNET_i2s (&s->target));
-#endif
     if (s->inbound == GNUNET_NO)
       GNUNET_assert (GNUNET_OK == client_disconnect (s));
     else
@@ -1472,15 +1695,11 @@ LIBGNUNET_PLUGIN_TRANSPORT_DONE (void *cls)
     s = s->next;
   }
 
-#if DEBUG_HTTP
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name, "Stopping server\n");
-#endif
   /* Stop server */
   server_stop (plugin);
 
-#if DEBUG_HTTP
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name, "Stopping client\n");
-#endif
   /* Stop client */
   client_stop (plugin);
 
@@ -1512,17 +1731,12 @@ LIBGNUNET_PLUGIN_TRANSPORT_DONE (void *cls)
     s = t;
   }
 
-
-#if DEBUG_HTTP
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, plugin->name,
                    "Plugin `%s' unloaded\n", plugin->name);
-#endif
-
   GNUNET_free_non_null (plugin->server_addr_v4);
   GNUNET_free_non_null (plugin->server_addr_v6);
   GNUNET_free (plugin);
   GNUNET_free (api);
-
   return NULL;
 }
 

@@ -1,6 +1,6 @@
 /*
      This file is part of GNUnet.
-     (C) 2009 Christian Grothoff (and other contributing authors)
+     (C) 2009, 2012 Christian Grothoff (and other contributing authors)
 
      GNUnet is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -193,6 +193,61 @@ socket_set_nodelay (const struct GNUNET_NETWORK_Handle *h)
 
 
 /**
+ * Perform proper canonical initialization for a network handle.
+ * Set it to non-blocking, make it non-inheritable to child
+ * processes, disable SIGPIPE, enable "nodelay" (if non-UNIX
+ * stream socket) and check that it is smaller than FS_SETSIZE.
+ *
+ * @param h socket to initialize
+ * @param af address family of the socket
+ * @param type socket type
+ * @return GNUNET_OK on success, GNUNET_SYSERR if initialization
+ *         failed and the handle was destroyed
+ */
+static int
+initialize_network_handle (struct GNUNET_NETWORK_Handle *h,
+			   int af, int type)
+{
+  h->af = af;
+  if (h->fd == INVALID_SOCKET)
+  {
+#ifdef MINGW
+    SetErrnoFromWinsockError (WSAGetLastError ());
+#endif
+    GNUNET_free (h);
+    return GNUNET_SYSERR;
+  }
+#ifndef MINGW
+  if (h->fd >= FD_SETSIZE)
+  {
+    GNUNET_break (GNUNET_OK == GNUNET_NETWORK_socket_close (h));
+    errno = EMFILE;
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK != socket_set_inheritable (h))
+    LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR | GNUNET_ERROR_TYPE_BULK,
+                  "socket_set_inheritable");
+#endif
+  if (GNUNET_SYSERR == socket_set_blocking (h, GNUNET_NO))
+  {
+    GNUNET_break (0);
+    GNUNET_break (GNUNET_OK == GNUNET_NETWORK_socket_close (h));
+    return GNUNET_SYSERR;
+  }
+#ifdef DARWIN
+  socket_set_nosigpipe (h);
+#endif
+  if ( (type == SOCK_STREAM) 
+#ifdef AF_UNIX
+       && (af != AF_UNIX)
+#endif
+       )
+    socket_set_nodelay (h);
+  return GNUNET_OK;
+}
+
+
+/**
  * accept a new connection on a socket
  *
  * @param desc bound socket
@@ -219,49 +274,10 @@ GNUNET_NETWORK_socket_accept (const struct GNUNET_NETWORK_Handle *desc,
   }
 #endif
   ret->fd = accept (desc->fd, address, address_len);
-  if (address != NULL)
-    ret->af = address->sa_family;
-  else
-    ret->af = desc->af;
-  if (ret->fd == INVALID_SOCKET)
-  {
-#ifdef MINGW
-    SetErrnoFromWinsockError (WSAGetLastError ());
-#endif
-    GNUNET_free (ret);
+  if (GNUNET_OK != initialize_network_handle (ret,
+					      (NULL != address) ? address->sa_family : desc->af,
+					      SOCK_STREAM))
     return NULL;
-  }
-#ifndef MINGW
-  if (ret->fd >= FD_SETSIZE)
-  {
-    GNUNET_break (0 == close (ret->fd));
-    GNUNET_free (ret);
-    errno = EMFILE;
-    return NULL;
-  }
-#endif
-  if (GNUNET_SYSERR == socket_set_blocking (ret, GNUNET_NO))
-
-  {
-
-    /* we might want to treat this one as fatal... */
-    GNUNET_break (0);
-    GNUNET_break (GNUNET_OK == GNUNET_NETWORK_socket_close (ret));
-    return NULL;
-  }
-
-#ifndef MINGW
-  if (GNUNET_OK != socket_set_inheritable (ret))
-    LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR | GNUNET_ERROR_TYPE_BULK,
-                  "socket_set_inheritable");
-#endif
-#ifdef DARWIN
-  socket_set_nosigpipe (ret);
-#endif
-#ifdef AF_UNIX
-  if (ret->af != AF_UNIX)
-#endif
-    socket_set_nodelay (ret);
   return ret;
 }
 
@@ -492,15 +508,16 @@ GNUNET_NETWORK_socket_recvfrom_amount (const struct GNUNET_NETWORK_Handle *
 
   error = ioctl (desc->fd, FIONREAD, &pending);
   if (error == 0)
+    return (ssize_t) pending;
+  return GNUNET_NO;
 #else
   u_long pending;
 
   error = ioctlsocket (desc->fd, FIONREAD, &pending);
   if (error != SOCKET_ERROR)
+    return (ssize_t) pending;
+  return GNUNET_NO;
 #endif
-    return pending;
-  else
-    return GNUNET_NO;
 }
 
 
@@ -677,49 +694,10 @@ GNUNET_NETWORK_socket_create (int domain, int type, int protocol)
   struct GNUNET_NETWORK_Handle *ret;
 
   ret = GNUNET_malloc (sizeof (struct GNUNET_NETWORK_Handle));
-  ret->af = domain;
   ret->fd = socket (domain, type, protocol);
-  if (INVALID_SOCKET == ret->fd)
-  {
-#ifdef MINGW
-    SetErrnoFromWinsockError (WSAGetLastError ());
-#endif
-    GNUNET_free (ret);
+  if (GNUNET_OK !=
+      initialize_network_handle (ret, domain, type))
     return NULL;
-  }
-
-#ifndef MINGW
-  if (ret->fd >= FD_SETSIZE)
-  {
-    GNUNET_break (0 == close (ret->fd));
-    GNUNET_free (ret);
-    errno = EMFILE;
-    return NULL;
-  }
-
-#endif
-  if (GNUNET_SYSERR == socket_set_blocking (ret, GNUNET_NO))
-  {
-    /* we might want to treat this one as fatal... */
-    GNUNET_break (0);
-    GNUNET_break (GNUNET_OK == GNUNET_NETWORK_socket_close (ret));
-    return NULL;
-  }
-
-#ifndef MINGW
-  if (GNUNET_OK != socket_set_inheritable (ret))
-    LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR | GNUNET_ERROR_TYPE_BULK,
-                  "socket_set_inheritable");
-#endif
-#ifdef DARWIN
-  socket_set_nosigpipe (ret);
-#endif
-  if ((type == SOCK_STREAM)
-#ifdef AF_UNIX
-      && (domain != AF_UNIX)
-#endif
-      )
-    socket_set_nodelay (ret);
   return ret;
 }
 
@@ -887,7 +865,29 @@ GNUNET_NETWORK_get_fd (struct GNUNET_NETWORK_Handle *desc)
   return desc->fd;
 }
 
+/**
+ * Return sockaddr for this network handle
+ *
+ * @param desc wrapper to process
+ * @return sockaddr
+ */
+struct sockaddr*
+GNUNET_NETWORK_get_addr (struct GNUNET_NETWORK_Handle *desc)
+{
+  return desc->addr;
+}
 
+/**
+ * Return sockaddr length for this network handle
+ *
+ * @param desc wrapper to process
+ * @return socklen_t for sockaddr
+ */
+socklen_t
+GNUNET_NETWORK_get_addrlen (struct GNUNET_NETWORK_Handle *desc)
+{
+  return desc->addrlen;
+}
 /**
  * Copy a native fd set
  *
@@ -1047,9 +1047,6 @@ GNUNET_NETWORK_fdset_overlap (const struct GNUNET_NETWORK_FDSet *fds1,
     if (GNUNET_CONTAINER_slist_contains
         (fds2->handles, h, sizeof (struct GNUNET_DISK_FileHandle)))
     {
-#if DEBUG_NETWORK
-      LOG (GNUNET_ERROR_TYPE_DEBUG, "Match!\n");
-#endif
       return GNUNET_YES;
     }
     GNUNET_CONTAINER_slist_next (&it);
@@ -1105,7 +1102,6 @@ GNUNET_NETWORK_socket_select (struct GNUNET_NETWORK_FDSet *rfds,
                               const struct GNUNET_TIME_Relative timeout)
 {
   int nfds = 0;
-
 #ifdef MINGW
   int handles = 0;
   int ex_handles = 0;
@@ -1116,7 +1112,9 @@ GNUNET_NETWORK_socket_select (struct GNUNET_NETWORK_FDSet *rfds,
   int retcode = 0;
   DWORD ms_total = 0;
 
-  int nsock = 0, nhandles = 0, nSockEvents = 0;
+  int nsock = 0;
+  int nhandles = 0;
+  int nSockEvents = 0;
 
   static HANDLE hEventRead = 0;
   static HANDLE hEventWrite = 0;
@@ -1132,12 +1130,18 @@ GNUNET_NETWORK_socket_select (struct GNUNET_NETWORK_FDSet *rfds,
   DWORD newretcode = 0;
   int returnedpos = 0;
 
-  struct GNUNET_CONTAINER_SList *handles_read, *handles_write, *handles_except;
+  struct GNUNET_CONTAINER_SList *handles_read;
+  struct GNUNET_CONTAINER_SList *handles_write;
+  struct GNUNET_CONTAINER_SList *handles_except;
 
-  fd_set aread, awrite, aexcept;
+  fd_set aread;
+  fd_set awrite;
+  fd_set aexcept;
 
 #if DEBUG_NETWORK
-  fd_set bread, bwrite, bexcept;
+  fd_set bread;
+  fd_set bwrite;
+  fd_set bexcept;
 #endif
 
   /* TODO: Make this growable */
@@ -1421,21 +1425,14 @@ GNUNET_NETWORK_socket_select (struct GNUNET_NETWORK_FDSet *rfds,
   }
 
   handle_array[nhandles] = NULL;
-
-#if DEBUG_NETWORK
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "Number nfds : %d\n", nfds);
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "Number of handles : %d\n", nhandles);
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "retcode : %d\n", newretcode);
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "Will wait : %d\n", ms_total);
-#endif
-
+  LOG (GNUNET_ERROR_TYPE_DEBUG, 
+       "Number nfds: %d, handles: %d, return code: %u will wait: %d ms\n", 
+       nfds, nhandles, newretcode, ms_total);
   if (nhandles)
     returncode =
         WaitForMultipleObjects (nhandles, handle_array, FALSE, ms_total);
-#if DEBUG_NETWORK
   LOG (GNUNET_ERROR_TYPE_DEBUG, "WaitForMultipleObjects Returned : %d\n",
        returncode);
-#endif
 
   returnedpos = returncode - WAIT_OBJECT_0;
   LOG (GNUNET_ERROR_TYPE_DEBUG, "return pos is : %d\n", returnedpos);
@@ -1455,7 +1452,7 @@ GNUNET_NETWORK_socket_select (struct GNUNET_NETWORK_FDSet *rfds,
       struct timeval tvslice;
 
       tvslice.tv_sec = 0;
-      tvslice.tv_usec = 10;
+      tvslice.tv_usec = 0;
       retcode = select (nfds, &aread, &awrite, &aexcept, &tvslice);
       if (retcode == -1)
         retcode = 0;
@@ -1546,10 +1543,8 @@ GNUNET_NETWORK_socket_select (struct GNUNET_NETWORK_FDSet *rfds,
       }
     }
   }
-#if DEBUG_NETWORK
   if (!nhandles || (returnedpos >= nhandles))
     LOG (GNUNET_ERROR_TYPE_DEBUG, "Returning from _select() with nothing!\n");
-#endif
   if (rfds)
   {
     struct GNUNET_CONTAINER_SList_Iterator t;

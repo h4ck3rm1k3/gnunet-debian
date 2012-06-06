@@ -417,6 +417,24 @@ typedef void (*GNUNET_FS_QueueStart) (void *cls,
 typedef void (*GNUNET_FS_QueueStop) (void *cls);
 
 
+
+/**
+ * Priorities for the queue.
+ */ 
+enum GNUNET_FS_QueuePriority
+  {
+    /**
+     * This is a probe (low priority).
+     */
+    GNUNET_FS_QUEUE_PRIORITY_PROBE,
+
+    /**
+     * Default priority.
+     */
+    GNUNET_FS_QUEUE_PRIORITY_NORMAL
+  };
+
+
 /**
  * Entry in the job queue.
  */
@@ -477,6 +495,11 @@ struct GNUNET_FS_QueueEntry
    * How many blocks do the active downloads have?
    */
   unsigned int blocks;
+
+  /**
+   * How important is this download?
+   */
+  enum GNUNET_FS_QueuePriority priority;
 
   /**
    * How often have we (re)started this download?
@@ -599,11 +622,13 @@ struct GNUNET_FS_SearchResult
  * @param stop function to call to pause the job, or on dequeue (if the job was running)
  * @param cls closure for start and stop
  * @param blocks number of blocks this download has
+ * @param priority how important is this download
  * @return queue handle
  */
 struct GNUNET_FS_QueueEntry *
 GNUNET_FS_queue_ (struct GNUNET_FS_Handle *h, GNUNET_FS_QueueStart start,
-                  GNUNET_FS_QueueStop stop, void *cls, unsigned int blocks);
+                  GNUNET_FS_QueueStop stop, void *cls, unsigned int blocks,
+		  enum GNUNET_FS_QueuePriority priority);
 
 
 /**
@@ -706,6 +731,24 @@ GNUNET_FS_publish_main_ (void *cls,
  */
 void
 GNUNET_FS_unindex_process_hash_ (void *cls, const GNUNET_HashCode * file_id);
+
+
+/**
+ * Extract the keywords for KBlock removal
+ *
+ * @param uc context for the unindex operation.
+ */
+void
+GNUNET_FS_unindex_do_extract_keywords_ (struct GNUNET_FS_UnindexContext *uc);
+
+
+/**
+ * If necessary, connect to the datastore and remove the KBlocks.
+ *
+ * @param uc context for the unindex operation.
+ */
+void
+GNUNET_FS_unindex_do_remove_kblocks_ (struct GNUNET_FS_UnindexContext *uc);
 
 
 /**
@@ -1219,32 +1262,42 @@ struct GNUNET_FS_PublishContext
  */
 enum UnindexState
 {
-    /**
-     * We're currently hashing the file.
-     */
+  /**
+   * We're currently hashing the file.
+   */
   UNINDEX_STATE_HASHING = 0,
 
-    /**
-     * We're telling the datastore to delete
-     * the respective entries.
-     */
+  /**
+   * We're telling the datastore to delete
+   * the respective DBlocks and IBlocks.
+   */
   UNINDEX_STATE_DS_REMOVE = 1,
+  
+  /**
+   * Find out which keywords apply.
+   */
+  UNINDEX_STATE_EXTRACT_KEYWORDS = 2,
 
-    /**
-     * We're notifying the FS service about
-     * the unindexing.
-     */
-  UNINDEX_STATE_FS_NOTIFY = 2,
+  /**
+   * We're telling the datastore to remove KBlocks.
+   */
+  UNINDEX_STATE_DS_REMOVE_KBLOCKS = 3,
 
-    /**
-     * We're done.
-     */
-  UNINDEX_STATE_COMPLETE = 3,
-
-    /**
-     * We've encountered a fatal error.
-     */
-  UNINDEX_STATE_ERROR = 4
+  /**
+   * We're notifying the FS service about
+   * the unindexing.
+   */
+  UNINDEX_STATE_FS_NOTIFY = 4,
+  
+  /**
+   * We're done.
+   */
+  UNINDEX_STATE_COMPLETE = 5,
+  
+  /**
+   * We've encountered a fatal error.
+   */
+  UNINDEX_STATE_ERROR = 6
 };
 
 
@@ -1255,6 +1308,12 @@ struct GNUNET_FS_UnindexContext
 {
 
   /**
+   * The content hash key of the last block we processed, will in the
+   * end be set to the CHK from the URI.  Used to remove the KBlocks.
+   */
+  struct ContentHashKey chk; 
+
+  /**
    * Global FS context.
    */
   struct GNUNET_FS_Handle *h;
@@ -1263,6 +1322,21 @@ struct GNUNET_FS_UnindexContext
    * Our top-level activity entry.
    */
   struct TopLevelActivity *top;
+
+  /**
+   * Directory scanner to find keywords (KBlock removal).
+   */
+  struct GNUNET_FS_DirScanner *dscan;
+
+  /**
+   * Keywords found (telling us which KBlocks to remove).
+   */
+  struct GNUNET_FS_Uri *ksk_uri;
+
+  /**
+   * Current offset in KSK removal.
+   */
+  uint32_t ksk_offset;
 
   /**
    * Name of the file that we are unindexing.
@@ -1302,6 +1376,27 @@ struct GNUNET_FS_UnindexContext
   struct GNUNET_DISK_FileHandle *fh;
 
   /**
+   * Handle to datastore 'get_key' operation issued for
+   * obtaining KBlocks.
+   */
+  struct GNUNET_DATASTORE_QueueEntry *dqe;
+
+  /**
+   * Current key for decrypting KBLocks from 'get_key' operation.
+   */
+  GNUNET_HashCode key;
+
+  /**
+   * Current query of 'get_key' operation.
+   */
+  GNUNET_HashCode query;
+
+  /**
+   * First content UID, 0 for none.
+   */
+  uint64_t first_uid;
+
+  /**
    * Error message, NULL on success.
    */
   char *emsg;
@@ -1315,6 +1410,11 @@ struct GNUNET_FS_UnindexContext
    * Overall size of the file.
    */
   uint64_t file_size;
+
+  /**
+   * Random offset given to 'GNUNET_DATASTORE_get_key'.
+   */
+  uint64_t roff;
 
   /**
    * When did we start?
@@ -1591,6 +1691,11 @@ struct DownloadRequest
   unsigned int depth;
 
   /**
+   * Offset of the CHK for this block in the parent block
+   */
+  unsigned int chk_idx;
+
+  /**
    * State in the FSM.
    */
   enum BlockRequestState state;
@@ -1820,6 +1925,11 @@ struct GNUNET_FS_DownloadContext
    * Have we started the receive continuation yet?
    */
   int in_receive;
+
+  /**
+   * Are we ready to issue requests (reconstructions are finished)?
+   */
+  int issue_requests;
 
 };
 

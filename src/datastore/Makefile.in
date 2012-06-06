@@ -87,6 +87,7 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(plugindir)" \
 LTLIBRARIES = $(lib_LTLIBRARIES) $(plugin_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 libgnunet_plugin_datastore_mysql_la_DEPENDENCIES =  \
+	$(top_builddir)/src/mysql/libgnunetmysql.la \
 	$(top_builddir)/src/statistics/libgnunetstatistics.la \
 	$(top_builddir)/src/util/libgnunetutil.la \
 	$(am__DEPENDENCIES_1)
@@ -106,6 +107,7 @@ libgnunet_plugin_datastore_mysql_la_LINK = $(LIBTOOL) $(AM_V_lt) \
 @HAVE_MYSQL_TRUE@	-rpath $(plugindir)
 libgnunet_plugin_datastore_postgres_la_DEPENDENCIES =  \
 	$(top_builddir)/src/statistics/libgnunetstatistics.la \
+	$(top_builddir)/src/postgres/libgnunetpostgres.la \
 	$(top_builddir)/src/util/libgnunetutil.la \
 	$(am__DEPENDENCIES_1)
 am_libgnunet_plugin_datastore_postgres_la_OBJECTS = libgnunet_plugin_datastore_postgres_la-plugin_datastore_postgres.lo
@@ -405,6 +407,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -438,6 +441,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -639,6 +643,7 @@ libgnunet_plugin_datastore_mysql_la_SOURCES = \
   plugin_datastore_mysql.c
 
 libgnunet_plugin_datastore_mysql_la_LIBADD = \
+  $(top_builddir)/src/mysql/libgnunetmysql.la \
   $(top_builddir)/src/statistics/libgnunetstatistics.la \
   $(top_builddir)/src/util/libgnunetutil.la $(XLIBS) -lz -lmysqlclient
 
@@ -653,6 +658,7 @@ libgnunet_plugin_datastore_postgres_la_SOURCES = \
 
 libgnunet_plugin_datastore_postgres_la_LIBADD = \
   $(top_builddir)/src/statistics/libgnunetstatistics.la \
+  $(top_builddir)/src/postgres/libgnunetpostgres.la \
   $(top_builddir)/src/util/libgnunetutil.la $(XLIBS) -lpq
 
 libgnunet_plugin_datastore_postgres_la_LDFLAGS = \

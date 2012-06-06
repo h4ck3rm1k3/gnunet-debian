@@ -23,8 +23,6 @@
  * @brief code for maintaining the mesh topology
  * @author Christian Grothoff
  */
-
-#include <stdlib.h>
 #include "platform.h"
 #include "gnunet_constants.h"
 #include "gnunet_core_service.h"
@@ -35,39 +33,46 @@
 #include "gnunet_util_lib.h"
 
 
-#define DEBUG_TOPOLOGY GNUNET_YES
+/**
+ * Minimum required delay between calls to GNUNET_TRANSPORT_try_connect.
+ */
+#define MAX_CONNECT_FREQUENCY_DELAY GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS, 250)
 
 /**
  * For how long do we blacklist a peer after a failed connection
- * attempt?
+ * attempt?  This is the baseline factor which is then multiplied by
+ * two to the power of the number of failed attempts.
  */
-#define GREYLIST_AFTER_ATTEMPT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
+#define GREYLIST_AFTER_ATTEMPT GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 1)
 
 /**
  * For how long do we blacklist a friend after a failed connection
- * attempt?
+ * attempt?  This is the baseline factor which is then multiplied by
+ * two to the power of the number of failed attempts.
  */
-#define GREYLIST_AFTER_ATTEMPT_FRIEND GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 2)
+#define GREYLIST_AFTER_ATTEMPT_FRIEND GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 2)
 
 /**
- * For how long do we blacklist anyone under any cirumstances after a failed connection
- * attempt?
+ * For how long do we blacklist anyone under any cirumstances at least after a failed connection
+ * attempt?  This is the absolute minimum, regardless of what the calculation based on
+ * exponential backoff returns.
  */
-#define GREYLIST_AFTER_ATTEMPT_MIN GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 15)
+#define GREYLIST_AFTER_ATTEMPT_MIN GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 5)
 
 /**
- * For how long do we blacklist anyone under any cirumstances after a failed connection
- * attempt?
+ * For how long do we blacklist anyone under any cirumstances at most after a failed connection
+ * attempt?  This is the absolute maximum, regardless of what the calculation based on 
+ * exponential back-off returns.
  */
 #define GREYLIST_AFTER_ATTEMPT_MAX GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 1)
 
 /**
- * How often do we at most advertise any HELLO to a peer?
+ * At what frequency do we sent HELLOs to a peer?
  */
-#define HELLO_ADVERTISEMENT_MIN_FREQUENCY GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 4)
+#define HELLO_ADVERTISEMENT_MIN_FREQUENCY GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 5)
 
 /**
- * How often do we at most advertise the same HELLO to the same peer?
+ * After what time period do we expire the HELLO Bloom filter?
  */
 #define HELLO_ADVERTISEMENT_MIN_REPEAT_FREQUENCY GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 4)
 
@@ -120,6 +125,11 @@ struct Peer
    * to this peer.
    */
   GNUNET_SCHEDULER_TaskIdentifier hello_delay_task;
+
+  /**
+   * Task for issuing GNUNET_TRANSPORT_try_connect for this peer.
+   */
+  GNUNET_SCHEDULER_TaskIdentifier attempt_connect_task;
 
   /**
    * ID of task we use to clear peers from the greylist.
@@ -186,6 +196,11 @@ static struct GNUNET_STATISTICS_Handle *stats;
  * Blacklist (NULL if we have none).
  */
 static struct GNUNET_TRANSPORT_Blacklist *blacklist;
+
+/**
+ * When can we next ask transport to create a connection?
+ */
+static struct GNUNET_TIME_Absolute next_connect_attempt;
 
 /**
  * Task scheduled to try to add peers.
@@ -278,20 +293,16 @@ is_connection_allowed (struct Peer *peer)
     return GNUNET_OK;
   if (GNUNET_YES == friends_only)
   {
-#if DEBUG_TOPOLOGY
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Determined that `%s' is not allowed to connect (not a friend)\n",
                 GNUNET_i2s (&peer->pid));
-#endif
     return GNUNET_SYSERR;
   }
   if (friend_count >= minimum_friend_count)
     return GNUNET_OK;
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Determined that `%s' is not allowed to connect (not enough connected friends)\n",
               GNUNET_i2s (&peer->pid));
-#endif
   return GNUNET_SYSERR;
 }
 
@@ -309,12 +320,15 @@ free_peer (void *cls, const GNUNET_HashCode * pid, void *value)
 {
   struct Peer *pos = value;
 
+  GNUNET_break (GNUNET_NO == pos->is_connected);
   GNUNET_break (GNUNET_OK ==
                 GNUNET_CONTAINER_multihashmap_remove (peers, pid, pos));
   if (pos->hello_req != NULL)
     GNUNET_CORE_notify_transmit_ready_cancel (pos->hello_req);
   if (pos->hello_delay_task != GNUNET_SCHEDULER_NO_TASK)
     GNUNET_SCHEDULER_cancel (pos->hello_delay_task);
+  if (pos->attempt_connect_task != GNUNET_SCHEDULER_NO_TASK)
+    GNUNET_SCHEDULER_cancel (pos->attempt_connect_task);
   if (pos->greylist_clean_task != GNUNET_SCHEDULER_NO_TASK)
     GNUNET_SCHEDULER_cancel (pos->greylist_clean_task);
   GNUNET_free_non_null (pos->hello);
@@ -371,15 +385,58 @@ attempt_connect (struct Peer *pos)
     GNUNET_SCHEDULER_cancel (pos->greylist_clean_task);
   pos->greylist_clean_task =
       GNUNET_SCHEDULER_add_delayed (rem, &remove_from_greylist, pos);
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Asking  to connect to `%s'\n",
               GNUNET_i2s (&pos->pid));
-#endif
   GNUNET_STATISTICS_update (stats,
                             gettext_noop
                             ("# connect requests issued to transport"), 1,
                             GNUNET_NO);
   GNUNET_TRANSPORT_try_connect (transport, &pos->pid);
+}
+
+
+/**
+ * Try to connect to the specified peer.
+ *
+ * @param cls peer to connect to
+ * @param tc scheduler context
+ */
+static void
+do_attempt_connect (void *cls,
+		    const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  struct Peer *pos = cls;
+  struct GNUNET_TIME_Relative delay;
+
+  pos->attempt_connect_task = GNUNET_SCHEDULER_NO_TASK;
+  if (GNUNET_YES == pos->is_connected)
+    return;
+  delay = GNUNET_TIME_absolute_get_remaining (next_connect_attempt);
+  if (delay.rel_value > 0)
+  {
+    pos->attempt_connect_task = GNUNET_SCHEDULER_add_delayed (delay,
+							      &do_attempt_connect,
+							      pos);
+    return;
+  }
+  next_connect_attempt = GNUNET_TIME_relative_to_absolute (MAX_CONNECT_FREQUENCY_DELAY);
+  attempt_connect (pos);
+}
+
+
+/**
+ * Schedule a task to try to connect to the specified peer.
+ *
+ * @param pos peer to connect to
+ */
+static void
+schedule_attempt_connect (struct Peer *pos)
+{
+  if (GNUNET_SCHEDULER_NO_TASK != pos->attempt_connect_task)
+    return;
+  pos->attempt_connect_task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_absolute_get_remaining (next_connect_attempt),
+							    &do_attempt_connect,
+							    pos);
 }
 
 
@@ -400,7 +457,7 @@ remove_from_greylist (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   rem = GNUNET_TIME_absolute_get_remaining (pos->greylisted_until);
   if (rem.rel_value == 0)
   {
-    attempt_connect (pos);
+    schedule_attempt_connect (pos);
   }
   else
   {
@@ -642,11 +699,9 @@ connect_notify (void *cls, const struct GNUNET_PeerIdentity *peer,
 {
   struct Peer *pos;
 
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Core told us that we are connecting to `%s'\n",
               GNUNET_i2s (peer));
-#endif
   if (0 == memcmp (&my_identity, peer, sizeof (struct GNUNET_PeerIdentity)))
     return;
 
@@ -654,7 +709,7 @@ connect_notify (void *cls, const struct GNUNET_PeerIdentity *peer,
   GNUNET_STATISTICS_set (stats, gettext_noop ("# peers connected"),
                          connection_count, GNUNET_NO);
   pos = GNUNET_CONTAINER_multihashmap_get (peers, &peer->hashPubKey);
-  if (pos == NULL)
+  if (NULL == pos)
   {
     pos = make_peer (peer, NULL, GNUNET_NO);
     GNUNET_break (GNUNET_OK == is_connection_allowed (pos));
@@ -692,7 +747,7 @@ try_add_peers (void *cls, const GNUNET_HashCode * pid, void *value)
 {
   struct Peer *pos = value;
 
-  attempt_connect (pos);
+  schedule_attempt_connect (pos);
   return GNUNET_YES;
 }
 
@@ -712,6 +767,7 @@ add_peer_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   GNUNET_CONTAINER_multihashmap_iterate (peers, &try_add_peers, NULL);
 }
 
+
 /**
  * Method called whenever a peer disconnects.
  *
@@ -725,13 +781,11 @@ disconnect_notify (void *cls, const struct GNUNET_PeerIdentity *peer)
 
   if (0 == memcmp (&my_identity, peer, sizeof (struct GNUNET_PeerIdentity)))
     return;
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Core told us that we disconnected from `%s'\n",
               GNUNET_i2s (peer));
-#endif
   pos = GNUNET_CONTAINER_multihashmap_get (peers, &peer->hashPubKey);
-  if (pos == NULL)
+  if (NULL == pos)
   {
     GNUNET_break (0);
     return;
@@ -818,7 +872,7 @@ consider_for_advertising (const struct GNUNET_HELLO_Message *hello)
   if (GNUNET_NO == have_address)
     return;                     /* no point in advertising this one... */
   peer = GNUNET_CONTAINER_multihashmap_get (peers, &pid.hashPubKey);
-  if (peer == NULL)
+  if (NULL == peer)
   {
     peer = make_peer (&pid, hello, GNUNET_NO);
   }
@@ -828,11 +882,9 @@ consider_for_advertising (const struct GNUNET_HELLO_Message *hello)
     if (dt.abs_value == GNUNET_TIME_UNIT_FOREVER_ABS.abs_value)
       return;                   /* nothing new here */
   }
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Found `%s' from peer `%s' for advertising\n", "HELLO",
               GNUNET_i2s (&pid));
-#endif
   if (peer->hello != NULL)
   {
     nh = GNUNET_HELLO_merge (peer->hello, hello);
@@ -894,7 +946,7 @@ process_peer (void *cls, const struct GNUNET_PeerIdentity *peer,
         GNUNET_CONTAINER_bloomfilter_free (pos->filter);
         pos->filter = NULL;
       }
-      if ((!pos->is_connected) && (!pos->is_friend) &&
+      if ((GNUNET_NO == pos->is_connected) && (GNUNET_NO == pos->is_friend) &&
           (0 ==
            GNUNET_TIME_absolute_get_remaining (pos->
                                                greylisted_until).rel_value))
@@ -909,25 +961,19 @@ process_peer (void *cls, const struct GNUNET_PeerIdentity *peer,
   GNUNET_assert (NULL != pos);
   if (GNUNET_YES == pos->is_connected)
   {
-#if DEBUG_TOPOLOGY
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Already connected to peer `%s'\n",
                 GNUNET_i2s (peer));
-#endif
     return;
   }
   if (GNUNET_TIME_absolute_get_remaining (pos->greylisted_until).rel_value > 0)
   {
-#if DEBUG_TOPOLOGY
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Already tried peer `%s' recently\n",
                 GNUNET_i2s (peer));
-#endif
     return;                     /* peer still greylisted */
   }
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Considering connecting to peer `%s'\n",
               GNUNET_i2s (peer));
-#endif
-  attempt_connect (pos);
+  schedule_attempt_connect (pos);
 }
 
 
@@ -953,9 +999,7 @@ core_init (void *cls, struct GNUNET_CORE_Handle *server,
   }
   handle = server;
   my_identity = *my_id;
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "I am peer `%s'\n", GNUNET_i2s (my_id));
-#endif
   peerinfo_notify = GNUNET_PEERINFO_notify (cfg, &process_peer, NULL);
 }
 
@@ -970,7 +1014,7 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
   char *data;
   size_t pos;
   struct GNUNET_PeerIdentity pid;
-  struct stat frstat;
+  uint64_t fsize;
   struct GNUNET_CRYPTO_HashAsciiEncoded enc;
   unsigned int entries_found;
   struct Peer *fl;
@@ -987,7 +1031,8 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
     GNUNET_DISK_fn_write (fn, NULL, 0,
                           GNUNET_DISK_PERM_USER_READ |
                           GNUNET_DISK_PERM_USER_WRITE);
-  if (0 != STAT (fn, &frstat))
+  if (GNUNET_OK != GNUNET_DISK_file_size (fn,
+      &fsize, GNUNET_NO, GNUNET_YES))
   {
     if ((friends_only) || (minimum_friend_count > 0))
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -995,14 +1040,14 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
     GNUNET_free (fn);
     return;
   }
-  if (frstat.st_size == 0)
+  if (fsize == 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING, _("Friends file `%s' is empty.\n"),
                 fn);
     GNUNET_free (fn);
     return;
   }
-  data = GNUNET_malloc_large (frstat.st_size);
+  data = GNUNET_malloc_large (fsize);
   if (data == NULL)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1011,7 +1056,7 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
     GNUNET_free (fn);
     return;
   }
-  if (frstat.st_size != GNUNET_DISK_fn_read (fn, data, frstat.st_size))
+  if (fsize != GNUNET_DISK_fn_read (fn, data, fsize))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 _("Failed to read friends list from `%s'\n"), fn);
@@ -1021,11 +1066,11 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
   }
   entries_found = 0;
   pos = 0;
-  while ((pos < frstat.st_size) && isspace ((unsigned char) data[pos]))
+  while ((pos < fsize) && isspace ((unsigned char) data[pos]))
     pos++;
-  while ((frstat.st_size >= sizeof (struct GNUNET_CRYPTO_HashAsciiEncoded)) &&
+  while ((fsize >= sizeof (struct GNUNET_CRYPTO_HashAsciiEncoded)) &&
          (pos <=
-          frstat.st_size - sizeof (struct GNUNET_CRYPTO_HashAsciiEncoded)))
+          fsize - sizeof (struct GNUNET_CRYPTO_HashAsciiEncoded)))
   {
     memcpy (&enc, &data[pos], sizeof (struct GNUNET_CRYPTO_HashAsciiEncoded));
     if (!isspace
@@ -1037,7 +1082,7 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
                   ("Syntax error in topology specification at offset %llu, skipping bytes.\n"),
                   (unsigned long long) pos);
       pos++;
-      while ((pos < frstat.st_size) && (!isspace ((unsigned char) data[pos])))
+      while ((pos < fsize) && (!isspace ((unsigned char) data[pos])))
         pos++;
       continue;
     }
@@ -1068,7 +1113,7 @@ read_friends_file (const struct GNUNET_CONFIGURATION_Handle *cfg)
       }
     }
     pos = pos + sizeof (struct GNUNET_CRYPTO_HashAsciiEncoded);
-    while ((pos < frstat.st_size) && isspace ((unsigned char) data[pos]))
+    while ((pos < fsize) && isspace ((unsigned char) data[pos]))
       pos++;
   }
   GNUNET_free (data);
@@ -1113,10 +1158,8 @@ handle_encrypted_hello (void *cls, const struct GNUNET_PeerIdentity *other,
   struct Peer *peer;
   struct GNUNET_PeerIdentity pid;
 
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Received encrypted `%s' from peer `%s'",
               "HELLO", GNUNET_i2s (other));
-#endif
   if (GNUNET_OK !=
       GNUNET_HELLO_get_id ((const struct GNUNET_HELLO_Message *) message, &pid))
   {
@@ -1126,7 +1169,7 @@ handle_encrypted_hello (void *cls, const struct GNUNET_PeerIdentity *other,
   GNUNET_STATISTICS_update (stats, gettext_noop ("# HELLO messages received"),
                             1, GNUNET_NO);
   peer = GNUNET_CONTAINER_multihashmap_get (peers, &pid.hashPubKey);
-  if (peer == NULL)
+  if (NULL == peer)
   {
     if ((GNUNET_YES == friends_only) || (friend_count < minimum_friend_count))
       return GNUNET_OK;
@@ -1175,10 +1218,8 @@ hello_advertising_ready (void *cls, size_t size, void *buf)
     GNUNET_assert (want <= size);
     memcpy (buf, fah.result->hello, want);
     GNUNET_CONTAINER_bloomfilter_add (fah.result->filter, &pl->pid.hashPubKey);
-#if DEBUG_TOPOLOGY
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Sending `%s' with %u bytes", "HELLO",
                 (unsigned int) want);
-#endif
     GNUNET_STATISTICS_update (stats,
                               gettext_noop ("# HELLO messages gossipped"), 1,
                               GNUNET_NO);
@@ -1208,21 +1249,22 @@ cleaning_task (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     GNUNET_PEERINFO_notify_cancel (peerinfo_notify);
     peerinfo_notify = NULL;
   }
-  if (GNUNET_SCHEDULER_NO_TASK != add_task)
-  {
-    GNUNET_SCHEDULER_cancel (add_task);
-    add_task = GNUNET_SCHEDULER_NO_TASK;
-  }
   GNUNET_TRANSPORT_disconnect (transport);
   transport = NULL;
-  GNUNET_CONTAINER_multihashmap_iterate (peers, &free_peer, NULL);
-  GNUNET_CONTAINER_multihashmap_destroy (peers);
   if (handle != NULL)
   {
     GNUNET_CORE_disconnect (handle);
     handle = NULL;
   }
   whitelist_peers ();
+  if (GNUNET_SCHEDULER_NO_TASK != add_task)
+  {
+    GNUNET_SCHEDULER_cancel (add_task);
+    add_task = GNUNET_SCHEDULER_NO_TASK;
+  }
+  GNUNET_CONTAINER_multihashmap_iterate (peers, &free_peer, NULL);
+  GNUNET_CONTAINER_multihashmap_destroy (peers);
+  peers = NULL;
   if (stats != NULL)
   {
     GNUNET_STATISTICS_destroy (stats, GNUNET_NO);
@@ -1269,12 +1311,10 @@ run (void *cls, char *const *args, const char *cfgfile,
 
   if ((friends_only == GNUNET_YES) || (minimum_friend_count > 0))
     read_friends_file (cfg);
-#if DEBUG_TOPOLOGY
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Topology would like %u connections with at least %u friends (%s)\n",
               target_connection_count, minimum_friend_count,
               autoconnect ? "autoconnect enabled" : "autoconnect disabled");
-#endif
   if ((friend_count < minimum_friend_count) && (blacklist == NULL))
     blacklist = GNUNET_TRANSPORT_blacklist (cfg, &blacklist_check, NULL);
   transport = GNUNET_TRANSPORT_connect (cfg, NULL, NULL, NULL, NULL, NULL);

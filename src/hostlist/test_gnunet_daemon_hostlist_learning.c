@@ -1,6 +1,6 @@
 /*
      This file is part of GNUnet
-     (C) 2009, 2010, 2011 Christian Grothoff (and other contributing authors)
+     (C) 2009, 2010, 2011, 2012 Christian Grothoff (and other contributing authors)
 
      GNUnet is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -18,7 +18,7 @@
      Boston, MA 02111-1307, USA.
 */
 /**
- * @file hostlist/test_gnunet_daemon_hostlist.c
+ * @file hostlist/test_gnunet_daemon_hostlist_learning.c
  * @brief test for gnunet_daemon_hostslist.c
  * @author Christian Grothoff
  */
@@ -29,8 +29,6 @@
 #include "gnunet_transport_service.h"
 #include "gnunet_resolver_service.h"
 #include "gnunet_statistics_service.h"
-
-#define VERBOSE GNUNET_NO
 
 #define START_ARM GNUNET_YES
 
@@ -109,6 +107,16 @@ shutdown_testcase ()
     GNUNET_STATISTICS_get_cancel (advsent_stat);
     advsent_stat = NULL;
   }
+  if (NULL != adv_peer.stats)
+  {
+    GNUNET_STATISTICS_destroy (adv_peer.stats, GNUNET_NO);
+    adv_peer.stats = NULL;
+  }
+  if (NULL != learn_peer.stats)
+  {
+    GNUNET_STATISTICS_destroy (learn_peer.stats, GNUNET_NO);
+    learn_peer.stats = NULL;
+  }
   if (check_task != GNUNET_SCHEDULER_NO_TASK)
   {
     GNUNET_SCHEDULER_cancel (check_task);
@@ -146,7 +154,7 @@ shutdown_testcase ()
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "kill");
   if (GNUNET_OS_process_wait (adv_peer.arm_proc) != GNUNET_OK)
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "waitpid");
-  GNUNET_OS_process_close (adv_peer.arm_proc);
+  GNUNET_OS_process_destroy (adv_peer.arm_proc);
   adv_peer.arm_proc = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Killing hostlist client ARM process.\n");
@@ -154,7 +162,7 @@ shutdown_testcase ()
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "kill");
   if (GNUNET_OS_process_wait (learn_peer.arm_proc) != GNUNET_OK)
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "waitpid");
-  GNUNET_OS_process_close (learn_peer.arm_proc);
+  GNUNET_OS_process_destroy (learn_peer.arm_proc);
   learn_peer.arm_proc = NULL;
 #endif
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Shutdown complete....\n");
@@ -181,6 +189,14 @@ process_downloads_done (void *cls, int success)
 }
 
 
+static void
+do_shutdown (void *cls,
+	     const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  shutdown_testcase ();
+}
+
+
 static int
 process_downloads (void *cls, const char *subsystem, const char *name,
                    uint64_t value, int is_persistent)
@@ -191,7 +207,9 @@ process_downloads (void *cls, const char *subsystem, const char *name,
                 "Peer has successfully downloaded advertised URI\n");
     learned_hostlist_downloaded = GNUNET_YES;
     if ((learned_hostlist_saved == GNUNET_YES) && (adv_sent == GNUNET_YES))
-      shutdown_testcase ();
+    {
+      GNUNET_SCHEDULER_add_now (&do_shutdown, NULL);
+    }
   }
   return GNUNET_OK;
 }
@@ -215,7 +233,9 @@ process_uris_recv (void *cls, const char *subsystem, const char *name,
                 "Peer has successfully saved advertised URI\n");
     learned_hostlist_saved = GNUNET_YES;
     if ((learned_hostlist_downloaded == GNUNET_YES) && (adv_sent == GNUNET_YES))
-      shutdown_testcase ();
+    {
+      GNUNET_SCHEDULER_add_now (&do_shutdown, NULL);
+    }
   }
   return GNUNET_OK;
 }
@@ -239,7 +259,9 @@ process_adv_sent (void *cls, const char *subsystem, const char *name,
     adv_sent = GNUNET_YES;
     if ((learned_hostlist_downloaded == GNUNET_YES) &&
         (learned_hostlist_saved == GNUNET_YES))
-      shutdown_testcase ();
+    {
+      GNUNET_SCHEDULER_add_now (&do_shutdown, NULL);
+    }
   }
   return GNUNET_OK;
 }
@@ -372,9 +394,6 @@ setup_learn_peer (struct PeerContext *p, const char *cfgname)
   p->arm_proc =
     GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm",
-#if VERBOSE
-                               "-L", "DEBUG",
-#endif
                                "-c", cfgname, NULL);
 #endif
   GNUNET_assert (GNUNET_OK == GNUNET_CONFIGURATION_load (p->cfg, cfgname));
@@ -408,9 +427,6 @@ setup_adv_peer (struct PeerContext *p, const char *cfgname)
   p->arm_proc =
     GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm",
-#if VERBOSE
-                               "-L", "DEBUG",
-#endif
                                "-c", cfgname, NULL);
 #endif
   GNUNET_assert (GNUNET_OK == GNUNET_CONFIGURATION_load (p->cfg, cfgname));
@@ -449,9 +465,6 @@ check ()
   char *const argv[] = {
     "test-gnunet-daemon-hostlist-learning",
     "-c", "learning_data.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -505,11 +518,7 @@ main (int argc, char *argv[])
   GNUNET_DISK_directory_remove ("/tmp/test-gnunet-hostlist-peer-1");
   GNUNET_DISK_directory_remove ("/tmp/test-gnunet-hostlist-peer-2");
   GNUNET_log_setup ("test-gnunet-daemon-hostlist",
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
 #if !WINDOWS
   system ("gnunet-peerinfo -s -c test_learning_adv_peer.conf > /dev/null");

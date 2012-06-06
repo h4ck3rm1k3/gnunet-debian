@@ -158,22 +158,22 @@
 /* Define to 1 if you have the `ftruncate' function. */
 #undef HAVE_FTRUNCATE
 
-/* Define to 1 if you have the `getaddrinfo' function. */
+/* Define this if getaddrinfo() is available */
 #undef HAVE_GETADDRINFO
 
 /* Define to 1 if you have the `getcwd' function. */
 #undef HAVE_GETCWD
 
-/* Define to 1 if you have the `gethostbyaddr' function. */
+/* Define this if gethostbyaddr() is available */
 #undef HAVE_GETHOSTBYADDR
 
-/* Define to 1 if you have the `gethostbyname' function. */
+/* Define this if gethostbyname() is available */
 #undef HAVE_GETHOSTBYNAME
 
 /* Define to 1 if you have the `gethostbyname2' function. */
 #undef HAVE_GETHOSTBYNAME2
 
-/* Define to 1 if you have the `gethostname' function. */
+/* Define this if gethostname() is available */
 #undef HAVE_GETHOSTNAME
 
 /* Define to 1 if you have the `getifaddrs' function. */
@@ -182,7 +182,7 @@
 /* getloadavg supported */
 #undef HAVE_GETLOADAVG
 
-/* Define to 1 if you have the `getnameinfo' function. */
+/* Define this if getnameinfo() is available */
 #undef HAVE_GETNAMEINFO
 
 /* Define to 1 if you have the `getpeereid' function. */
@@ -218,7 +218,7 @@
 /* Define to 1 if you have the <ifaddrs.h> header file. */
 #undef HAVE_IFADDRS_H
 
-/* Define to 1 if you have the `inet_ntoa' function. */
+/* Define this if inet_ntoa() is available */
 #undef HAVE_INET_NTOA
 
 /* Define to 1 if you have the `initgroups' function. */
@@ -347,6 +347,9 @@
 /* Define to 1 if you have the `nl_langinfo' function. */
 #undef HAVE_NL_LANGINFO
 
+/* Define to 1 if you have the <nss.h> header file. */
+#undef HAVE_NSS_H
+
 /* Define to 1 if the system has the type `off_t'. */
 #undef HAVE_OFF_T
 
@@ -377,7 +380,7 @@
 /* Define to 1 if you have the `sbrk' function. */
 #undef HAVE_SBRK
 
-/* Define to 1 if you have the `select' function. */
+/* Define this if select() is available */
 #undef HAVE_SELECT
 
 /* Define to 1 if you have the `setlocale' function. */
@@ -404,7 +407,7 @@
 /* Do we have sockaddr_in.sin_len? */
 #undef HAVE_SOCKADDR_IN_SIN_LEN
 
-/* Define to 1 if you have the `socket' function. */
+/* Define this if socket() is available */
 #undef HAVE_SOCKET
 
 /* Define to 1 if you have the <sockLib.h> header file. */

@@ -121,7 +121,7 @@ stop_arm (struct PeerContext *p)
   if (0 != GNUNET_OS_process_kill (p->arm_proc, SIGTERM))
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "kill");
   GNUNET_OS_process_wait (p->arm_proc);
-  GNUNET_OS_process_close (p->arm_proc);
+  GNUNET_OS_process_destroy (p->arm_proc);
   p->arm_proc = NULL;
 #endif
   GNUNET_CONFIGURATION_destroy (p->cfg);
@@ -195,10 +195,10 @@ test_get_iterator (void *cls, struct GNUNET_TIME_Absolute exp,
  * Signature of the main function of a task.
  *
  * @param cls closure
- * @param tc context information (why was this task triggered now)
+ * @param success result of PUT
  */
 static void
-test_get (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+test_get (void *cls, int success)
 {
   struct PeerContext *peer = cls;
   GNUNET_HashCode hash;
@@ -212,7 +212,7 @@ test_get (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   retry_context.next_timeout = BASE_TIMEOUT;
 
   peer->get_handle =
-      GNUNET_DHT_get_start (peer->dht_handle, TOTAL_TIMEOUT,
+      GNUNET_DHT_get_start (peer->dht_handle, 
                             GNUNET_BLOCK_TYPE_TEST, &hash, 1,
                             GNUNET_DHT_RO_NONE, NULL, 0, &test_get_iterator,
                             NULL);

@@ -5,13 +5,20 @@ HOME = $SERVICEHOME
 CONFIG = $DEFAULTCONFIG
 BINARY = gnunet-service-gns
 UNIXPATH = /tmp/gnunet-service-gns.sock
-ZONEKEY = /tmp/zonekey
-TRUSTED = bob:/tmp/bobkey
-HIJACK_DNS = YES
-OPTIONS = -L INFO
+ZONEKEY = $SERVICEHOME/gns/zonekey.zkey
+HIJACK_DNS = NO
+AUTO_IMPORT_PKEY = YES
+AUTO_IMPORT_CONFIRMATION_REQ = NO
+MAX_PARALLEL_BACKGROUND_QUERIES = 25
+DEFAULT_LOOKUP_TIMEOUT = 10
+RECORD_PUT_INTERVAL = 60
+ZONE_PUT_INTERVAL = 900
 
-# Access to this service can compromise all DNS queries in this
-# system.  Thus access should be restricted to the same UID.
-# (see https://gnunet.org/gnunet-access-control-model)
-UNIX_MATCH_UID = YES
-UNIX_MATCH_GID = YES
+[fcfsd]
+HTTPPORT = 18080
+ZONEKEY = $SERVICEHOME/fcfsd/zonekey.zkey
+HOSTNAME = localhost
+HOME = $SERVICEHOME
+CONFIG = $DEFAULTCONFIG
+BINARY = gnunet-gns-fcfsd
+

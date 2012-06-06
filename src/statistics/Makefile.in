@@ -41,7 +41,8 @@ bin_PROGRAMS = gnunet-statistics$(EXEEXT) \
 	gnunet-service-statistics$(EXEEXT)
 check_PROGRAMS = test_statistics_api$(EXEEXT) \
 	test_statistics_api_loop$(EXEEXT) \
-	test_statistics_api_watch$(EXEEXT)
+	test_statistics_api_watch$(EXEEXT) \
+	test_statistics_api_watch_zero_value$(EXEEXT)
 subdir = src/statistics
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/statistics.conf.in
@@ -127,6 +128,13 @@ test_statistics_api_watch_OBJECTS =  \
 test_statistics_api_watch_DEPENDENCIES =  \
 	$(top_builddir)/src/statistics/libgnunetstatistics.la \
 	$(top_builddir)/src/util/libgnunetutil.la
+am_test_statistics_api_watch_zero_value_OBJECTS =  \
+	test_statistics_api_watch_zero_value.$(OBJEXT)
+test_statistics_api_watch_zero_value_OBJECTS =  \
+	$(am_test_statistics_api_watch_zero_value_OBJECTS)
+test_statistics_api_watch_zero_value_DEPENDENCIES =  \
+	$(top_builddir)/src/statistics/libgnunetstatistics.la \
+	$(top_builddir)/src/util/libgnunetutil.la
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -157,12 +165,14 @@ SOURCES = $(libgnunetstatistics_la_SOURCES) \
 	$(gnunet_service_statistics_SOURCES) \
 	$(gnunet_statistics_SOURCES) $(test_statistics_api_SOURCES) \
 	$(test_statistics_api_loop_SOURCES) \
-	$(test_statistics_api_watch_SOURCES)
+	$(test_statistics_api_watch_SOURCES) \
+	$(test_statistics_api_watch_zero_value_SOURCES)
 DIST_SOURCES = $(libgnunetstatistics_la_SOURCES) \
 	$(gnunet_service_statistics_SOURCES) \
 	$(gnunet_statistics_SOURCES) $(test_statistics_api_SOURCES) \
 	$(test_statistics_api_loop_SOURCES) \
-	$(test_statistics_api_watch_SOURCES)
+	$(test_statistics_api_watch_SOURCES) \
+	$(test_statistics_api_watch_zero_value_SOURCES)
 DATA = $(pkgcfg_DATA)
 ETAGS = etags
 CTAGS = ctags
@@ -224,6 +234,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -257,6 +268,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -391,7 +403,7 @@ libgnunetstatistics_la_LIBADD = \
 
 libgnunetstatistics_la_LDFLAGS = \
   $(GN_LIB_LDFLAGS)  $(WINFLAGS) \
-  -version-info 1:0:1
+  -version-info 1:1:1
 
 gnunet_statistics_SOURCES = \
  gnunet-statistics.c         
@@ -434,6 +446,13 @@ test_statistics_api_watch_SOURCES = \
  test_statistics_api_watch.c
 
 test_statistics_api_watch_LDADD = \
+  $(top_builddir)/src/statistics/libgnunetstatistics.la \
+  $(top_builddir)/src/util/libgnunetutil.la  
+
+test_statistics_api_watch_zero_value_SOURCES = \
+ test_statistics_api_watch_zero_value.c
+
+test_statistics_api_watch_zero_value_LDADD = \
   $(top_builddir)/src/statistics/libgnunetstatistics.la \
   $(top_builddir)/src/util/libgnunetutil.la  
 
@@ -580,6 +599,9 @@ test_statistics_api_loop$(EXEEXT): $(test_statistics_api_loop_OBJECTS) $(test_st
 test_statistics_api_watch$(EXEEXT): $(test_statistics_api_watch_OBJECTS) $(test_statistics_api_watch_DEPENDENCIES) 
 	@rm -f test_statistics_api_watch$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_statistics_api_watch_OBJECTS) $(test_statistics_api_watch_LDADD) $(LIBS)
+test_statistics_api_watch_zero_value$(EXEEXT): $(test_statistics_api_watch_zero_value_OBJECTS) $(test_statistics_api_watch_zero_value_DEPENDENCIES) 
+	@rm -f test_statistics_api_watch_zero_value$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_statistics_api_watch_zero_value_OBJECTS) $(test_statistics_api_watch_zero_value_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -593,6 +615,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_statistics_api.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_statistics_api_loop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_statistics_api_watch.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_statistics_api_watch_zero_value.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

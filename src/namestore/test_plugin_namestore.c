@@ -176,7 +176,7 @@ run (void *cls, char *const *args, const char *cfgfile,
 {
   struct GNUNET_NAMESTORE_PluginFunctions *nsp;  
   struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded zone_key;
-  GNUNET_HashCode zone;
+  struct GNUNET_CRYPTO_ShortHashCode zone;
   
   ok = 0;
   nsp = load_plugin (cfg);
@@ -187,13 +187,16 @@ run (void *cls, char *const *args, const char *cfgfile,
 	     "Failed to initialize namestore.  Database likely not setup, skipping test.\n");
     return;
   }
+
   put_record (nsp, 1);
+
   get_record (nsp, 1);
 
   memset (&zone_key, 1, sizeof (zone_key));
-  GNUNET_CRYPTO_hash (&zone_key, sizeof (zone_key), &zone);  
+  GNUNET_CRYPTO_short_hash (&zone_key, sizeof (zone_key), &zone);
   nsp->delete_zone (nsp->cls, &zone);
   unload_plugin (nsp);
+
 }
 
 
@@ -235,8 +238,6 @@ main (int argc, char *argv[])
 
   GNUNET_snprintf (cfg_name, sizeof (cfg_name), "test_plugin_namestore_%s.conf",
                    plugin_name);
-  if (pos != plugin_name)
-    pos[0] = '.';
   GNUNET_PROGRAM_run ((sizeof (xargv) / sizeof (char *)) - 1, xargv,
                       "test-plugin-namestore", "nohelp", options, &run, NULL);
   if (ok != 0)

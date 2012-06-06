@@ -32,7 +32,7 @@ libgnunetats_la_LIBADD = \
 
 libgnunetats_la_LDFLAGS = \
  $(GN_LIB_LDFLAGS) \
-  -version-info 1:0:1
+  -version-info 2:0:2
 
 
 bin_PROGRAMS = \
@@ -54,6 +54,7 @@ gnunet_service_ats_LDADD = \
 
 check_PROGRAMS = \
  test_ats_api_scheduling \
+ test_ats_api_reset_backoff \
  $(GN_MLP_TEST) \
  $(GN_MLP_TEST_AVG) \
  $(GN_MLP_PERF)
@@ -87,12 +88,18 @@ perf_ats_mlp_SOURCES = \
 perf_ats_mlp_LDADD = \
   $(GN_LIBGLPK) \
   $(top_builddir)/src/util/libgnunetutil.la \
-  $(top_builddir)/src/statistics/libgnunetstatistics.la  
+  $(top_builddir)/src/statistics/libgnunetstatistics.la
 endif
 
 test_ats_api_scheduling_SOURCES = \
  test_ats_api_scheduling.c
 test_ats_api_scheduling_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/ats/libgnunetats.la  
+
+test_ats_api_reset_backoff_SOURCES = \
+ test_ats_api_reset_backoff.c
+test_ats_api_reset_backoff_LDADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
   $(top_builddir)/src/ats/libgnunetats.la  
 
@@ -117,5 +124,5 @@ test_ats_api_scheduling_LDADD = \
 
 EXTRA_DIST = \
   ats.h \
-  test_ats_api.conf 
+  test_ats_api.conf
 

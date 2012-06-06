@@ -90,7 +90,7 @@ struct Mstv6Context
 
 
 
-void
+int
 broadcast_ipv6_mst_cb (void *cls, void *client,
                        const struct GNUNET_MessageHeader *message)
 {
@@ -104,13 +104,11 @@ broadcast_ipv6_mst_cb (void *cls, void *client,
 
   if (GNUNET_MESSAGE_TYPE_TRANSPORT_BROADCAST_BEACON !=
       ntohs (msg->header.type))
-    return;
-#if DEBUG_UDP_BROADCASTING
+    return GNUNET_OK;
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Received beacon with %u bytes from peer `%s' via address `%s'\n",
        ntohs (msg->header.size), GNUNET_i2s (&msg->sender),
        udp_address_to_string (NULL, &mc->addr, sizeof (mc->addr)));
-#endif
   struct GNUNET_ATS_Information atsi[2];
 
   /* setup ATS */
@@ -130,9 +128,10 @@ broadcast_ipv6_mst_cb (void *cls, void *client,
                             ("# IPv6 multicast HELLO beacons received via udp"),
                             1, GNUNET_NO);
   GNUNET_free (mc);
+  return GNUNET_OK;
 }
 
-void
+int
 broadcast_ipv4_mst_cb (void *cls, void *client,
                        const struct GNUNET_MessageHeader *message)
 {
@@ -145,13 +144,11 @@ broadcast_ipv4_mst_cb (void *cls, void *client,
 
   if (GNUNET_MESSAGE_TYPE_TRANSPORT_BROADCAST_BEACON !=
       ntohs (msg->header.type))
-    return;
-#if DEBUG_UDP_BROADCASTING
+    return GNUNET_OK;
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Received beacon with %u bytes from peer `%s' via address `%s'\n",
        ntohs (msg->header.size), GNUNET_i2s (&msg->sender),
        udp_address_to_string (NULL, &mc->addr, sizeof (mc->addr)));
-#endif
 
   struct GNUNET_ATS_Information atsi[2];
 
@@ -172,6 +169,7 @@ broadcast_ipv4_mst_cb (void *cls, void *client,
                             ("# IPv4 broadcast HELLO beacons received via udp"),
                             1, GNUNET_NO);
   GNUNET_free (mc);
+  return GNUNET_OK;
 }
 
 void
@@ -179,13 +177,11 @@ udp_broadcast_receive (struct Plugin *plugin, const char * buf, ssize_t size, st
 {
   struct GNUNET_ATS_Information ats;
 
-  if (addrlen == sizeof (struct sockaddr_in))
+  if ((GNUNET_YES == plugin->broadcast_ipv4) && (addrlen == sizeof (struct sockaddr_in)))
   {
-#if DEBUG_UDP_BROADCASTING
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Received IPv4 HELLO beacon broadcast with %i bytes from address %s\n",
          size, GNUNET_a2s ((const struct sockaddr *) addr, addrlen));
-#endif
     struct Mstv4Context *mc;
 
     mc = GNUNET_malloc (sizeof (struct Mstv4Context));
@@ -195,18 +191,18 @@ udp_broadcast_receive (struct Plugin *plugin, const char * buf, ssize_t size, st
     mc->addr.u4_port = av4->sin_port;
     ats = plugin->env->get_address_type (plugin->env->cls, (const struct sockaddr *) addr, addrlen);
     mc->ats_address_network_type = ats.value;
+
+    GNUNET_assert (NULL != plugin->broadcast_ipv4_mst);
     if (GNUNET_OK !=
         GNUNET_SERVER_mst_receive (plugin->broadcast_ipv4_mst, mc, buf, size,
                                    GNUNET_NO, GNUNET_NO))
       GNUNET_free (mc);
   }
-  else if (addrlen == sizeof (struct sockaddr_in6))
+  else if ((GNUNET_YES == plugin->broadcast_ipv4) && (addrlen == sizeof (struct sockaddr_in6)))
   {
-#if DEBUG_UDP_BROADCASTING
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Received IPv6 HELLO beacon broadcast with %i bytes from address %s\n",
          size, GNUNET_a2s ((const struct sockaddr *) &addr, addrlen));
-#endif
     struct Mstv6Context *mc;
 
     mc = GNUNET_malloc (sizeof (struct Mstv6Context));
@@ -216,12 +212,34 @@ udp_broadcast_receive (struct Plugin *plugin, const char * buf, ssize_t size, st
     mc->addr.u6_port = av6->sin6_port;
     ats = plugin->env->get_address_type (plugin->env->cls, (const struct sockaddr *) addr, addrlen);
     mc->ats_address_network_type = ats.value;
-
+    GNUNET_assert (NULL != plugin->broadcast_ipv4_mst);
     if (GNUNET_OK !=
         GNUNET_SERVER_mst_receive (plugin->broadcast_ipv6_mst, mc, buf, size,
                                    GNUNET_NO, GNUNET_NO))
       GNUNET_free (mc);
   }
+}
+
+static unsigned int
+prepare_beacon (struct Plugin *plugin, struct UDP_Beacon_Message *msg)
+{
+  uint16_t hello_size;
+  uint16_t msg_size;
+
+  const struct GNUNET_MessageHeader *hello;
+  hello = plugin->env->get_our_hello ();
+  hello_size = GNUNET_HELLO_size ((struct GNUNET_HELLO_Message *) hello);
+  msg_size = hello_size + sizeof (struct UDP_Beacon_Message);
+
+  if (hello_size < (sizeof (struct GNUNET_MessageHeader)) ||
+      (msg_size > (UDP_MTU)))
+    return 0;
+
+  msg->sender = *(plugin->env->my_identity);
+  msg->header.size = htons (msg_size);
+  msg->header.type = htons (GNUNET_MESSAGE_TYPE_TRANSPORT_BROADCAST_BEACON);
+  memcpy (&msg[1], hello, hello_size);
+  return msg_size;
 }
 
 static void
@@ -231,30 +249,13 @@ udp_ipv4_broadcast_send (void *cls,
   struct Plugin *plugin = cls;
   int sent;
   uint16_t msg_size;
-  uint16_t hello_size;
-  char buf[65536];
-
-  const struct GNUNET_MessageHeader *hello;
-  struct UDP_Beacon_Message *msg;
+  char buf[65536] GNUNET_ALIGN;
   struct BroadcastAddress *baddr;
 
   plugin->send_ipv4_broadcast_task = GNUNET_SCHEDULER_NO_TASK;
 
-  hello = plugin->env->get_our_hello ();
-  hello_size = GNUNET_HELLO_size ((struct GNUNET_HELLO_Message *) hello);
-  msg_size = hello_size + sizeof (struct UDP_Beacon_Message);
-
-  if (hello_size < (sizeof (struct GNUNET_MessageHeader)) ||
-      (msg_size > (UDP_MTU)))
-    return;
-
-  msg = (struct UDP_Beacon_Message *) buf;
-  msg->sender = *(plugin->env->my_identity);
-  msg->header.size = ntohs (msg_size);
-  msg->header.type = ntohs (GNUNET_MESSAGE_TYPE_TRANSPORT_BROADCAST_BEACON);
-  memcpy (&msg[1], hello, hello_size);
+  msg_size = prepare_beacon(plugin, (struct UDP_Beacon_Message *) &buf);
   sent = 0;
-
   baddr = plugin->ipv4_broadcast_head;
   /* just IPv4 */
   while ((baddr != NULL) && (baddr->addrlen == sizeof (struct sockaddr_in)))
@@ -263,19 +264,16 @@ udp_ipv4_broadcast_send (void *cls,
 
     addr->sin_port = htons (plugin->port);
 
-    sent =
-        GNUNET_NETWORK_socket_sendto (plugin->sockv4, msg, msg_size,
+    sent = GNUNET_NETWORK_socket_sendto (plugin->sockv4, &buf, msg_size,
                                       (const struct sockaddr *) addr,
                                       baddr->addrlen);
     if (sent == GNUNET_SYSERR)
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR, "sendto");
     else
     {
-#if DEBUG_UDP_BROADCASTING
       LOG (GNUNET_ERROR_TYPE_DEBUG,
-           "Sent HELLO beacon broadcast with  %i bytes to address %s\n", sent,
+           "Sent HELLO beacon broadcast with %i bytes to address %s\n", sent,
            GNUNET_a2s (baddr->addr, baddr->addrlen));
-#endif
     }
     baddr = baddr->next;
   }
@@ -292,31 +290,13 @@ udp_ipv6_broadcast_send (void *cls,
   struct Plugin *plugin = cls;
   int sent;
   uint16_t msg_size;
-  uint16_t hello_size;
-  char buf[65536];
-
-  const struct GNUNET_MessageHeader *hello;
-  struct UDP_Beacon_Message *msg;
+  char buf[65536] GNUNET_ALIGN;
 
   plugin->send_ipv6_broadcast_task = GNUNET_SCHEDULER_NO_TASK;
 
-  hello = plugin->env->get_our_hello ();
-  hello_size = GNUNET_HELLO_size ((struct GNUNET_HELLO_Message *) hello);
-  msg_size = hello_size + sizeof (struct UDP_Beacon_Message);
-
-  if (hello_size < (sizeof (struct GNUNET_MessageHeader)) ||
-      (msg_size > (UDP_MTU)))
-    return;
-
-  msg = (struct UDP_Beacon_Message *) buf;
-  msg->sender = *(plugin->env->my_identity);
-  msg->header.size = ntohs (msg_size);
-  msg->header.type = ntohs (GNUNET_MESSAGE_TYPE_TRANSPORT_BROADCAST_BEACON);
-  memcpy (&msg[1], hello, hello_size);
+  msg_size = prepare_beacon(plugin, (struct UDP_Beacon_Message *) &buf);
   sent = 0;
-
-  sent =
-      GNUNET_NETWORK_socket_sendto (plugin->sockv6, msg, msg_size,
+  sent = GNUNET_NETWORK_socket_sendto (plugin->sockv6, &buf, msg_size,
                                     (const struct sockaddr *)
                                     &plugin->ipv6_multicast_address,
                                     sizeof (struct sockaddr_in6));
@@ -324,16 +304,12 @@ udp_ipv6_broadcast_send (void *cls,
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR, "sendto");
   else
   {
-#if DEBUG_UDP_BROADCASTING
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Sending IPv6 HELLO beacon broadcast with  %i bytes to address %s\n",
          sent,
          GNUNET_a2s ((const struct sockaddr *) &plugin->ipv6_multicast_address,
                      sizeof (struct sockaddr_in6)));
-#endif
   }
-
-
   plugin->send_ipv6_broadcast_task =
       GNUNET_SCHEDULER_add_delayed (plugin->broadcast_interval,
                                     &udp_ipv6_broadcast_send, plugin);
@@ -349,7 +325,6 @@ iface_proc (void *cls, const char *name, int isDefault,
 
   if (addr != NULL)
   {
-#if DEBUG_UDP_BROADCASTING
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "address %s for interface %s %p\n ",
                 GNUNET_a2s (addr, addrlen), name, addr);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -357,7 +332,6 @@ iface_proc (void *cls, const char *name, int isDefault,
                 GNUNET_a2s (broadcast_addr, addrlen), name, broadcast_addr);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "netmask %s for interface %s %p\n ",
                 GNUNET_a2s (netmask, addrlen), name, netmask);
-#endif
 
     /* Collecting broadcast addresses */
     if (broadcast_addr != NULL)
@@ -450,9 +424,7 @@ setup_broadcast (struct Plugin *plugin, struct sockaddr_in6 *serverAddrv6, struc
     }
     else
     {
-#if DEBUG_UDP
       LOG (GNUNET_ERROR_TYPE_DEBUG, "IPv6 broadcasting running\n");
-#endif
       plugin->send_ipv6_broadcast_task =
           GNUNET_SCHEDULER_add_now (&udp_ipv6_broadcast_send, plugin);
       plugin->broadcast_ipv6 = GNUNET_YES;
@@ -503,9 +475,7 @@ stop_broadcast (struct Plugin *plugin)
     }
     else
     {
-#if DEBUG_UDP
       LOG (GNUNET_ERROR_TYPE_DEBUG, "IPv6 Broadcasting stopped\n");
-#endif
     }
 
     if (plugin->send_ipv6_broadcast_task != GNUNET_SCHEDULER_NO_TASK)

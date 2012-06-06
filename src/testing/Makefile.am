@@ -21,7 +21,7 @@ if HAVE_EXPENSIVE_TESTS
    test_testing_topology_clique_minimum \
    test_testing_topology_clique_dfs \
    test_testing_topology_churn \
-   test_testing_topology_line
+   test_testing_topology_line \
    test_testing_topology_blacklist \
    test_testing_group_remote \
    test_testing_topology_ring \
@@ -33,7 +33,9 @@ if HAVE_EXPENSIVE_TESTS
    test_testing_topology_scale_free
 endif
 
-lib_LTLIBRARIES = libgnunettesting.la
+lib_LTLIBRARIES = \
+  libgnunettesting.la \
+  libgnunettesting_new.la
 
 libgnunettesting_la_SOURCES = \
   helper.c \
@@ -50,6 +52,16 @@ libgnunettesting_la_LIBADD = $(XLIB) \
 libgnunettesting_la_LDFLAGS = \
  $(GN_LIB_LDFLAGS) \
  -version-info 0:1:0
+
+
+libgnunettesting_new_la_SOURCES = \
+  testing_new.c  
+libgnunettesting_new_la_LIBADD = \
+ $(top_builddir)/src/util/libgnunetutil.la 
+libgnunettesting_new_la_LDFLAGS = \
+ $(GN_LIB_LDFLAGS) \
+ -version-info 0:1:0
+
 
 bin_PROGRAMS = \
  gnunet-testing
@@ -77,7 +89,10 @@ check_PROGRAMS = \
  test_testing_topology_erdos_renyi \
  test_testing_topology_internat \
  test_testing_topology_none \
- test_testing_topology_scale_free
+ test_testing_topology_scale_free \
+ test_testing_new_portreservation \
+ test_testing_new_peerstartup \
+ test_testing_new_servicestartup
 
 if ENABLE_TEST_RUN 
 TESTS = \
@@ -86,8 +101,9 @@ TESTS = \
  test_testing_reconnect \
  test_testing_group \
  test_testing_peergroup \
- test_testing_topology_clique \
- test_testing_2dtorus
+ test_testing_new_portreservation \
+ test_testing_new_peerstartup \
+ test_testing_new_servicestartup
 endif
 
 gnunet_testing_SOURCES = \
@@ -253,6 +269,23 @@ test_testing_topology_none_LDADD = \
  $(top_builddir)/src/core/libgnunetcore.la \
  $(top_builddir)/src/util/libgnunetutil.la
 
+test_testing_new_portreservation_SOURCES = \
+ test_testing_new_portreservation.c
+test_testing_new_portreservation_LDADD = \
+ $(top_builddir)/src/testing/libgnunettesting_new.la \
+ $(top_builddir)/src/util/libgnunetutil.la
+
+test_testing_new_peerstartup_SOURCES = \
+ test_testing_new_peerstartup.c
+test_testing_new_peerstartup_LDADD = \
+ $(top_builddir)/src/testing/libgnunettesting_new.la \
+ $(top_builddir)/src/util/libgnunetutil.la
+
+test_testing_new_servicestartup_SOURCES = \
+ test_testing_new_servicestartup.c
+test_testing_new_servicestartup_LDADD = \
+ $(top_builddir)/src/testing/libgnunettesting_new.la \
+ $(top_builddir)/src/util/libgnunetutil.la
 
 EXTRA_DIST = \
  test_testing_defaults.conf \

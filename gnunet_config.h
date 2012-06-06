@@ -34,7 +34,7 @@
 
 /* 1 if extra logging is enabled, 2 for very verbose extra logging, 0
    otherwise */
-#define GNUNET_EXTRA_LOGGING GNUNET_YES
+#define GNUNET_EXTRA_LOGGING GNUNET_NO
 
 /* Define to 1 if you have the `argz_add' function. */
 #define HAVE_ARGZ_ADD 1
@@ -159,22 +159,22 @@
 /* Define to 1 if you have the `ftruncate' function. */
 #define HAVE_FTRUNCATE 1
 
-/* Define to 1 if you have the `getaddrinfo' function. */
+/* Define this if getaddrinfo() is available */
 #define HAVE_GETADDRINFO 1
 
 /* Define to 1 if you have the `getcwd' function. */
 #define HAVE_GETCWD 1
 
-/* Define to 1 if you have the `gethostbyaddr' function. */
+/* Define this if gethostbyaddr() is available */
 #define HAVE_GETHOSTBYADDR 1
 
-/* Define to 1 if you have the `gethostbyname' function. */
+/* Define this if gethostbyname() is available */
 #define HAVE_GETHOSTBYNAME 1
 
 /* Define to 1 if you have the `gethostbyname2' function. */
 #define HAVE_GETHOSTBYNAME2 1
 
-/* Define to 1 if you have the `gethostname' function. */
+/* Define this if gethostname() is available */
 #define HAVE_GETHOSTNAME 1
 
 /* Define to 1 if you have the `getifaddrs' function. */
@@ -183,7 +183,7 @@
 /* getloadavg supported */
 #define HAVE_GETLOADAVG 1
 
-/* Define to 1 if you have the `getnameinfo' function. */
+/* Define this if getnameinfo() is available */
 #define HAVE_GETNAMEINFO 1
 
 /* Define to 1 if you have the `getpeereid' function. */
@@ -202,10 +202,10 @@
 #define HAVE_GETTIMEOFDAY 1
 
 /* Define to 1 if you have the <glpk.h> header file. */
-/* #undef HAVE_GLPK_H */
+#define HAVE_GLPK_H 1
 
 /* Define to 1 if `presolve' is a member of `glp_iocp'. */
-/* #undef HAVE_GLP_IOCP_PRESOLVE */
+#define HAVE_GLP_IOCP_PRESOLVE 1
 
 /* Define to 1 if you have the `gmtime' function. */
 #define HAVE_GMTIME 1
@@ -219,7 +219,7 @@
 /* Define to 1 if you have the <ifaddrs.h> header file. */
 #define HAVE_IFADDRS_H 1
 
-/* Define to 1 if you have the `inet_ntoa' function. */
+/* Define this if inet_ntoa() is available */
 #define HAVE_INET_NTOA 1
 
 /* Define to 1 if you have the `initgroups' function. */
@@ -247,7 +247,7 @@
 #define HAVE_LIBDLLOADER 1
 
 /* Have GLPK */
-/* #undef HAVE_LIBGLPK */
+#define HAVE_LIBGLPK 1
 
 /* Define to 1 if you have the `intl' library (-lintl). */
 /* #undef HAVE_LIBINTL */
@@ -348,6 +348,9 @@
 /* Define to 1 if you have the `nl_langinfo' function. */
 #define HAVE_NL_LANGINFO 1
 
+/* Define to 1 if you have the <nss.h> header file. */
+#define HAVE_NSS_H 1
+
 /* Define to 1 if the system has the type `off_t'. */
 #define HAVE_OFF_T 1
 
@@ -378,7 +381,7 @@
 /* Define to 1 if you have the `sbrk' function. */
 #define HAVE_SBRK 1
 
-/* Define to 1 if you have the `select' function. */
+/* Define this if select() is available */
 #define HAVE_SELECT 1
 
 /* Define to 1 if you have the `setlocale' function. */
@@ -405,7 +408,7 @@
 /* Do we have sockaddr_in.sin_len? */
 /* #undef HAVE_SOCKADDR_IN_SIN_LEN */
 
-/* Define to 1 if you have the `socket' function. */
+/* Define this if socket() is available */
 #define HAVE_SOCKET 1
 
 /* Define to 1 if you have the <sockLib.h> header file. */
@@ -706,7 +709,7 @@
 #define PACKAGE_NAME "gnunet"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "gnunet 0.9.2"
+#define PACKAGE_STRING "gnunet 0.9.3"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gnunet"
@@ -715,7 +718,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "0.9.2"
+#define PACKAGE_VERSION "0.9.3"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
@@ -748,7 +751,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "0.9.2"
+#define VERSION "0.9.3"
 
 /* This is a Windows system */
 /* #undef WINDOWS */

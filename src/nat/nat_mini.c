@@ -202,7 +202,7 @@ void
 GNUNET_NAT_mini_get_external_ipv4_cancel (struct GNUNET_NAT_ExternalHandle *eh)
 {
   (void) GNUNET_OS_process_kill (eh->eip, SIGKILL);
-  GNUNET_OS_process_close (eh->eip);
+  GNUNET_OS_process_destroy (eh->eip);
   GNUNET_DISK_pipe_close (eh->opipe);
   if (GNUNET_SCHEDULER_NO_TASK != eh->task)
     GNUNET_SCHEDULER_cancel (eh->task);
@@ -378,7 +378,7 @@ process_refresh_output (void *cls, const char *line)
   if (NULL == strstr (s, pstr))
     return;                     /* skip */
   if (1 !=
-      sscanf (line,
+      SSCANF (line,
               (mini->is_tcp) ? "%*u TCP  %u->%*s:%*u %*s" :
               "%*u UDP  %u->%*s:%*u %*s", &nport))
     return;                     /* skip */
@@ -446,7 +446,7 @@ process_map_output (void *cls, const char *line)
    */
   if ((NULL == (ipaddr = strstr (line, " "))) ||
       (NULL == (pstr = strstr (ipaddr, ":"))) ||
-      (1 != sscanf (pstr + 1, "%u", &port)))
+      (1 != SSCANF (pstr + 1, "%u", &port)))
   {
     return;                     /* skip line */
   }
@@ -524,9 +524,7 @@ process_unmap_output (void *cls, const char *line)
 
   if (NULL == line)
   {
-#if DEBUG_NAT
     LOG (GNUNET_ERROR_TYPE_DEBUG, "UPnP unmap done\n");
-#endif
     GNUNET_OS_command_stop (mini->unmap_cmd);
     mini->unmap_cmd = NULL;
     GNUNET_free (mini);
@@ -577,10 +575,8 @@ GNUNET_NAT_mini_map_stop (struct GNUNET_NAT_MiniHandle *mini)
    * often are the same, but it might... */
   GNUNET_snprintf (pstr, sizeof (pstr), "%u",
                    (unsigned int) ntohs (mini->current_addr.sin_port));
-#if DEBUG_NAT
   LOG (GNUNET_ERROR_TYPE_DEBUG, "Unmapping port %u with UPnP\n",
        ntohs (mini->current_addr.sin_port));
-#endif
   mini->unmap_cmd =
       GNUNET_OS_command_run (&process_unmap_output, mini, UNMAP_TIMEOUT,
                              "upnpc", "upnpc", "-d", pstr,

@@ -474,19 +474,23 @@ struct MeshClient
 /**
  * GNUNET_SCHEDULER_Task for printing a message after some operation is done
  * @param cls string to print
- * @param tc task context
+ * @param success  GNUNET_OK if the PUT was transmitted,
+ *                GNUNET_NO on timeout,
+ *                GNUNET_SYSERR on disconnect from service
+ *                after the PUT message was transmitted
+ *                (so we don't know if it was received or not)
  */
+
+#if 0
 static void
-mesh_debug (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
+mesh_debug (void *cls, int success)
 {
   char *s = cls;
 
-  if (NULL != tc && GNUNET_SCHEDULER_REASON_SHUTDOWN == tc->reason)
-  {
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "%s\n", s);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "%s (%d)\n", s, success);
 }
+#endif
+
 #endif
 
 /******************************************************************************/
@@ -622,19 +626,15 @@ static int
 announce_application (void *cls, const GNUNET_HashCode * key, void *value)
 {
   /* FIXME are hashes in multihash map equal on all aquitectures? */
-  GNUNET_DHT_put (dht_handle, key, 10U,
+  /* FIXME: keep return value of 'put' to possibly cancel!? */
+  GNUNET_DHT_put (dht_handle, key, 10,
                   GNUNET_DHT_RO_RECORD_ROUTE |
                   GNUNET_DHT_RO_DEMULTIPLEX_EVERYWHERE, GNUNET_BLOCK_TYPE_TEST,
                   sizeof (struct GNUNET_PeerIdentity),
                   (const char *) &my_full_id,
-#if MESH_DEBUG
-                  GNUNET_TIME_UNIT_FOREVER_ABS, GNUNET_TIME_UNIT_FOREVER_REL,
-                  &mesh_debug, "DHT_put for app completed");
-#else
                   GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                                             APP_ANNOUNCE_TIME),
                   APP_ANNOUNCE_TIME, NULL, NULL);
-#endif
   return GNUNET_OK;
 }
 
@@ -689,19 +689,15 @@ announce_id (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 
   GNUNET_DHT_put (dht_handle,   /* DHT handle */
                   &my_full_id.hashPubKey,       /* Key to use */
-                  10U,          /* Replication level */
+                  10,          /* Replication level */
                   GNUNET_DHT_RO_RECORD_ROUTE | GNUNET_DHT_RO_DEMULTIPLEX_EVERYWHERE,    /* DHT options */
                   GNUNET_BLOCK_TYPE_TEST,       /* Block type */
                   sizeof (my_full_id),  /* Size of the data */
                   (char *) &my_full_id, /* Data itself */
-                  GNUNET_TIME_absolute_get_forever (),  /* Data expiration */
+                  GNUNET_TIME_UNIT_FOREVER_ABS,  /* Data expiration */
                   GNUNET_TIME_UNIT_FOREVER_REL, /* Retry time */
-#if MESH_DEBUG_DHT
-                  &mesh_debug, "DHT_put for id completed");
-#else
                   NULL,         /* Continuation */
                   NULL);        /* Continuation closure */
-#endif
   announce_id_task =
       GNUNET_SCHEDULER_add_delayed (ID_ANNOUNCE_TIME, &announce_id, cls);
 }
@@ -1608,10 +1604,9 @@ peer_info_connect (struct MeshPeerInfo *peer, struct MeshTunnel *t)
                 "  Starting DHT GET for peer %s\n", GNUNET_i2s (&id));
     peer->dhtgetcls = path_info;
     peer->dhtget = GNUNET_DHT_get_start (dht_handle,    /* handle */
-                                         GNUNET_TIME_UNIT_FOREVER_REL,  /* timeout */
                                          GNUNET_BLOCK_TYPE_TEST,        /* type */
                                          &id.hashPubKey,        /* key to search */
-                                         10U,     /* replication level */
+                                         10,     /* replication level */
                                          GNUNET_DHT_RO_RECORD_ROUTE | GNUNET_DHT_RO_DEMULTIPLEX_EVERYWHERE, NULL,       /* xquery */
                                          0,     /* xquery bits */
                                          &dht_get_id_handler, path_info);
@@ -2987,7 +2982,7 @@ handle_mesh_path_create (void *cls, const struct GNUNET_PeerIdentity *peer,
     info->peer->types[j] = GNUNET_MESSAGE_TYPE_MESH_PATH_ACK;
     info->peer->infos[j] = info;
     info->peer->core_transmit[j] =
-        GNUNET_CORE_notify_transmit_ready (core_handle, 0, 100,
+        GNUNET_CORE_notify_transmit_ready (core_handle, 0, 10,
                                            GNUNET_TIME_UNIT_FOREVER_REL, peer,
                                            sizeof (struct GNUNET_MESH_PathACK),
                                            &send_core_path_ack, info);
@@ -4025,8 +4020,7 @@ handle_local_tunnel_destroy (void *cls, struct GNUNET_SERVER_Client *client,
     GNUNET_SERVER_receive_done (client, GNUNET_SYSERR);
     return;
   }
-  send_client_tunnel_disconnect(t, c);
-  if (c != t->owner)
+  if (c != t->owner || tid >= GNUNET_MESH_LOCAL_TUNNEL_ID_SERV)
   {
     client_ignore_tunnel (c, t);
 #if 0
@@ -4045,6 +4039,7 @@ handle_local_tunnel_destroy (void *cls, struct GNUNET_SERVER_Client *client,
     GNUNET_SERVER_receive_done (client, GNUNET_OK);
     return;
   }
+  send_client_tunnel_disconnect(t, c);
   client_delete_tunnel(c, t);
 
   /* Don't try to ACK the client about the tunnel_destroy multicast packet */
@@ -4288,8 +4283,8 @@ handle_local_connect_by_type (void *cls, struct GNUNET_SERVER_Client *client,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, " looking in DHT for %s\n",
               GNUNET_h2s (&hash));
   t->dht_get_type =
-      GNUNET_DHT_get_start (dht_handle, GNUNET_TIME_UNIT_FOREVER_REL,
-                            GNUNET_BLOCK_TYPE_TEST, &hash, 10U,
+      GNUNET_DHT_get_start (dht_handle, 
+                            GNUNET_BLOCK_TYPE_TEST, &hash, 10,
                             GNUNET_DHT_RO_RECORD_ROUTE |
                             GNUNET_DHT_RO_DEMULTIPLEX_EVERYWHERE, NULL, 0,
                             &dht_get_type_handler, t);
@@ -4370,7 +4365,7 @@ handle_local_unicast (void *cls, struct GNUNET_SERVER_Client *client,
    * (pretend we got it from a mesh peer)
    */
   {
-    char buf[ntohs (message->size)];
+    char buf[ntohs (message->size)] GNUNET_ALIGN;
     struct GNUNET_MESH_Unicast *copy;
 
     /* Work around const limitation */
@@ -4454,7 +4449,7 @@ handle_local_to_origin (void *cls, struct GNUNET_SERVER_Client *client,
    * (pretend we got it from a mesh peer)
    */
   {
-    char buf[ntohs (message->size)];
+    char buf[ntohs (message->size)] GNUNET_ALIGN;
     struct GNUNET_MESH_ToOrigin *copy;
 
     /* Work around const limitation */
@@ -4527,7 +4522,7 @@ handle_local_multicast (void *cls, struct GNUNET_SERVER_Client *client,
   }
 
   {
-    char buf[ntohs (message->size)];
+    char buf[ntohs (message->size)] GNUNET_ALIGN;
     struct GNUNET_MESH_Multicast *copy;
 
     copy = (struct GNUNET_MESH_Multicast *) buf;

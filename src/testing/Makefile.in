@@ -58,14 +58,18 @@ check_PROGRAMS = test_testing$(EXEEXT) test_testing_connect$(EXEEXT) \
 	test_testing_topology_erdos_renyi$(EXEEXT) \
 	test_testing_topology_internat$(EXEEXT) \
 	test_testing_topology_none$(EXEEXT) \
-	test_testing_topology_scale_free$(EXEEXT)
+	test_testing_topology_scale_free$(EXEEXT) \
+	test_testing_new_portreservation$(EXEEXT) \
+	test_testing_new_peerstartup$(EXEEXT) \
+	test_testing_new_servicestartup$(EXEEXT)
 @ENABLE_TEST_RUN_TRUE@TESTS = test_testing$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_testing_connect$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_testing_reconnect$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_testing_group$(EXEEXT) \
 @ENABLE_TEST_RUN_TRUE@	test_testing_peergroup$(EXEEXT) \
-@ENABLE_TEST_RUN_TRUE@	test_testing_topology_clique$(EXEEXT) \
-@ENABLE_TEST_RUN_TRUE@	test_testing_2dtorus$(EXEEXT)
+@ENABLE_TEST_RUN_TRUE@	test_testing_new_portreservation$(EXEEXT) \
+@ENABLE_TEST_RUN_TRUE@	test_testing_new_peerstartup$(EXEEXT) \
+@ENABLE_TEST_RUN_TRUE@	test_testing_new_servicestartup$(EXEEXT)
 subdir = src/testing
 DIST_COMMON = $(dist_pkgcfg_DATA) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
@@ -129,6 +133,15 @@ libgnunettesting_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(AM_CFLAGS) $(CFLAGS) $(libgnunettesting_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
+libgnunettesting_new_la_DEPENDENCIES =  \
+	$(top_builddir)/src/util/libgnunetutil.la
+am_libgnunettesting_new_la_OBJECTS = testing_new.lo
+libgnunettesting_new_la_OBJECTS =  \
+	$(am_libgnunettesting_new_la_OBJECTS)
+libgnunettesting_new_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(AM_CFLAGS) $(CFLAGS) $(libgnunettesting_new_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
 PROGRAMS = $(bin_PROGRAMS)
 am_gnunet_testing_OBJECTS = gnunet-testing.$(OBJEXT)
 gnunet_testing_OBJECTS = $(am_gnunet_testing_OBJECTS)
@@ -158,6 +171,27 @@ test_testing_group_remote_OBJECTS =  \
 	$(am_test_testing_group_remote_OBJECTS)
 test_testing_group_remote_DEPENDENCIES =  \
 	$(top_builddir)/src/testing/libgnunettesting.la \
+	$(top_builddir)/src/util/libgnunetutil.la
+am_test_testing_new_peerstartup_OBJECTS =  \
+	test_testing_new_peerstartup.$(OBJEXT)
+test_testing_new_peerstartup_OBJECTS =  \
+	$(am_test_testing_new_peerstartup_OBJECTS)
+test_testing_new_peerstartup_DEPENDENCIES =  \
+	$(top_builddir)/src/testing/libgnunettesting_new.la \
+	$(top_builddir)/src/util/libgnunetutil.la
+am_test_testing_new_portreservation_OBJECTS =  \
+	test_testing_new_portreservation.$(OBJEXT)
+test_testing_new_portreservation_OBJECTS =  \
+	$(am_test_testing_new_portreservation_OBJECTS)
+test_testing_new_portreservation_DEPENDENCIES =  \
+	$(top_builddir)/src/testing/libgnunettesting_new.la \
+	$(top_builddir)/src/util/libgnunetutil.la
+am_test_testing_new_servicestartup_OBJECTS =  \
+	test_testing_new_servicestartup.$(OBJEXT)
+test_testing_new_servicestartup_OBJECTS =  \
+	$(am_test_testing_new_servicestartup_OBJECTS)
+test_testing_new_servicestartup_DEPENDENCIES =  \
+	$(top_builddir)/src/testing/libgnunettesting_new.la \
 	$(top_builddir)/src/util/libgnunetutil.la
 am_test_testing_peergroup_OBJECTS = test_testing_peergroup.$(OBJEXT)
 test_testing_peergroup_OBJECTS = $(am_test_testing_peergroup_OBJECTS)
@@ -321,10 +355,14 @@ am__v_CCLD_0 = @echo "  CCLD  " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libgnunettesting_la_SOURCES) $(gnunet_testing_SOURCES) \
+SOURCES = $(libgnunettesting_la_SOURCES) \
+	$(libgnunettesting_new_la_SOURCES) $(gnunet_testing_SOURCES) \
 	$(test_testing_SOURCES) $(test_testing_2dtorus_SOURCES) \
 	$(test_testing_connect_SOURCES) $(test_testing_group_SOURCES) \
 	$(test_testing_group_remote_SOURCES) \
+	$(test_testing_new_peerstartup_SOURCES) \
+	$(test_testing_new_portreservation_SOURCES) \
+	$(test_testing_new_servicestartup_SOURCES) \
 	$(test_testing_peergroup_SOURCES) \
 	$(test_testing_reconnect_SOURCES) \
 	$(test_testing_topology_2d_torus_SOURCES) \
@@ -344,10 +382,13 @@ SOURCES = $(libgnunettesting_la_SOURCES) $(gnunet_testing_SOURCES) \
 	$(test_testing_topology_small_world_torus_SOURCES) \
 	$(test_testing_topology_stability_SOURCES)
 DIST_SOURCES = $(libgnunettesting_la_SOURCES) \
-	$(gnunet_testing_SOURCES) $(test_testing_SOURCES) \
-	$(test_testing_2dtorus_SOURCES) \
+	$(libgnunettesting_new_la_SOURCES) $(gnunet_testing_SOURCES) \
+	$(test_testing_SOURCES) $(test_testing_2dtorus_SOURCES) \
 	$(test_testing_connect_SOURCES) $(test_testing_group_SOURCES) \
 	$(test_testing_group_remote_SOURCES) \
+	$(test_testing_new_peerstartup_SOURCES) \
+	$(test_testing_new_portreservation_SOURCES) \
+	$(test_testing_new_servicestartup_SOURCES) \
 	$(test_testing_peergroup_SOURCES) \
 	$(test_testing_reconnect_SOURCES) \
 	$(test_testing_topology_2d_torus_SOURCES) \
@@ -427,6 +468,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -460,6 +502,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -590,9 +633,21 @@ dist_pkgcfg_DATA = \
 @HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_clique_minimum \
 @HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_clique_dfs \
 @HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_churn \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_line
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_line \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_blacklist \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_group_remote \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_ring \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_2d_torus \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_small_world_ring \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_small_world_torus \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_erdos_renyi \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_internat \
+@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_scale_free
 
-lib_LTLIBRARIES = libgnunettesting.la
+lib_LTLIBRARIES = \
+  libgnunettesting.la \
+  libgnunettesting_new.la
+
 libgnunettesting_la_SOURCES = \
   helper.c \
   testing.c  \
@@ -608,6 +663,16 @@ libgnunettesting_la_LIBADD = $(XLIB) \
  $(top_builddir)/src/util/libgnunetutil.la 
 
 libgnunettesting_la_LDFLAGS = \
+ $(GN_LIB_LDFLAGS) \
+ -version-info 0:1:0
+
+libgnunettesting_new_la_SOURCES = \
+  testing_new.c  
+
+libgnunettesting_new_la_LIBADD = \
+ $(top_builddir)/src/util/libgnunetutil.la 
+
+libgnunettesting_new_la_LDFLAGS = \
  $(GN_LIB_LDFLAGS) \
  -version-info 0:1:0
 
@@ -797,6 +862,27 @@ test_testing_topology_none_LDADD = \
  $(top_builddir)/src/core/libgnunetcore.la \
  $(top_builddir)/src/util/libgnunetutil.la
 
+test_testing_new_portreservation_SOURCES = \
+ test_testing_new_portreservation.c
+
+test_testing_new_portreservation_LDADD = \
+ $(top_builddir)/src/testing/libgnunettesting_new.la \
+ $(top_builddir)/src/util/libgnunetutil.la
+
+test_testing_new_peerstartup_SOURCES = \
+ test_testing_new_peerstartup.c
+
+test_testing_new_peerstartup_LDADD = \
+ $(top_builddir)/src/testing/libgnunettesting_new.la \
+ $(top_builddir)/src/util/libgnunetutil.la
+
+test_testing_new_servicestartup_SOURCES = \
+ test_testing_new_servicestartup.c
+
+test_testing_new_servicestartup_LDADD = \
+ $(top_builddir)/src/testing/libgnunettesting_new.la \
+ $(top_builddir)/src/util/libgnunetutil.la
+
 EXTRA_DIST = \
  test_testing_defaults.conf \
  test_testing_data.conf \
@@ -888,6 +974,8 @@ clean-libLTLIBRARIES:
 	done
 libgnunettesting.la: $(libgnunettesting_la_OBJECTS) $(libgnunettesting_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libgnunettesting_la_LINK) -rpath $(libdir) $(libgnunettesting_la_OBJECTS) $(libgnunettesting_la_LIBADD) $(LIBS)
+libgnunettesting_new.la: $(libgnunettesting_new_la_OBJECTS) $(libgnunettesting_new_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libgnunettesting_new_la_LINK) -rpath $(libdir) $(libgnunettesting_new_la_OBJECTS) $(libgnunettesting_new_la_LIBADD) $(LIBS)
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
@@ -958,6 +1046,15 @@ test_testing_group$(EXEEXT): $(test_testing_group_OBJECTS) $(test_testing_group_
 test_testing_group_remote$(EXEEXT): $(test_testing_group_remote_OBJECTS) $(test_testing_group_remote_DEPENDENCIES) 
 	@rm -f test_testing_group_remote$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_testing_group_remote_OBJECTS) $(test_testing_group_remote_LDADD) $(LIBS)
+test_testing_new_peerstartup$(EXEEXT): $(test_testing_new_peerstartup_OBJECTS) $(test_testing_new_peerstartup_DEPENDENCIES) 
+	@rm -f test_testing_new_peerstartup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_testing_new_peerstartup_OBJECTS) $(test_testing_new_peerstartup_LDADD) $(LIBS)
+test_testing_new_portreservation$(EXEEXT): $(test_testing_new_portreservation_OBJECTS) $(test_testing_new_portreservation_DEPENDENCIES) 
+	@rm -f test_testing_new_portreservation$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_testing_new_portreservation_OBJECTS) $(test_testing_new_portreservation_LDADD) $(LIBS)
+test_testing_new_servicestartup$(EXEEXT): $(test_testing_new_servicestartup_OBJECTS) $(test_testing_new_servicestartup_DEPENDENCIES) 
+	@rm -f test_testing_new_servicestartup$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_testing_new_servicestartup_OBJECTS) $(test_testing_new_servicestartup_LDADD) $(LIBS)
 test_testing_peergroup$(EXEEXT): $(test_testing_peergroup_OBJECTS) $(test_testing_peergroup_DEPENDENCIES) 
 	@rm -f test_testing_peergroup$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_testing_peergroup_OBJECTS) $(test_testing_peergroup_LDADD) $(LIBS)
@@ -1026,6 +1123,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_connect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_group.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_group_remote.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_new_peerstartup.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_new_portreservation.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_new_servicestartup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_peergroup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_reconnect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_topology.Po@am__quote@
@@ -1033,6 +1133,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_testing_topology_churn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testing.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testing_group.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testing_new.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testing_peergroup.Plo@am__quote@
 
 .c.o:
@@ -1386,15 +1487,6 @@ uninstall-am: uninstall-binPROGRAMS uninstall-dist_pkgcfgDATA \
 	tags uninstall uninstall-am uninstall-binPROGRAMS \
 	uninstall-dist_pkgcfgDATA uninstall-libLTLIBRARIES
 
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_blacklist \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_group_remote \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_ring \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_2d_torus \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_small_world_ring \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_small_world_torus \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_erdos_renyi \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_internat \
-@HAVE_EXPENSIVE_TESTS_TRUE@   test_testing_topology_scale_free
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

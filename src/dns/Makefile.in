@@ -228,6 +228,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -261,6 +262,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -393,8 +395,8 @@ lib_LTLIBRARIES = \
 plugin_LTLIBRARIES = \
   libgnunet_plugin_block_dns.la 
 
-check_SCRIPTS = \
- test_gnunet_dns.sh
+@LINUX_TRUE@check_SCRIPTS = \
+@LINUX_TRUE@ test_gnunet_dns.sh
 
 gnunet_helper_dns_SOURCES = \
  gnunet-helper-dns.c
@@ -1008,7 +1010,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 @LINUX_TRUE@	$(SUDO_BINARY) chown root $(bindir)/gnunet-helper-dns || true
 @LINUX_TRUE@	$(SUDO_BINARY) chgrp $(GNUNETDNS_GROUP) $(bindir)/gnunet-helper-dns || true
 @LINUX_TRUE@	$(SUDO_BINARY) chmod 4750 $(bindir)/gnunet-helper-dns || true
-@LINUX_TRUE@	$(SUDO_BINARY) chgrp $(GNUNETDNS_GROUP) $(bindir)/gnunet-service-dns || true
+@LINUX_TRUE@	$(SUDO_BINARY) chown gnunet:$(GNUNETDNS_GROUP) $(bindir)/gnunet-service-dns || true
 @LINUX_TRUE@	$(SUDO_BINARY) chmod 2750 $(bindir)/gnunet-service-dns || true
 @LINUX_FALSE@install-exec-hook:
 

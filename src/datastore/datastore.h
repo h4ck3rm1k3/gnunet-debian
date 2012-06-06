@@ -27,7 +27,6 @@
 #ifndef DATASTORE_H
 #define DATASTORE_H
 
-#define DEBUG_DATASTORE GNUNET_EXTRA_LOGGING
 
 #include "gnunet_util_lib.h"
 
@@ -130,7 +129,7 @@ struct GetMessage
    * Desired key (optional).  Check the "size" of the
    * header to see if the key is actually present.
    */
-  GNUNET_HashCode key GNUNET_PACKED;
+  GNUNET_HashCode key;
 
 };
 
@@ -253,7 +252,7 @@ struct DataMessage
   /**
    * Key under which the item can be found.
    */
-  GNUNET_HashCode key GNUNET_PACKED;
+  GNUNET_HashCode key;
 
 };
 GNUNET_NETWORK_STRUCT_END

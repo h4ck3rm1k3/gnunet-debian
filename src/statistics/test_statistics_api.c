@@ -29,7 +29,6 @@
 #include "gnunet_scheduler_lib.h"
 #include "gnunet_statistics_service.h"
 
-#define DEBUG_STATISTICS GNUNET_EXTRA_LOGGING
 
 #define START_SERVICE GNUNET_YES
 
@@ -130,11 +129,7 @@ check ()
   char *const argv[] = { "test-statistics-api",
     "-c",
     "test_statistics_api_data.conf",
-#if DEBUG_STATISTICS
-    "-L", "DEBUG",
-#else
     "-L", "WARNING",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -146,9 +141,6 @@ check ()
   proc =
       GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-statistics",
                                "gnunet-service-statistics",
-#if DEBUG_STATISTICS
-                               "-L", "DEBUG",
-#endif
                                "-c", "test_statistics_api_data.conf", NULL);
 #endif
   GNUNET_assert (NULL != proc);
@@ -161,7 +153,7 @@ check ()
     ok = 1;
   }
   GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_close (proc);
+  GNUNET_OS_process_destroy (proc);
   proc = NULL;
 #endif
   if (ok != 0)
@@ -172,9 +164,6 @@ check ()
   proc =
       GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-statistics",
                                "gnunet-service-statistics",
-#if DEBUG_STATISTICS
-                               "-L", "DEBUG",
-#endif
                                "-c", "test_statistics_api_data.conf", NULL);
 #endif
   GNUNET_PROGRAM_run (5, argv, "test-statistics-api", "nohelp", options,
@@ -186,7 +175,7 @@ check ()
     ok = 1;
   }
   GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_close (proc);
+  GNUNET_OS_process_destroy (proc);
   proc = NULL;
 #endif
   return ok;
@@ -198,11 +187,7 @@ main (int argc, char *argv[])
   int ret;
 
   GNUNET_log_setup ("test_statistics_api",
-#if DEBUG_STATISTICS
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   ret = check ();
 

@@ -37,8 +37,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-bin_PROGRAMS = gnunet-service-dht$(EXEEXT) gnunet-dht-get$(EXEEXT) \
-	gnunet-dht-put$(EXEEXT)
+bin_PROGRAMS = gnunet-service-dht$(EXEEXT) gnunet-dht-monitor$(EXEEXT) \
+	gnunet-dht-get$(EXEEXT) gnunet-dht-put$(EXEEXT)
 check_PROGRAMS = test_dht_api$(EXEEXT) test_dht_twopeer$(EXEEXT) \
 	test_dht_twopeer_put_get$(EXEEXT) \
 	test_dht_twopeer_get_put$(EXEEXT) \
@@ -123,6 +123,8 @@ libgnunetdht_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 PROGRAMS = $(bin_PROGRAMS)
 am_gnunet_dht_get_OBJECTS = gnunet-dht-get.$(OBJEXT)
 gnunet_dht_get_OBJECTS = $(am_gnunet_dht_get_OBJECTS)
+am_gnunet_dht_monitor_OBJECTS = gnunet-dht-monitor.$(OBJEXT)
+gnunet_dht_monitor_OBJECTS = $(am_gnunet_dht_monitor_OBJECTS)
 am_gnunet_dht_put_OBJECTS = gnunet-dht-put.$(OBJEXT)
 gnunet_dht_put_OBJECTS = $(am_gnunet_dht_put_OBJECTS)
 am_gnunet_service_dht_OBJECTS = gnunet-service-dht.$(OBJEXT) \
@@ -208,19 +210,21 @@ am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libgnunet_plugin_block_dht_la_SOURCES) \
 	$(libgnunetdht_la_SOURCES) $(gnunet_dht_get_SOURCES) \
-	$(gnunet_dht_put_SOURCES) $(gnunet_service_dht_SOURCES) \
-	$(test_dht_2dtorus_SOURCES) $(test_dht_api_SOURCES) \
-	$(test_dht_line_SOURCES) $(test_dht_monitor_SOURCES) \
-	$(test_dht_multipeer_SOURCES) $(test_dht_twopeer_SOURCES) \
+	$(gnunet_dht_monitor_SOURCES) $(gnunet_dht_put_SOURCES) \
+	$(gnunet_service_dht_SOURCES) $(test_dht_2dtorus_SOURCES) \
+	$(test_dht_api_SOURCES) $(test_dht_line_SOURCES) \
+	$(test_dht_monitor_SOURCES) $(test_dht_multipeer_SOURCES) \
+	$(test_dht_twopeer_SOURCES) \
 	$(test_dht_twopeer_get_put_SOURCES) \
 	$(test_dht_twopeer_path_tracking_SOURCES) \
 	$(test_dht_twopeer_put_get_SOURCES)
 DIST_SOURCES = $(libgnunet_plugin_block_dht_la_SOURCES) \
 	$(libgnunetdht_la_SOURCES) $(gnunet_dht_get_SOURCES) \
-	$(gnunet_dht_put_SOURCES) $(gnunet_service_dht_SOURCES) \
-	$(test_dht_2dtorus_SOURCES) $(test_dht_api_SOURCES) \
-	$(test_dht_line_SOURCES) $(test_dht_monitor_SOURCES) \
-	$(test_dht_multipeer_SOURCES) $(test_dht_twopeer_SOURCES) \
+	$(gnunet_dht_monitor_SOURCES) $(gnunet_dht_put_SOURCES) \
+	$(gnunet_service_dht_SOURCES) $(test_dht_2dtorus_SOURCES) \
+	$(test_dht_api_SOURCES) $(test_dht_line_SOURCES) \
+	$(test_dht_monitor_SOURCES) $(test_dht_multipeer_SOURCES) \
+	$(test_dht_twopeer_SOURCES) \
 	$(test_dht_twopeer_get_put_SOURCES) \
 	$(test_dht_twopeer_path_tracking_SOURCES) \
 	$(test_dht_twopeer_put_get_SOURCES)
@@ -285,6 +289,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -318,6 +323,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -517,6 +523,17 @@ gnunet_dht_put_LDADD = \
   $(top_builddir)/src/util/libgnunetutil.la 
 
 gnunet_dht_put_DEPENDENCIES = \
+  libgnunetdht.la			      
+
+gnunet_dht_monitor_SOURCES = \
+ gnunet-dht-monitor.c         
+
+gnunet_dht_monitor_LDADD = \
+  $(top_builddir)/src/dht/libgnunetdht.la \
+  $(top_builddir)/src/core/libgnunetcore.la \
+  $(top_builddir)/src/util/libgnunetutil.la 
+
+gnunet_dht_monitor_DEPENDENCIES = \
   libgnunetdht.la			      
 
 test_dht_api_SOURCES = \
@@ -778,6 +795,9 @@ clean-checkPROGRAMS:
 gnunet-dht-get$(EXEEXT): $(gnunet_dht_get_OBJECTS) $(gnunet_dht_get_DEPENDENCIES) 
 	@rm -f gnunet-dht-get$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(gnunet_dht_get_OBJECTS) $(gnunet_dht_get_LDADD) $(LIBS)
+gnunet-dht-monitor$(EXEEXT): $(gnunet_dht_monitor_OBJECTS) $(gnunet_dht_monitor_DEPENDENCIES) 
+	@rm -f gnunet-dht-monitor$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gnunet_dht_monitor_OBJECTS) $(gnunet_dht_monitor_LDADD) $(LIBS)
 gnunet-dht-put$(EXEEXT): $(gnunet_dht_put_OBJECTS) $(gnunet_dht_put_DEPENDENCIES) 
 	@rm -f gnunet-dht-put$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(gnunet_dht_put_OBJECTS) $(gnunet_dht_put_LDADD) $(LIBS)
@@ -820,6 +840,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dht_api.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-dht-get.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-dht-monitor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-dht-put.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-dht.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-dht_clients.Po@am__quote@

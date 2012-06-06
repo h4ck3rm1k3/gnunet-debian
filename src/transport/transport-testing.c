@@ -52,6 +52,7 @@ get_host_key (struct GNUNET_TRANSPORT_TESTING_handle *tth)
   return NULL;
 }
 
+
 static struct PeerContext *
 find_peer_context (struct GNUNET_TRANSPORT_TESTING_handle *tth,
                    const struct GNUNET_PeerIdentity *peer)
@@ -69,7 +70,8 @@ find_peer_context (struct GNUNET_TRANSPORT_TESTING_handle *tth,
   return t;
 }
 
-struct ConnectingContext *
+
+static struct ConnectingContext *
 find_connecting_context (struct GNUNET_TRANSPORT_TESTING_handle *tth,
                          struct PeerContext *p1, struct PeerContext *p2)
 {
@@ -87,6 +89,7 @@ find_connecting_context (struct GNUNET_TRANSPORT_TESTING_handle *tth,
 
   return cc;
 }
+
 
 static void
 notify_connect (void *cls, const struct GNUNET_PeerIdentity *peer,
@@ -134,6 +137,7 @@ notify_connect (void *cls, const struct GNUNET_PeerIdentity *peer,
   }
 }
 
+
 static void
 notify_disconnect (void *cls, const struct GNUNET_PeerIdentity *peer)
 {
@@ -167,6 +171,7 @@ notify_disconnect (void *cls, const struct GNUNET_PeerIdentity *peer)
     p->nd (p->cb_cls, peer);
 }
 
+
 static void
 notify_receive (void *cls, const struct GNUNET_PeerIdentity *peer,
                 const struct GNUNET_MessageHeader *message,
@@ -179,6 +184,7 @@ notify_receive (void *cls, const struct GNUNET_PeerIdentity *peer,
   if (p->rec != NULL)
     p->rec (p->cb_cls, peer, message, ats, ats_count);
 }
+
 
 static void
 get_hello (void *cb_cls, const struct GNUNET_MessageHeader *message)
@@ -307,11 +313,7 @@ GNUNET_TRANSPORT_TESTING_start_peer (struct GNUNET_TRANSPORT_TESTING_handle
       GNUNET_OS_start_process (GNUNET_YES,
 			       NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm", "-c", cfgname,
-#if VERBOSE_PEERS
-                               "-L", "DEBUG",
-#else
                                "-L", "ERROR",
-#endif
                                NULL);
 
   p->no = peer_id;
@@ -361,10 +363,8 @@ GNUNET_TRANSPORT_TESTING_restart_peer (struct GNUNET_TRANSPORT_TESTING_handle
   GNUNET_assert (p->servicehome != NULL);
 
   /* shutdown */
-#if VERBOSE
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "transport-testing",
                    "Stopping peer %u (`%s')\n", p->no, GNUNET_i2s (&p->id));
-#endif
   if (p->ghh != NULL)
     GNUNET_TRANSPORT_get_hello_cancel (p->ghh);
   p->ghh = NULL;
@@ -377,7 +377,7 @@ GNUNET_TRANSPORT_TESTING_restart_peer (struct GNUNET_TRANSPORT_TESTING_handle
     if (0 != GNUNET_OS_process_kill (p->arm_proc, SIGTERM))
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "kill");
     GNUNET_OS_process_wait (p->arm_proc);
-    GNUNET_OS_process_close (p->arm_proc);
+    GNUNET_OS_process_destroy (p->arm_proc);
     p->arm_proc = NULL;
   }
   if (p->hello != NULL)
@@ -390,11 +390,8 @@ GNUNET_TRANSPORT_TESTING_restart_peer (struct GNUNET_TRANSPORT_TESTING_handle
 
 
   /* start */
-#if VERBOSE
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "transport-testing",
                    "Restarting peer %u (`%s')\n", p->no, GNUNET_i2s (&p->id));
-#endif
-
   sleep (5);                    // YUCK!
 
   if (GNUNET_DISK_file_test (cfgname) == GNUNET_NO)
@@ -424,11 +421,7 @@ GNUNET_TRANSPORT_TESTING_restart_peer (struct GNUNET_TRANSPORT_TESTING_handle
       GNUNET_OS_start_process (GNUNET_YES, 
 			       NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm", "-c", cfgname,
-#if VERBOSE_PEERS
-                               "-L", "DEBUG",
-#else
                                "-L", "ERROR",
-#endif
                                NULL);
 
   p->th =
@@ -451,6 +444,7 @@ fail:
   return GNUNET_SYSERR;
 }
 
+
 /**
  * shutdown the given peer
  * @param tth testing handle
@@ -461,52 +455,48 @@ GNUNET_TRANSPORT_TESTING_stop_peer (struct GNUNET_TRANSPORT_TESTING_handle *tth,
                                     struct PeerContext *p)
 {
   GNUNET_assert (p != NULL);
-
   if (p->ghh != NULL)
+  {
     GNUNET_TRANSPORT_get_hello_cancel (p->ghh);
-  p->ghh = NULL;
-
+    p->ghh = NULL;
+  }
   if (p->th != NULL)
     GNUNET_TRANSPORT_disconnect (p->th);
-
   if (NULL != p->arm_proc)
   {
     if (0 != GNUNET_OS_process_kill (p->arm_proc, SIGTERM))
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "kill");
     GNUNET_OS_process_wait (p->arm_proc);
-    GNUNET_OS_process_close (p->arm_proc);
+    GNUNET_OS_process_destroy (p->arm_proc);
     p->arm_proc = NULL;
   }
-
   if (p->hostkeyfile != NULL)
   {
     GNUNET_DISK_directory_remove (p->hostkeyfile);
     GNUNET_free (p->hostkeyfile);
   }
-
   if (p->servicehome != NULL)
   {
     GNUNET_DISK_directory_remove (p->servicehome);
     GNUNET_free (p->servicehome);
   }
-
   if (p->hello != NULL)
+  {
     GNUNET_free (p->hello);
-  p->hello = NULL;
-
+    p->hello = NULL;
+  }
   if (p->cfg != NULL)
+  {
     GNUNET_CONFIGURATION_destroy (p->cfg);
-  p->cfg = NULL;
-
+    p->cfg = NULL;
+  }
   GNUNET_CONTAINER_DLL_remove (tth->p_head, tth->p_tail, p);
-
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "transport-testing",
                    "Peer %u (`%s') stopped \n", p->no,
                    GNUNET_i2s (&p->id));
-
   GNUNET_free (p);
-  p = NULL;
 }
+
 
 /**
  * Connect the given peers and call the callback when both peers report the
@@ -534,30 +524,25 @@ GNUNET_TRANSPORT_TESTING_connect_peers (struct GNUNET_TRANSPORT_TESTING_handle *
 
   GNUNET_assert (p1 != NULL);
   GNUNET_assert (p2 != NULL);
-
   cc->p1 = p1;
   cc->p2 = p2;
-
   cc->cb = cb;
   if (cls != NULL)
     cc->cb_cls = cls;
   else
     cc->cb_cls = cc;
-
   cc->th_p1 = p1->th;
   cc->th_p2 = p2->th;
-
   GNUNET_assert (cc->th_p1 != NULL);
   GNUNET_assert (cc->th_p2 != NULL);
-
   GNUNET_CONTAINER_DLL_insert (tth->cc_head, tth->cc_tail, cc);
-
   cc->tct = GNUNET_SCHEDULER_add_now (&try_connect, cc);
   GNUNET_log_from (GNUNET_ERROR_TYPE_DEBUG, "transport-testing",
                    "New connect request %X\n", cc);
 
   return cc;
 }
+
 
 /**
  * Cancel the request to connect two peers
@@ -627,6 +612,7 @@ GNUNET_TRANSPORT_TESTING_done (struct GNUNET_TRANSPORT_TESTING_handle *tth)
   tth = NULL;
 }
 
+
 /**
  * Initialize the transport testing
  * @return transport testing handle
@@ -661,7 +647,7 @@ GNUNET_TRANSPORT_TESTING_init ()
       return NULL;
     }
 
-    if (GNUNET_YES != GNUNET_DISK_file_size (hostkeys_file, &fs, GNUNET_YES))
+    if (GNUNET_OK != GNUNET_DISK_file_size (hostkeys_file, &fs, GNUNET_YES, GNUNET_YES))
       fs = 0;
 
     if (0 != (fs % HOSTKEYFILESIZE))
@@ -722,6 +708,7 @@ extract_filename (const char *file)
   return res;
 }
 
+
 /**
  * Extracts the test filename from an absolute file name and removes the extension
  * @param file absolute file name
@@ -781,7 +768,8 @@ GNUNET_TRANSPORT_TESTING_get_test_source_name (const char *file, char **dest)
 
 
 /**
- * Extracts the plugin anme from an absolute file name and the test name
+ * Extracts the plugin name from an absolute file name and the test name
+ *
  * @param file absolute file name
  * @param test test name
  * @param dest where to store result
@@ -790,42 +778,38 @@ void
 GNUNET_TRANSPORT_TESTING_get_test_plugin_name (const char *file,
                                                const char *test, char **dest)
 {
+  char *filename;
+  char *dotexe;
   char *e = extract_filename (file);
   char *t = extract_filename (test);
 
-  char *filename = NULL;
-  char *dotexe;
-
-  if (e == NULL)
+  if (NULL == e)
     goto fail;
-
   /* remove "lt-" */
   filename = strstr (e, "tes");
-  if (filename == NULL)
+  if (NULL == filename)
     goto fail;
-
   /* remove ".exe" */
   if (NULL != (dotexe = strstr (filename, ".exe")))
     dotexe[0] = '\0';
 
   /* find last _ */
   filename = strstr (filename, t);
-  if (filename == NULL)
+  if (NULL == filename)
     goto fail;
-
   /* copy plugin */
   filename += strlen (t);
-  filename++;
+  if ('\0' != *filename)
+    filename++;
   GNUNET_asprintf (dest, "%s", filename);
   goto suc;
-
 fail:
   (*dest) = NULL;
 suc:
   GNUNET_free (t);
   GNUNET_free (e);
-
 }
+
 
 /**
  * This function takes the filename (e.g. argv[0), removes a "lt-"-prefix and
@@ -843,30 +827,23 @@ GNUNET_TRANSPORT_TESTING_get_config_name (const char *file, char **dest,
   char *backup = filename;
   char *dotexe;
 
-  if (filename == NULL)
+  if (NULL == filename)
     goto fail;
-
   /* remove "lt-" */
   filename = strstr (filename, "tes");
-  if (filename == NULL)
+  if (NULL == filename)
     goto fail;
-
   /* remove ".exe" */
   if (NULL != (dotexe = strstr (filename, ".exe")))
     dotexe[0] = '\0';
-
-  goto suc;
-
+  GNUNET_asprintf (dest, "%s_peer%u.conf", filename, count);
+  GNUNET_free (backup);
+  return;
 fail:
   (*dest) = NULL;
-  return;
-
-suc:
-  /* create cfg filename */
-  GNUNET_asprintf (dest, "%s_peer%u.conf", filename, count);
   GNUNET_free (backup);
 }
 
 
 
-/* end of transport_testing.h */
+/* end of transport-testing.c */

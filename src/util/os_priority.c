@@ -31,6 +31,7 @@
 #include "gnunet_strings_lib.h"
 #include "gnunet_crypto_lib.h"
 #include "disk.h"
+#include <unistr.h>
 
 #define LOG(kind,...) GNUNET_log_from (kind, "util", __VA_ARGS__)
 
@@ -299,7 +300,7 @@ npipe_open (const char *fn,
   } 
   if (-1 == fd)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		(flags == GNUNET_DISK_OPEN_READ) 
 		? _("Failed to open named pipe `%s' for reading: %s\n")
 		: _("Failed to open named pipe `%s' for writing: %s\n"),
@@ -325,29 +326,32 @@ parent_control_handler (void *cls,
                         const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct GNUNET_DISK_FileHandle *control_pipe = cls;
-  int sig;
-
+  char sig;
+  ssize_t ret;
+  
   LOG (GNUNET_ERROR_TYPE_DEBUG, "`%s' invoked because of %d\n", __FUNCTION__,
        tc->reason);
-  if (tc->reason &
-      (GNUNET_SCHEDULER_REASON_SHUTDOWN | GNUNET_SCHEDULER_REASON_TIMEOUT |
-       GNUNET_SCHEDULER_REASON_PREREQ_DONE))
+  if (0 != (tc->reason &
+	    (GNUNET_SCHEDULER_REASON_SHUTDOWN | GNUNET_SCHEDULER_REASON_TIMEOUT)))
   {
     GNUNET_DISK_file_close (control_pipe);
+    control_pipe = NULL;
     return;
   }
-  if (GNUNET_DISK_file_read (control_pipe, &sig, sizeof (sig)) !=
-      sizeof (sig))
+  ret = GNUNET_DISK_file_read (control_pipe, &sig, sizeof (sig));
+  if (sizeof (sig) != ret)
   {
-    LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR, "GNUNET_DISK_file_read");
+    if (-1 == ret)
+      LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR, "GNUNET_DISK_file_read");
     GNUNET_DISK_file_close (control_pipe);
+    control_pipe = NULL;
     return;
   }
   LOG (GNUNET_ERROR_TYPE_DEBUG, "Got control code %d from parent\n", sig);
   GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
 				  control_pipe, &parent_control_handler,
 				  control_pipe);
-  raise (sig);
+  raise ((int) sig);
 }
 
 
@@ -425,27 +429,22 @@ int
 GNUNET_OS_process_kill (struct GNUNET_OS_Process *proc, int sig)
 {
   int ret;
+  char csig;
 
+  csig = (char) sig;
 #if !WINDOWS
   if ( (NULL == proc->control_pipe) &&
        (NULL != proc->childpipename) )
     proc->control_pipe = npipe_open (proc->childpipename,
 				     GNUNET_DISK_OPEN_WRITE);
 #endif
-  if (NULL == proc->control_pipe)
+  if (NULL != proc->control_pipe)
   {
-#if WINDOWS
-    /* no pipe and windows? can't do this */
-    errno = EINVAL;
-    return -1;
-#else
-    return kill (proc->pid, sig);
-#endif    
+    ret = GNUNET_DISK_file_write (proc->control_pipe, &csig, sizeof (csig));
+    if (ret == sizeof (csig))  
+      return 0;
   }
-  ret = GNUNET_DISK_file_write (proc->control_pipe, &sig, sizeof (sig));
-  if (ret == sizeof (sig))
-    return 0;
-  /* pipe failed, try other methods */
+  /* pipe failed or non-existent, try other methods */
   switch (sig)
   {
 #if !WINDOWS
@@ -469,7 +468,7 @@ GNUNET_OS_process_kill (struct GNUNET_OS_Process *proc, int sig)
     errno = EINVAL;
     return -1;
 #else
-    return kill (proc->pid, sig);
+    return PLIBC_KILL (proc->pid, sig);
 #endif    
   }
 }
@@ -488,13 +487,16 @@ GNUNET_OS_process_get_pid (struct GNUNET_OS_Process * proc)
 }
 
 
+/**
+ * Cleans up process structure contents (OS-dependent) and deallocates it
+ *
+ * @param proc pointer to process structure
+ */
 void
-GNUNET_OS_process_close (struct GNUNET_OS_Process *proc)
+GNUNET_OS_process_destroy (struct GNUNET_OS_Process *proc)
 {
-#if ENABLE_WINDOWS_WORKAROUNDS
-  if (proc->control_pipe)
+  if (NULL != proc->control_pipe)
     GNUNET_DISK_file_close (proc->control_pipe);
-#endif
 // FIXME NILS
 #ifdef WINDOWS
   if (proc->handle != NULL)
@@ -648,10 +650,15 @@ GNUNET_OS_set_process_priority (struct GNUNET_OS_Process *proc,
 static char *
 CreateCustomEnvTable (char **vars)
 {
-  char *win32_env_table, *ptr, **var_ptr, *result, *result_ptr;
+  char *win32_env_table;
+  char *ptr;
+  char **var_ptr;
+  char *result;
+  char *result_ptr;
   size_t tablesize = 0;
   size_t items_count = 0;
-  size_t n_found = 0, n_var;
+  size_t n_found = 0;
+  size_t n_var;
   char *index = NULL;
   size_t c;
   size_t var_len;
@@ -804,8 +811,11 @@ GNUNET_OS_start_process_vap (int pipe_control,
   ret = fork ();
   if (-1 == ret)
   {
+    int eno = errno;
+
     LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR, "fork");
     GNUNET_free_non_null (childpipename);
+    errno = eno;
     return NULL;
   }
   if (0 != ret)
@@ -863,7 +873,10 @@ GNUNET_OS_start_process_vap (int pipe_control,
   char *libdir;
   char *ptr;
   char *non_const_filename;
-  wchar_t wpath[MAX_PATH + 1], wcmd[32768];
+  char win_path[MAX_PATH + 1];
+  wchar_t *wpath, *wcmd;
+  size_t wpath_len, wcmd_len;
+  long lRet;
 
   /* Search in prefix dir (hopefully - the directory from which
    * the current module was loaded), bindir and libdir, then in PATH
@@ -895,7 +908,22 @@ GNUNET_OS_start_process_vap (int pipe_control,
   else
     GNUNET_asprintf (&non_const_filename, "%s", filename);
 
+  /* It could be in POSIX form, convert it to a DOS path early on */
+  if (ERROR_SUCCESS != (lRet = plibc_conv_to_win_path (non_const_filename, win_path)))
+  {
+     SetErrnoFromWinError (lRet);
+     LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_ERROR, "plibc_conv_to_win_path",
+                        non_const_filename);
+     GNUNET_free (non_const_filename);
+     GNUNET_free (pathbuf);
+     return NULL;
+  }
+  GNUNET_free (non_const_filename);
+  non_const_filename = GNUNET_strdup (win_path);
   /* Check that this is the full path. If it isn't, search. */
+  /* FIXME: convert it to wchar_t and use SearchPathW?
+   * Remember: arguments to _start_process() are technically in UTF-8...
+   */
   if (non_const_filename[1] == ':')
     snprintf (path, sizeof (path) / sizeof (char), "%s", non_const_filename);
   else if (!SearchPathA
@@ -972,6 +1000,8 @@ GNUNET_OS_start_process_vap (int pipe_control,
       return NULL;
     }
   }
+  else
+    control_pipe = NULL;
   if (NULL != childpipename)
   {
     LOG (GNUNET_ERROR_TYPE_DEBUG, "Opened the parent end of the pipe `%s'\n",
@@ -985,19 +1015,39 @@ GNUNET_OS_start_process_vap (int pipe_control,
     our_env[0] = NULL;
   }
   env_block = CreateCustomEnvTable (our_env);
-  GNUNET_free (our_env[0]);
-  GNUNET_free (our_env[1]);
+  GNUNET_free_non_null (our_env[0]);
+  GNUNET_free_non_null (our_env[1]);
 
-  if (ERROR_SUCCESS != plibc_conv_to_win_pathwconv(path, wpath)
-      || ERROR_SUCCESS != plibc_conv_to_win_pathwconv(cmd, wcmd)
-      || !CreateProcessW
-      (wpath, wcmd, NULL, NULL, TRUE, DETACHED_PROCESS | CREATE_SUSPENDED,
-       env_block, NULL, &start, &proc))
+  wpath_len = 0;
+  if (NULL == (wpath = u8_to_u16 ((uint8_t *) path, 1 + strlen (path), NULL, &wpath_len)))
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+        "Failed to convert `%s' from UTF-8 to UTF-16: %d\n", path, errno);
+    GNUNET_free (env_block);
+    GNUNET_free (cmd);
+    return NULL;
+  }
+
+  wcmd_len = 0;
+  if (NULL == (wcmd = u8_to_u16 ((uint8_t *) cmd, 1 + strlen (cmd), NULL, &wcmd_len)))
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+        "Failed to convert `%s' from UTF-8 to UTF-16: %d\n", cmd, errno);
+    GNUNET_free (env_block);
+    GNUNET_free (cmd);
+    free (wpath);
+    return NULL;
+  }
+
+  if (!CreateProcessW (wpath, wcmd, NULL, NULL, TRUE,
+      DETACHED_PROCESS | CREATE_SUSPENDED, env_block, NULL, &start, &proc))
   {
     SetErrnoFromWinError (GetLastError ());
     LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_ERROR, "CreateProcess", path);
     GNUNET_free (env_block);
     GNUNET_free (cmd);
+    free (wpath);
+    free (wcmd);
     return NULL;
   }
 
@@ -1014,7 +1064,8 @@ GNUNET_OS_start_process_vap (int pipe_control,
   CloseHandle (proc.hThread);
 
   GNUNET_free (cmd);
-
+  free (wpath);
+  free (wcmd);
   return gnunet_proc;
 #endif
 }
@@ -1136,9 +1187,12 @@ GNUNET_OS_start_process_v (int pipe_control,
   ret = fork ();
   if (-1 == ret)
   {
+    int eno = errno;
+
     LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR, "fork");
     GNUNET_free_non_null (childpipename);
     GNUNET_array_grow (lscp, ls, 0);
+    errno = eno;
     return NULL;
   }
   if (0 != ret)
@@ -1220,13 +1274,16 @@ GNUNET_OS_start_process_v (int pipe_control,
   char *libdir;
   char *ptr;
   char *non_const_filename;
+  char win_path[MAX_PATH + 1];
   struct GNUNET_DISK_PipeHandle *lsocks_pipe;
   const struct GNUNET_DISK_FileHandle *lsocks_write_fd;
   HANDLE lsocks_read;
   HANDLE lsocks_write;
-  wchar_t wpath[MAX_PATH + 1], wcmd[32768];
+  wchar_t *wpath, *wcmd;
+  size_t wpath_len, wcmd_len;
   int env_off;
   int fail;
+  long lRet;
 
   /* Search in prefix dir (hopefully - the directory from which
    * the current module was loaded), bindir and libdir, then in PATH
@@ -1263,7 +1320,22 @@ GNUNET_OS_start_process_v (int pipe_control,
   else
     GNUNET_asprintf (&non_const_filename, "%s", filename);
 
-  /* Check that this is the full path. If it isn't, search. */
+  /* It could be in POSIX form, convert it to a DOS path early on */
+  if (ERROR_SUCCESS != (lRet = plibc_conv_to_win_path (non_const_filename, win_path)))
+  {
+    SetErrnoFromWinError (lRet);
+    LOG_STRERROR_FILE (GNUNET_ERROR_TYPE_ERROR, "plibc_conv_to_win_path",
+                       non_const_filename);
+    GNUNET_free (non_const_filename);
+    GNUNET_free (pathbuf);
+    return NULL;
+  }
+  GNUNET_free (non_const_filename);
+  non_const_filename = GNUNET_strdup (win_path);
+   /* Check that this is the full path. If it isn't, search. */
+  /* FIXME: convert it to wchar_t and use SearchPathW?
+   * Remember: arguments to _start_process() are technically in UTF-8...
+   */
   if (non_const_filename[1] == ':')
     snprintf (path, sizeof (path) / sizeof (char), "%s", non_const_filename);
   else if (!SearchPathA
@@ -1345,6 +1417,8 @@ GNUNET_OS_start_process_v (int pipe_control,
       return NULL;
     }
   }
+  else
+    control_pipe = NULL;
   if (lsocks != NULL && lsocks[0] != INVALID_SOCKET)
   {
     lsocks_pipe = GNUNET_DISK_pipe (GNUNET_YES, GNUNET_YES, GNUNET_YES, GNUNET_NO);
@@ -1384,11 +1458,30 @@ GNUNET_OS_start_process_v (int pipe_control,
   env_block = CreateCustomEnvTable (our_env);
   while (0 > env_off)
     GNUNET_free_non_null (our_env[--env_off]);
-  if (ERROR_SUCCESS != plibc_conv_to_win_pathwconv(path, wpath)
-      || ERROR_SUCCESS != plibc_conv_to_win_pathwconv(cmd, wcmd)
-      || !CreateProcessW
-      (wpath, wcmd, NULL, NULL, TRUE, DETACHED_PROCESS | CREATE_SUSPENDED,
-       env_block, NULL, &start, &proc))
+
+  wpath_len = 0;
+  if (NULL == (wpath = u8_to_u16 ((uint8_t *) path, 1 + strlen (path), NULL, &wpath_len)))
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+        "Failed to convert `%s' from UTF-8 to UTF-16: %d\n", path, errno);
+    GNUNET_free (env_block);
+    GNUNET_free (cmd);
+    return NULL;
+  }
+
+  wcmd_len = 0;
+  if (NULL == (wcmd = u8_to_u16 ((uint8_t *) cmd, 1 + strlen (cmd), NULL, &wcmd_len)))
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+        "Failed to convert `%s' from UTF-8 to UTF-16: %d\n", cmd, errno);
+    GNUNET_free (env_block);
+    GNUNET_free (cmd);
+    free (wpath);
+    return NULL;
+  }
+
+  if (!CreateProcessW (wpath, wcmd, NULL, NULL, TRUE,
+       DETACHED_PROCESS | CREATE_SUSPENDED, env_block, NULL, &start, &proc))
   {
     SetErrnoFromWinError (GetLastError ());
     LOG_STRERROR (GNUNET_ERROR_TYPE_ERROR, "CreateProcess");
@@ -1398,6 +1491,8 @@ GNUNET_OS_start_process_v (int pipe_control,
       GNUNET_DISK_pipe_close (lsocks_pipe);
     GNUNET_free (env_block);
     GNUNET_free (cmd);
+    free (wpath);
+    free (wcmd);
     return NULL;
   }
 
@@ -1413,6 +1508,8 @@ GNUNET_OS_start_process_v (int pipe_control,
   ResumeThread (proc.hThread);
   CloseHandle (proc.hThread);
   GNUNET_free (cmd);
+  free (wpath);
+  free (wcmd);
 
   if (lsocks == NULL || lsocks[0] == INVALID_SOCKET)
     return gnunet_proc;
@@ -1499,7 +1596,9 @@ GNUNET_OS_start_process_v (int pipe_control,
 
 
 /**
- * Retrieve the status of a process
+ * Retrieve the status of a process, waiting on him if dead.
+ * Nonblocking version.
+ * 
  * @param proc process ID
  * @param type status type
  * @param code return code/signal number
@@ -1716,7 +1815,7 @@ GNUNET_OS_command_stop (struct GNUNET_OS_CommandHandle *cmd)
   }
   (void) GNUNET_OS_process_kill (cmd->eip, SIGKILL);
   GNUNET_break (GNUNET_OK == GNUNET_OS_process_wait (cmd->eip));
-  GNUNET_OS_process_close (cmd->eip);
+  GNUNET_OS_process_destroy (cmd->eip);
   GNUNET_DISK_pipe_close (cmd->opipe);
   GNUNET_free (cmd);
 }

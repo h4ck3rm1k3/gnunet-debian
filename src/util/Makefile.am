@@ -37,6 +37,7 @@ noinst_PROGRAMS = \
  gnunet-config-diff \
  test_common_logging_dummy
 
+
 gnunet_config_diff_SOURCES = \
  gnunet-config-diff.c
 gnunet_config_diff_LDADD = \
@@ -98,23 +99,26 @@ libgnunetutil_la_SOURCES = \
   service.c \
   signal.c \
   strings.c \
-  time.c
+  time.c \
+  speedup.c
 
 
 libgnunetutil_la_LIBADD = \
   $(GCLIBADD) $(WINLIB) \
   $(LIBGCRYPT_LIBS) \
   $(LTLIBICONV) \
-  -lltdl -lz $(XLIB) 
+  -lltdl -lz -lunistring $(XLIB) 
 
 libgnunetutil_la_LDFLAGS = \
   $(GN_LIB_LDFLAGS) \
-  -version-info 7:0:0
+  -version-info 8:0:0
 
 
 bin_PROGRAMS = \
  gnunet-service-resolver \
- gnunet-resolver
+ gnunet-resolver \
+ gnunet-rsa
+
 
 gnunet_service_resolver_SOURCES = \
  gnunet-service-resolver.c         
@@ -131,6 +135,15 @@ gnunet_resolver_LDADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
   $(GN_LIBINTL)
 gnunet_resolver_DEPENDENCIES = \
+  libgnunetutil.la
+
+
+gnunet_rsa_SOURCES = \
+ gnunet-rsa.c         
+gnunet_rsa_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(GN_LIBINTL)
+gnunet_rsa_DEPENDENCIES = \
   libgnunetutil.la
 
 plugin_LTLIBRARIES = \
@@ -183,6 +196,7 @@ check_PROGRAMS = \
  test_resolver_api \
  test_scheduler \
  test_scheduler_delay \
+ test_server_mst_interrupt \
  test_server \
  test_server_disconnect \
  test_server_with_client \
@@ -190,6 +204,7 @@ check_PROGRAMS = \
  test_service \
  test_strings \
  test_time \
+ test_speedup \
  $(BENCHMARKS) \
  test_os_start_process \
  test_common_logging_runtime_loglevels
@@ -390,6 +405,11 @@ test_scheduler_delay_SOURCES = \
 test_scheduler_delay_LDADD = \
  $(top_builddir)/src/util/libgnunetutil.la  
 
+test_server_mst_interrupt_SOURCES = \
+ test_server_mst_interrupt.c
+test_server_mst_interrupt_LDADD = \
+ $(top_builddir)/src/util/libgnunetutil.la  
+
 test_server_SOURCES = \
  test_server.c
 test_server_LDADD = \
@@ -426,6 +446,11 @@ test_time_SOURCES = \
 test_time_LDADD = \
  $(top_builddir)/src/util/libgnunetutil.la  
 
+test_speedup_SOURCES = \
+ test_speedup.c
+test_speedup_LDADD = \
+ $(top_builddir)/src/util/libgnunetutil.la  
+
 perf_crypto_hash_SOURCES = \
  perf_crypto_hash.c
 perf_crypto_hash_LDADD = \
@@ -437,4 +462,5 @@ EXTRA_DIST = \
   test_program_data.conf \
   test_pseudonym_data.conf \
   test_resolver_api_data.conf \
-  test_service_data.conf
+  test_service_data.conf \
+  test_speedup_data.conf

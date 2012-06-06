@@ -98,7 +98,7 @@ publish_cleanup (struct GNUNET_FS_PublishContext *pc)
   }
   if (pc->client != NULL)
   {
-    GNUNET_CLIENT_disconnect (pc->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (pc->client);
     pc->client = NULL;
   }
   GNUNET_assert (GNUNET_SCHEDULER_NO_TASK == pc->upload_task);
@@ -355,6 +355,8 @@ block_reader (void *cls, uint64_t offset, size_t max, void *buf, char **emsg)
   }
   else
   {
+    if (UINT64_MAX == offset)
+      return p->data.file.reader (p->data.file.reader_cls, offset, 0, NULL, NULL);
     pt_size = GNUNET_MIN (max, p->data.file.file_size - offset);
     if (pt_size == 0)
       return 0;                 /* calling reader with pt_size==0
@@ -385,10 +387,10 @@ encode_cont (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   char *emsg;
   uint64_t flen;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Finished with tree encoder\n");
   p = pc->fi_pos;
   GNUNET_FS_tree_encoder_finish (p->te, &p->chk_uri, &emsg);
   p->te = NULL;
-  GNUNET_FS_file_information_sync_ (p);
   if (NULL != emsg)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Error during tree walk: %s\n", emsg);
@@ -399,16 +401,19 @@ encode_cont (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     pi.value.publish.specifics.error.message = p->emsg;
     p->client_info = GNUNET_FS_publish_make_status_ (&pi, pc, p, 0);
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Finished with tree encoder\n");
+  else
+  {
   /* final progress event */
-  flen = GNUNET_FS_uri_chk_get_file_size (p->chk_uri);
-  pi.status = GNUNET_FS_STATUS_PUBLISH_PROGRESS;
-  pi.value.publish.specifics.progress.data = NULL;
-  pi.value.publish.specifics.progress.offset = flen;
-  pi.value.publish.specifics.progress.data_len = 0;
-  pi.value.publish.specifics.progress.depth = GNUNET_FS_compute_depth (flen);
-  p->client_info = GNUNET_FS_publish_make_status_ (&pi, pc, p, flen);
-
+    GNUNET_assert (NULL != p->chk_uri);
+    flen = GNUNET_FS_uri_chk_get_file_size (p->chk_uri);
+    pi.status = GNUNET_FS_STATUS_PUBLISH_PROGRESS;
+    pi.value.publish.specifics.progress.data = NULL;
+    pi.value.publish.specifics.progress.offset = flen;
+    pi.value.publish.specifics.progress.data_len = 0;
+    pi.value.publish.specifics.progress.depth = GNUNET_FS_compute_depth (flen);
+    p->client_info = GNUNET_FS_publish_make_status_ (&pi, pc, p, flen);
+  }
+  GNUNET_FS_file_information_sync_ (p);
   /* continue with main */
   GNUNET_assert (GNUNET_SCHEDULER_NO_TASK == pc->upload_task);
   pc->upload_task =
@@ -606,7 +611,7 @@ process_index_start_response (void *cls, const struct GNUNET_MessageHeader *msg)
   const char *emsg;
   uint16_t msize;
 
-  GNUNET_CLIENT_disconnect (pc->client, GNUNET_NO);
+  GNUNET_CLIENT_disconnect (pc->client);
   pc->client = NULL;
   p = pc->fi_pos;
   if (msg == NULL)
@@ -942,10 +947,9 @@ fip_signal_start (void *cls, struct GNUNET_FS_FileInformation *fi,
   pi.status = GNUNET_FS_STATUS_PUBLISH_START;
   *client_info = GNUNET_FS_publish_make_status_ (&pi, pc, fi, 0);
   GNUNET_FS_file_information_sync_ (fi);
-  if (GNUNET_YES == GNUNET_FS_meta_data_test_for_directory (meta)
-      && (fi->dir != NULL))
+  if ((fi->is_directory) && (fi->dir != NULL))
   {
-    /* process entries in directory */
+    /* We are a directory, and we are not top-level; process entries in directory */
     pc->skip_next_fi_callback = GNUNET_YES;
     GNUNET_FS_file_information_inspect (fi, &fip_signal_start, pc);
   }

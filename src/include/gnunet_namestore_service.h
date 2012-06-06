@@ -44,6 +44,26 @@ extern "C"
 #endif
 
 /**
+ * Record type indicating any record/'*'
+ */
+#define GNUNET_NAMESTORE_TYPE_ANY 0
+
+/**
+ * Record type for GNS zone transfer ("PKEY").
+ */
+#define GNUNET_NAMESTORE_TYPE_PKEY 65536
+
+/**
+ * Record type for GNS zone transfer ("PSEU").
+ */
+#define GNUNET_NAMESTORE_TYPE_PSEU 65537
+
+/**
+ * Record type for GNS legacy hostnames ("LEHO").
+ */
+#define GNUNET_NAMESTORE_TYPE_LEHO 65538
+
+/**
  * Entry in the queue.
  */
 struct GNUNET_NAMESTORE_QueueEntry;
@@ -62,6 +82,8 @@ struct GNUNET_NAMESTORE_ZoneIterator;
  * Maximum size of a value that can be stored in the namestore.
  */
 #define GNUNET_NAMESTORE_MAX_VALUE_SIZE (63 * 1024)
+
+
 
 /**
  * Connect to the namestore service.
@@ -90,7 +112,7 @@ GNUNET_NAMESTORE_disconnect (struct GNUNET_NAMESTORE_Handle *h, int drop);
  *
  * @param cls closure
  * @param success GNUNET_SYSERR on failure (including timeout/queue drop/failure to validate)
- *                GNUNET_NO if content was already there
+ *                GNUNET_NO if content was already there or not found
  *                GNUNET_YES (or other positive value) on success
  * @param emsg NULL on success, otherwise an error message
  */
@@ -121,7 +143,13 @@ enum GNUNET_NAMESTORE_RecordFlags
    * This is a private record of this peer and it should
    * thus not be handed out to other peers.
    */
-  GNUNET_NAMESTORE_RF_PRIVATE = 2
+  GNUNET_NAMESTORE_RF_PRIVATE = 2,
+
+  /**
+   * This record was added by the system
+   * and is pending user confimation
+   */
+  GNUNET_NAMESTORE_RF_PENDING = 4
 
 };
 
@@ -168,7 +196,7 @@ struct GNUNET_NAMESTORE_RecordData
  * @param h handle to the namestore
  * @param zone_key public key of the zone
  * @param name name that is being mapped (at most 255 characters long)
- * @param expire when does the corresponding block in the DHT expire (until
+ * @param freshness when does the corresponding block in the DHT expire (until
  *               when should we never do a DHT lookup for the same name again)?
  * @param rd_count number of entries in 'rd' array
  * @param rd array of records with data to store
@@ -181,7 +209,7 @@ struct GNUNET_NAMESTORE_QueueEntry *
 GNUNET_NAMESTORE_record_put (struct GNUNET_NAMESTORE_Handle *h,
 			     const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *zone_key,
 			     const char *name,
-			     struct GNUNET_TIME_Absolute expire,
+			     struct GNUNET_TIME_Absolute freshness,
 			     unsigned int rd_count,
 			     const struct GNUNET_NAMESTORE_RecordData *rd,
 			     const struct GNUNET_CRYPTO_RsaSignature *signature,
@@ -194,6 +222,7 @@ GNUNET_NAMESTORE_record_put (struct GNUNET_NAMESTORE_Handle *h,
  * to validate signatures received from the network.
  *
  * @param public_key public key of the zone
+ * @param expire block expiration
  * @param name name that is being mapped (at most 255 characters long)
  * @param rd_count number of entries in 'rd' array
  * @param rd array of records with data to store
@@ -202,10 +231,11 @@ GNUNET_NAMESTORE_record_put (struct GNUNET_NAMESTORE_Handle *h,
  */
 int
 GNUNET_NAMESTORE_verify_signature (const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *public_key,
-				   const char *name,
-				   unsigned int rd_count,
-				   const struct GNUNET_NAMESTORE_RecordData *rd,
-				   const struct GNUNET_CRYPTO_RsaSignature *signature);
+                                   const struct GNUNET_TIME_Absolute freshness,
+                                   const char *name,
+                                   unsigned int rd_count,
+                                   const struct GNUNET_NAMESTORE_RecordData *rd,
+                                   const struct GNUNET_CRYPTO_RsaSignature *signature);
 
 
 /**
@@ -223,11 +253,11 @@ GNUNET_NAMESTORE_verify_signature (const struct GNUNET_CRYPTO_RsaPublicKeyBinary
  */
 struct GNUNET_NAMESTORE_QueueEntry *
 GNUNET_NAMESTORE_record_create (struct GNUNET_NAMESTORE_Handle *h,
-				const struct GNUNET_CRYPTO_RsaPrivateKey *pkey,
-				const char *name,
-				const struct GNUNET_NAMESTORE_RecordData *rd,
-				GNUNET_NAMESTORE_ContinuationWithStatus cont,
-				void *cont_cls);
+                                const struct GNUNET_CRYPTO_RsaPrivateKey *pkey,
+                                const char *name,
+                                const struct GNUNET_NAMESTORE_RecordData *rd,
+                                GNUNET_NAMESTORE_ContinuationWithStatus cont,
+                                void *cont_cls);
 
 
 /**
@@ -240,7 +270,7 @@ GNUNET_NAMESTORE_record_create (struct GNUNET_NAMESTORE_Handle *h,
  * @param h handle to the namestore
  * @param pkey private key of the zone
  * @param name name that is being mapped (at most 255 characters long)
- * @param rd record data
+ * @param rd record data, remove specific record,  NULL to remove the name and all records
  * @param cont continuation to call when done
  * @param cont_cls closure for cont
  * @return handle to abort the request
@@ -272,9 +302,9 @@ GNUNET_NAMESTORE_record_remove (struct GNUNET_NAMESTORE_Handle *h,
  */
 typedef void (*GNUNET_NAMESTORE_RecordProcessor) (void *cls,
 						  const struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *zone_key,
-						  struct GNUNET_TIME_Absolute expire,			    
+						  struct GNUNET_TIME_Absolute freshness,			    
 						  const char *name,
-						  unsigned int rd_count,
+						  unsigned int rd_len,
 						  const struct GNUNET_NAMESTORE_RecordData *rd,
 						  const struct GNUNET_CRYPTO_RsaSignature *signature);
 
@@ -295,17 +325,36 @@ typedef void (*GNUNET_NAMESTORE_RecordProcessor) (void *cls,
  */
 struct GNUNET_NAMESTORE_QueueEntry *
 GNUNET_NAMESTORE_lookup_record (struct GNUNET_NAMESTORE_Handle *h, 
-			      const GNUNET_HashCode *zone,
+			      const struct GNUNET_CRYPTO_ShortHashCode *zone,
 			      const char *name,
 			      uint32_t record_type,
 			      GNUNET_NAMESTORE_RecordProcessor proc, void *proc_cls);
 
 
 /**
+ * Look for an existing PKEY delegation record for a given public key.
+ * Returns at most one result to the processor.
+ *
+ * @param h handle to the namestore
+ * @param zone hash of public key of the zone to look up in, never NULL
+ * @param value_zone hash of the public key of the target zone (value), never NULL
+ * @param proc function to call on the matching records, or with
+ *        NULL (rd_count == 0) if there are no matching records
+ * @param proc_cls closure for proc
+ * @return a handle that can be used to
+ *         cancel
+ */
+struct GNUNET_NAMESTORE_QueueEntry *
+GNUNET_NAMESTORE_zone_to_name (struct GNUNET_NAMESTORE_Handle *h, 
+			       const struct GNUNET_CRYPTO_ShortHashCode *zone,
+			       const struct GNUNET_CRYPTO_ShortHashCode *value_zone,
+			       GNUNET_NAMESTORE_RecordProcessor proc, void *proc_cls);
+
+
+
+/**
  * Starts a new zone iteration (used to periodically PUT all of our
- * records into our DHT). This MUST lock the GNUNET_NAMESTORE_Handle
- * for any other calls than GNUNET_NAMESTORE_zone_iterator_next and
- * GNUNET_NAMESTORE_zone_iteration_stop.  "proc" will be called once
+ * records into our DHT). "proc" will be called once
  * immediately, and then again after
  * "GNUNET_NAMESTORE_zone_iterator_next" is invoked.
  *
@@ -321,7 +370,7 @@ GNUNET_NAMESTORE_lookup_record (struct GNUNET_NAMESTORE_Handle *h,
  */
 struct GNUNET_NAMESTORE_ZoneIterator *
 GNUNET_NAMESTORE_zone_iteration_start (struct GNUNET_NAMESTORE_Handle *h,
-				       const GNUNET_HashCode *zone,
+				       const struct GNUNET_CRYPTO_ShortHashCode *zone,
 				       enum GNUNET_NAMESTORE_RecordFlags must_have_flags,
 				       enum GNUNET_NAMESTORE_RecordFlags must_not_have_flags,
 				       GNUNET_NAMESTORE_RecordProcessor proc,
@@ -355,6 +404,117 @@ GNUNET_NAMESTORE_zone_iteration_stop (struct GNUNET_NAMESTORE_ZoneIterator *it);
  */
 void
 GNUNET_NAMESTORE_cancel (struct GNUNET_NAMESTORE_QueueEntry *qe);
+
+
+
+/* convenience APIs for serializing / deserializing GNS records */
+
+/**
+ * Calculate how many bytes we will need to serialize the given
+ * records.
+ *
+ * @param rd_count number of records in the rd array
+ * @param rd array of GNUNET_NAMESTORE_RecordData with rd_count elements
+ *
+ * @return the required size to serialize
+ *
+ */
+size_t
+GNUNET_NAMESTORE_records_get_size (unsigned int rd_count,
+				   const struct GNUNET_NAMESTORE_RecordData *rd);
+
+/**
+ * Serialize the given records to the given destination buffer.
+ *
+ * @param rd_count number of records in the rd array
+ * @param rd array of GNUNET_NAMESTORE_RecordData with rd_count elements
+ * @param dest_size size of the destination array
+ * @param dest where to write the result
+ *
+ * @return the size of serialized records
+ */
+ssize_t
+GNUNET_NAMESTORE_records_serialize (unsigned int rd_count,
+				    const struct GNUNET_NAMESTORE_RecordData *rd,
+				    size_t dest_size,
+				    char *dest);
+
+
+/**
+ * Deserialize the given records to the given destination.
+ *
+ * @param len size of the serialized record data
+ * @param src the serialized record data
+ * @param rd_count number of records in the rd array
+ * @param dest where to put the data
+ *
+ * @return GNUNET_OK on success, GNUNET_SYSERR on error
+ */
+int
+GNUNET_NAMESTORE_records_deserialize (size_t len,
+				      const char *src,
+				      unsigned int rd_count,
+				      struct GNUNET_NAMESTORE_RecordData *dest);
+
+
+/**
+ * Checks if a name is wellformed
+ *
+ * @param name the name to check
+ * @return GNUNET_OK on success, GNUNET_SYSERR on error
+ */
+int
+GNUNET_NAMESTORE_check_name (const char * name);
+
+/**
+ * Convert the 'value' of a record to a string.
+ *
+ * @param type type of the record
+ * @param data value in binary encoding
+ * @param data_size number of bytes in data
+ * @return NULL on error, otherwise human-readable representation of the value
+ */
+char *
+GNUNET_NAMESTORE_value_to_string (uint32_t type,
+				  const void *data,
+				  size_t data_size);
+
+
+/**
+ * Convert human-readable version of a 'value' of a record to the binary
+ * representation.
+ *
+ * @param type type of the record
+ * @param s human-readable string
+ * @param data set to value in binary encoding (will be allocated)
+ * @param data_size set to number of bytes in data
+ * @return GNUNET_OK on success
+ */
+int
+GNUNET_NAMESTORE_string_to_value (uint32_t type,
+				  const char *s,
+				  void **data,
+				  size_t *data_size);
+
+
+/**
+ * Convert a type name (i.e. "AAAA") to the corresponding number.
+ *
+ * @param typename name to convert
+ * @return corresponding number, UINT32_MAX on error
+ */
+uint32_t
+GNUNET_NAMESTORE_typename_to_number (const char *typename);
+
+
+/**
+ * Convert a type number (i.e. 1) to the corresponding type string (i.e. "A")
+ *
+ * @param type number of a type to convert
+ * @return corresponding typestring, NULL on error
+ */
+const char *
+GNUNET_NAMESTORE_number_to_typename (uint32_t type);
 
 
 #if 0                           /* keep Emacsens' auto-indent happy */

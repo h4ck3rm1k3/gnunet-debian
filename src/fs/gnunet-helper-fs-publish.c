@@ -69,7 +69,8 @@ struct ScanTreeNode
   char *filename;
 
   /**
-   * Size of the file (if it is a file), in bytes
+   * Size of the file (if it is a file), in bytes.
+   * At the moment it is set to 0 for directories.
    */
   uint64_t file_size;
 
@@ -185,6 +186,11 @@ write_message (uint16_t message_type,
 {
   struct GNUNET_MessageHeader hdr;
 
+#if 0
+  fprintf (stderr, "Helper sends %u-byte message of type %u\n",
+	   (unsigned int) (sizeof (struct GNUNET_MessageHeader) + data_length),
+	   (unsigned int) message_type);
+#endif
   hdr.type = htons (message_type);
   hdr.size = htons (sizeof (struct GNUNET_MessageHeader) + data_length);
   if ( (GNUNET_OK !=
@@ -204,7 +210,8 @@ write_message (uint16_t message_type,
  * the scan.  Does NOT yet add any metadata.
  *
  * @param filename file or directory to scan
- * @param dst where to store the resulting share tree item
+ * @param dst where to store the resulting share tree item;
+ *         NULL is stored in 'dst' upon recoverable errors (GNUNET_OK is returned)
  * @return GNUNET_OK on success, GNUNET_SYSERR on error
  */
 static int
@@ -252,6 +259,8 @@ scan_callback (void *cls,
     rc->stop = GNUNET_YES;
     return GNUNET_SYSERR;
   }
+  if (NULL == chld)
+    return GNUNET_OK;
   chld->parent = rc->parent;
   GNUNET_CONTAINER_DLL_insert (rc->parent->children_head,
 			       rc->parent->children_tail,
@@ -266,7 +275,8 @@ scan_callback (void *cls,
  * the scan.  Does NOT yet add any metadata.
  *
  * @param filename file or directory to scan
- * @param dst where to store the resulting share tree item
+ * @param dst where to store the resulting share tree item;
+ *         NULL is stored in 'dst' upon recoverable errors (GNUNET_OK is returned) 
  * @return GNUNET_OK on success, GNUNET_SYSERR on error
  */
 static int
@@ -275,8 +285,11 @@ preprocess_file (const char *filename,
 {
   struct ScanTreeNode *item;
   struct stat sbuf;
+  uint64_t fsize = 0;
 
-  if (0 != STAT (filename, &sbuf))
+  if ((0 != STAT (filename, &sbuf)) ||
+      ((!S_ISDIR (sbuf.st_mode)) && (GNUNET_OK != GNUNET_DISK_file_size (
+      filename, &fsize, GNUNET_NO, GNUNET_YES))))
   {
     /* If the file doesn't exist (or is not stat-able for any other reason)
        skip it (but report it), but do continue. */
@@ -284,6 +297,8 @@ preprocess_file (const char *filename,
 	write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_SKIP_FILE,
 		       filename, strlen (filename) + 1))
       return GNUNET_SYSERR;
+    /* recoverable error, store 'NULL' in *dst */
+    *dst = NULL;
     return GNUNET_OK;
   }
 
@@ -297,8 +312,8 @@ preprocess_file (const char *filename,
   item = GNUNET_malloc (sizeof (struct ScanTreeNode));
   item->filename = GNUNET_strdup (filename);
   item->is_directory = (S_ISDIR (sbuf.st_mode)) ? GNUNET_YES : GNUNET_NO;
-  item->file_size = (uint64_t) sbuf.st_size;
-  if (item->is_directory == GNUNET_YES)
+  item->file_size = fsize;
+  if (GNUNET_YES == item->is_directory)
   {
     struct RecursionContext rc;
 
@@ -307,7 +322,7 @@ preprocess_file (const char *filename,
     GNUNET_DISK_directory_scan (filename, 
 				&scan_callback, 
 				&rc);    
-    if ( (rc.stop == GNUNET_YES) ||
+    if ( (GNUNET_YES == rc.stop) ||
 	 (GNUNET_OK !=
 	  write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_PROGRESS_DIRECTORY,
 			 "..", 3)) )
@@ -334,7 +349,7 @@ extract_files (struct ScanTreeNode *item)
   ssize_t size;
   size_t slen;
 
-  if (item->is_directory == GNUNET_YES)
+  if (GNUNET_YES == item->is_directory)
   {
     /* for directories, we simply only descent, no extraction, no
        progress reporting */
@@ -369,8 +384,13 @@ extract_files (struct ScanTreeNode *item)
     
     memcpy (buf, item->filename, slen);
     size = GNUNET_CONTAINER_meta_data_serialize (meta,
-						 &dst, size - slen,
+						 &dst, size,
 						 GNUNET_CONTAINER_META_DATA_SERIALIZE_PART);
+    if (size < 0)
+    {
+      GNUNET_break (0);
+      size = 0;
+    }
     GNUNET_CONTAINER_meta_data_destroy (meta);
     if (GNUNET_OK !=
 	write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_META_DATA,
@@ -407,7 +427,7 @@ int main(int argc,
 #endif
 
   /* parse command line */
-  if ( (argc != 3) && (argc != 2) )
+  if ( (3 != argc) && (2 != argc) )
   {
     FPRINTF (stderr, 
 	     "%s",
@@ -416,7 +436,7 @@ int main(int argc,
   }
   filename_expanded = argv[1];
   ex = argv[2];
-  if ( (ex == NULL) ||
+  if ( (NULL == ex) ||
        (0 != strcmp (ex, "-")) )
   {
     plugins = EXTRACTOR_plugin_add_defaults (EXTRACTOR_OPTION_DEFAULT_POLICY);
@@ -437,14 +457,17 @@ int main(int argc,
   if (GNUNET_OK !=
       write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_COUNTING_DONE, NULL, 0))
     return 3;  
-  if (GNUNET_OK !=
-      extract_files (root))
+  if (NULL != root)
   {
-    (void) write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_ERROR, NULL, 0);
+    if (GNUNET_OK !=
+	extract_files (root))
+    {
+      (void) write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_ERROR, NULL, 0);
+      free_tree (root);
+      return 4;
+    }
     free_tree (root);
-    return 4;
   }
-  free_tree (root);
   /* enable "clean" shutdown by telling parent that we are done */
   (void) write_message (GNUNET_MESSAGE_TYPE_FS_PUBLISH_HELPER_FINISHED, NULL, 0);
   if (NULL != plugins)

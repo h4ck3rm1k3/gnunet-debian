@@ -69,9 +69,6 @@ setup_peer (struct PeerContext *p, const char *cfgname)
   p->arm_proc =
     GNUNET_OS_start_process (GNUNET_YES, NULL, NULL, "gnunet-service-arm",
                                "gnunet-service-arm",
-#if VERBOSE
-                               "-L", "DEBUG",
-#endif
                                "-c", cfgname, NULL);
 #endif
   GNUNET_assert (GNUNET_OK == GNUNET_CONFIGURATION_load (p->cfg, cfgname));
@@ -90,7 +87,7 @@ stop_arm (struct PeerContext *p)
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING, "waitpid");
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "ARM process %u stopped\n",
                 GNUNET_OS_process_get_pid (p->arm_proc));
-    GNUNET_OS_process_close (p->arm_proc);
+    GNUNET_OS_process_destroy (p->arm_proc);
     p->arm_proc = NULL;
   }
 #endif
@@ -261,6 +258,13 @@ sks_cont (void *cls, const struct GNUNET_FS_Uri *uri, const char *emsg)
   char *msg;
   struct GNUNET_FS_BlockOptions bo;
 
+  if (NULL == uri)
+  {
+    fprintf (stderr, "Error publishing: %s\n", emsg);
+    err = 1;
+    GNUNET_FS_stop (fs);
+    return;
+  }
   meta = GNUNET_CONTAINER_meta_data_create ();
   msg = NULL;
   ksk_uri = GNUNET_FS_uri_parse ("gnunet://fs/ksk/ns-search", &msg);
@@ -378,9 +382,6 @@ main (int argc, char *argv[])
     "test-fs-namespace",
     "-c",
     "test_fs_namespace_data.conf",
-#if VERBOSE
-    "-L", "DEBUG",
-#endif
     NULL
   };
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -388,11 +389,7 @@ main (int argc, char *argv[])
   };
 
   GNUNET_log_setup ("test_fs_namespace",
-#if VERBOSE
-                    "DEBUG",
-#else
                     "WARNING",
-#endif
                     NULL);
   GNUNET_PROGRAM_run ((sizeof (argvx) / sizeof (char *)) - 1, argvx,
                       "test-fs-namespace", "nohelp", options, &run, NULL);

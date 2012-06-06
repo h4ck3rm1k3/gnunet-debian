@@ -1,6 +1,6 @@
 /*
      This file is part of GNUnet.
-     (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007 Christian Grothoff (and other contributing authors)
+     (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2012 Christian Grothoff (and other contributing authors)
 
      GNUnet is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -86,7 +86,7 @@ enum GNUNET_CRYPTO_Quality
 
 
 /**
- * Length of an RSA KEY (d,e,len), 2048 bit (=256 octests) key d, 2 byte e
+ * Length of an RSA KEY (n,e,len), 2048 bit (=256 octests) key n, 2 byte e
  */
 #define GNUNET_CRYPTO_RSA_KEY_LENGTH 258
 
@@ -101,6 +101,32 @@ enum GNUNET_CRYPTO_Quality
  */
 struct GNUNET_CRYPTO_RsaPrivateKey;
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * GNUnet mandates a certain format for the encoding
+ * of private RSA key information that is provided
+ * by the RSA implementations.  This format is used
+ * to serialize a private RSA key (typically when
+ * writing it to disk).
+ */
+struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded
+{
+  /**
+   * Total size of the structure, in bytes, in big-endian!
+   */
+  uint16_t len GNUNET_PACKED;
+  uint16_t sizen GNUNET_PACKED; /*  in big-endian! */
+  uint16_t sizee GNUNET_PACKED; /*  in big-endian! */
+  uint16_t sized GNUNET_PACKED; /*  in big-endian! */
+  uint16_t sizep GNUNET_PACKED; /*  in big-endian! */
+  uint16_t sizeq GNUNET_PACKED; /*  in big-endian! */
+  uint16_t sizedmp1 GNUNET_PACKED;      /*  in big-endian! */
+  uint16_t sizedmq1 GNUNET_PACKED;      /*  in big-endian! */
+  /* followed by the actual values */
+};
+GNUNET_NETWORK_STRUCT_END
+
 
 /**
  * @brief 0-terminated ASCII encoding of a GNUNET_HashCode.
@@ -108,6 +134,26 @@ struct GNUNET_CRYPTO_RsaPrivateKey;
 struct GNUNET_CRYPTO_HashAsciiEncoded
 {
   unsigned char encoding[104];
+};
+
+
+
+
+/**
+ * @brief 256-bit hashcode
+ */
+struct GNUNET_CRYPTO_ShortHashCode
+{
+  uint32_t bits[256 / 8 / sizeof (uint32_t)];   /* = 8 */
+};
+
+
+/**
+ * @brief 0-terminated ASCII encoding of a 'struct GNUNET_ShortHashCode'.
+ */
+struct GNUNET_CRYPTO_ShortHashAsciiEncoded
+{
+  unsigned char short_encoding[53];
 };
 
 
@@ -320,6 +366,7 @@ GNUNET_CRYPTO_random_permute (enum GNUNET_CRYPTO_Quality mode, unsigned int n);
 void
 GNUNET_CRYPTO_aes_create_session_key (struct GNUNET_CRYPTO_AesSessionKey *key);
 
+
 /**
  * Check that a new session key is well-formed.
  *
@@ -406,7 +453,19 @@ GNUNET_CRYPTO_hash_to_enc (const GNUNET_HashCode * block,
 
 
 /**
- * Convert ASCII encoding back to GNUNET_CRYPTO_hash
+ * Convert short hash to ASCII encoding.
+ *
+ * @param block the hash code
+ * @param result where to store the encoding (struct GNUNET_CRYPTO_ShortHashAsciiEncoded can be
+ *  safely cast to char*, a '\\0' termination is set).
+ */
+void
+GNUNET_CRYPTO_short_hash_to_enc (const struct GNUNET_CRYPTO_ShortHashCode * block,
+				 struct GNUNET_CRYPTO_ShortHashAsciiEncoded *result);
+
+
+/**
+ * Convert ASCII encoding back to a 'GNUNET_HashCode'
  *
  * @param enc the encoding
  * @param enclen number of characters in 'enc' (without 0-terminator, which can be missing)
@@ -419,14 +478,51 @@ GNUNET_CRYPTO_hash_from_string2 (const char *enc, size_t enclen,
 
 
 /**
- * Convert ASCII encoding back to GNUNET_CRYPTO_hash
+ * Convert ASCII encoding back to a 'struct GNUNET_CRYPTO_ShortHash'
+ *
  * @param enc the encoding
+ * @param enclen number of characters in 'enc' (without 0-terminator, which can be missing)
  * @param result where to store the GNUNET_CRYPTO_hash code
+ * @return GNUNET_OK on success, GNUNET_SYSERR if result has the wrong encoding
+ */
+int
+GNUNET_CRYPTO_short_hash_from_string2 (const char *enc, size_t enclen,
+				       struct GNUNET_CRYPTO_ShortHashCode * result);
+
+
+/**
+ * Convert ASCII encoding back to GNUNET_HashCode
+ *
+ * @param enc the encoding
+ * @param result where to store the hash code
  * @return GNUNET_OK on success, GNUNET_SYSERR if result has the wrong encoding
  */
 #define GNUNET_CRYPTO_hash_from_string(enc, result) \
   GNUNET_CRYPTO_hash_from_string2 (enc, strlen(enc), result)
 
+
+/**
+ * Convert ASCII encoding back to a 'struct GNUNET_CRYPTO_ShortHash'
+ *
+ * @param enc the encoding
+ * @param result where to store the GNUNET_CRYPTO_ShortHash 
+ * @return GNUNET_OK on success, GNUNET_SYSERR if result has the wrong encoding
+ */
+#define GNUNET_CRYPTO_short_hash_from_string(enc, result) \
+  GNUNET_CRYPTO_short_hash_from_string2 (enc, strlen(enc), result)
+
+
+/**
+ * Compare function for ShortHashCodes, producing a total ordering
+ * of all hashcodes.
+ *
+ * @param h1 some hash code
+ * @param h2 some hash code
+ * @return 1 if h1 > h2, -1 if h1 < h2 and 0 if h1 == h2.
+ */
+int
+GNUNET_CRYPTO_short_hash_cmp (const struct GNUNET_CRYPTO_ShortHashCode * h1,
+                              const struct GNUNET_CRYPTO_ShortHashCode * h2);
 
 /**
  * Compute the distance between 2 hashcodes.
@@ -453,6 +549,42 @@ GNUNET_CRYPTO_hash_distance_u32 (const GNUNET_HashCode * a,
  */
 void
 GNUNET_CRYPTO_hash (const void *block, size_t size, GNUNET_HashCode * ret);
+
+
+/**
+ * Compute short (256-bit) hash of a given block.
+ *
+ * @param block the data to hash
+ * @param size size of the block
+ * @param ret pointer to where to write the hashcode
+ */
+void
+GNUNET_CRYPTO_short_hash (const void *block, size_t size, 
+			  struct GNUNET_CRYPTO_ShortHashCode * ret);
+
+
+/**
+ * Double short (256-bit) hash to create a long hash.
+ *
+ * @param sh short hash to double
+ * @param dh where to store the (doubled) long hash (not really a hash)
+ */
+void
+GNUNET_CRYPTO_short_hash_double (const struct GNUNET_CRYPTO_ShortHashCode *sh,
+				 struct GNUNET_HashCode *dh);
+
+
+/**
+ * Truncate doubled short hash back to a short hash.
+ *
+ * @param dh doubled short hash to reduce again
+ * @param sh where to store the short hash
+ * @return GNUNET_OK on success, GNUNET_SYSERR if this was not a
+ *         doubled short hash
+ */
+int
+GNUNET_CRYPTO_short_hash_from_truncation (const struct GNUNET_HashCode *dh,
+					  struct GNUNET_CRYPTO_ShortHashCode *sh);
 
 
 /**
@@ -735,6 +867,40 @@ GNUNET_CRYPTO_kdf (void *result, size_t out_len, const void *xts,
 struct GNUNET_CRYPTO_RsaPrivateKey *
 GNUNET_CRYPTO_rsa_key_create (void);
 
+
+/**
+ * Convert a public key to a string.
+ *
+ * @param pub key to convert
+ * @return string representing  'pub'
+ */
+char *
+GNUNET_CRYPTO_rsa_public_key_to_string (struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *pub);
+
+
+/**
+ * Convert a string representing a public key to a public key.
+ *
+ * @param enc encoded public key
+ * @param enclen number of bytes in enc (without 0-terminator)
+ * @param pub where to store the public key
+ * @return GNUNET_OK on success
+ */
+int
+GNUNET_CRYPTO_rsa_public_key_from_string (const char *enc, 
+					  size_t enclen,
+					  struct GNUNET_CRYPTO_RsaPublicKeyBinaryEncoded *pub);
+
+
+/**
+ * Encode the private key in a format suitable for
+ * storing it into a file.
+ * @returns encoding of the private key.
+ *    The first 4 bytes give the size of the array, as usual.
+ */
+struct GNUNET_CRYPTO_RsaPrivateKeyBinaryEncoded *
+GNUNET_CRYPTO_rsa_encode_key (const struct GNUNET_CRYPTO_RsaPrivateKey *hostkey);
+
 /**
  * Decode the private key from the data-format back
  * to the "normal", internal format.
@@ -761,6 +927,18 @@ GNUNET_CRYPTO_rsa_decode_key (const char *buf, uint16_t len);
  */
 struct GNUNET_CRYPTO_RsaPrivateKey *
 GNUNET_CRYPTO_rsa_key_create_from_file (const char *filename);
+
+
+/**
+ * Setup a hostkey file for a peer given the name of the
+ * configuration file (!).  This function is used so that
+ * at a later point code can be certain that reading a
+ * hostkey is fast (for example in time-dependent testcases).
+ *
+ * @param cfg_name name of the configuration file to use
+ */
+void
+GNUNET_CRYPTO_setup_hostkey (const char *cfg_name);
 
 
 /**
@@ -868,6 +1046,7 @@ GNUNET_CRYPTO_rsa_verify (uint32_t purpose,
  */
 void
 GNUNET_CRYPTO_random_disable_entropy_gathering (void);
+
 
 #if 0                           /* keep Emacsens' auto-indent happy */
 {

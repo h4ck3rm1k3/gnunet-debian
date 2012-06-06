@@ -28,14 +28,6 @@
  * - SEND FUNCTIONS
  * - API CALL DEFINITIONS
  */
-#ifdef __cplusplus
-extern "C"
-{
-#if 0                           /* keep Emacsens' auto-indent happy */
-}
-#endif
-#endif
-
 #include "platform.h"
 #include "gnunet_common.h"
 #include "gnunet_client_lib.h"
@@ -45,13 +37,8 @@ extern "C"
 #include "mesh.h"
 #include "mesh_protocol.h"
 
-#define MESH_API_DEBUG GNUNET_YES
-
-#if MESH_API_DEBUG
 #define LOG(kind,...) GNUNET_log_from (kind, "mesh-api",__VA_ARGS__)
-#else
-#define LOG(kind,...)
-#endif
+
 
 /******************************************************************************/
 /************************      DATA STRUCTURES     ****************************/
@@ -618,7 +605,7 @@ send_connect (struct GNUNET_MESH_Handle *h)
   size += h->n_applications * sizeof (GNUNET_MESH_ApplicationType);
   size += h->n_handlers * sizeof (uint16_t);
   {
-    char buf[size];
+    char buf[size] GNUNET_ALIGN;
     struct GNUNET_MESH_ClientConnect *msg;
     GNUNET_MESH_ApplicationType *apps;
     uint16_t napps;
@@ -675,7 +662,7 @@ do_reconnect (struct GNUNET_MESH_Handle *h)
   }
   if (NULL != h->client)
   {
-    GNUNET_CLIENT_disconnect (h->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (h->client);
   }
 
   /* connect again */
@@ -805,26 +792,38 @@ process_tunnel_created (struct GNUNET_MESH_Handle *h,
     GNUNET_break (0);
     return;
   }
-  t = create_tunnel (h, tid);
-  t->owner = GNUNET_PEER_intern (&msg->peer);
-  t->npeers = 1;
-  t->peers = GNUNET_malloc (sizeof (struct GNUNET_MESH_Peer *));
-  t->peers[0] = GNUNET_malloc (sizeof (struct GNUNET_MESH_Peer));
-  t->peers[0]->t = t;
-  t->peers[0]->connected = 1;
-  t->peers[0]->id = t->owner;
-  GNUNET_PEER_change_rc (t->owner, 1);
-  t->mesh = h;
-  t->tid = tid;
   if (NULL != h->new_tunnel)
   {
     struct GNUNET_ATS_Information atsi;
 
+    t = create_tunnel (h, tid);
+    t->owner = GNUNET_PEER_intern (&msg->peer);
+    t->npeers = 1;
+    t->peers = GNUNET_malloc (sizeof (struct GNUNET_MESH_Peer *));
+    t->peers[0] = GNUNET_malloc (sizeof (struct GNUNET_MESH_Peer));
+    t->peers[0]->t = t;
+    t->peers[0]->connected = 1;
+    t->peers[0]->id = t->owner;
+    GNUNET_PEER_change_rc (t->owner, 1);
+    t->mesh = h;
+    t->tid = tid;
     atsi.type = 0;
     atsi.value = 0;
     t->ctx = h->new_tunnel (h->cls, t, &msg->peer, &atsi);
+    LOG (GNUNET_ERROR_TYPE_DEBUG, "new incoming tunnel %X\n", t->tid);
   }
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "new incoming tunnel %X\n", t->tid);
+  else
+  {
+    struct GNUNET_MESH_TunnelMessage d_msg;
+
+    LOG (GNUNET_ERROR_TYPE_DEBUG, "No handler for incoming tunnels\n");
+
+    d_msg.header.type = htons (GNUNET_MESSAGE_TYPE_MESH_LOCAL_TUNNEL_DESTROY);
+    d_msg.header.size = htons (sizeof (struct GNUNET_MESH_TunnelMessage));
+    d_msg.tunnel_id = msg->tunnel_id;
+
+    send_packet (h, &d_msg.header, NULL);
+  }
   return;
 }
 
@@ -853,7 +852,7 @@ process_tunnel_destroy (struct GNUNET_MESH_Handle *h,
   {
     GNUNET_break (0);
   }
-  LOG (GNUNET_ERROR_TYPE_DEBUG, "tunnel %u destroyed\n", t->tid);
+  LOG (GNUNET_ERROR_TYPE_DEBUG, "tunnel %X destroyed\n", t->tid);
   destroy_tunnel (t, GNUNET_YES);
   return;
 }
@@ -974,7 +973,7 @@ process_incoming_data (struct GNUNET_MESH_Handle *h,
   }
   if (NULL == t)
   {
-    GNUNET_break (0);
+    /* Tunnel was ignored, probably service didn't get it yet */
     return GNUNET_YES;
   }
   type = ntohs (payload->type);
@@ -1363,7 +1362,7 @@ GNUNET_MESH_disconnect (struct GNUNET_MESH_Handle *handle)
   }
   if (NULL != handle->client)
   {
-    GNUNET_CLIENT_disconnect (handle->client, GNUNET_NO);
+    GNUNET_CLIENT_disconnect (handle->client);
     handle->client = NULL;
   }
   if (GNUNET_SCHEDULER_NO_TASK != handle->reconnect_task)
@@ -1446,7 +1445,7 @@ GNUNET_MESH_tunnel_destroy (struct GNUNET_MESH_Tunnel *tunnel)
   }
 
   destroy_tunnel (tunnel, GNUNET_NO);
-  send_packet (h, &msg.header, tunnel);
+  send_packet (h, &msg.header, NULL);
 }
 
 
@@ -1705,9 +1704,3 @@ GNUNET_MESH_tunnel_get_data (struct GNUNET_MESH_Tunnel *tunnel)
 }
 
 
-#if 0                           /* keep Emacsens' auto-indent happy */
-{
-#endif
-#ifdef __cplusplus
-}
-#endif

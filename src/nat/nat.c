@@ -422,10 +422,8 @@ add_to_address_list_as_is (struct GNUNET_NAT_Handle *h,
   lal->addrlen = arg_size;
   lal->source = src;
   GNUNET_CONTAINER_DLL_insert (h->lal_head, h->lal_tail, lal);
-#if DEBUG_NAT
   LOG (GNUNET_ERROR_TYPE_DEBUG, "Adding address `%s' from source %d\n",
        GNUNET_a2s (arg, arg_size), src);
-#endif
   if (NULL != h->address_callback)
     h->address_callback (h->callback_cls, GNUNET_YES, arg, arg_size);
 }
@@ -750,14 +748,12 @@ nat_server_read (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
       GNUNET_DISK_file_read (h->server_stdout_handle, mybuf, sizeof (mybuf));
   if (bytes < 1)
   {
-#if DEBUG_NAT
     LOG (GNUNET_ERROR_TYPE_DEBUG,
          "Finished reading from server stdout with code: %d\n", bytes);
-#endif
     if (0 != GNUNET_OS_process_kill (h->server_proc, SIGTERM))
       GNUNET_log_from_strerror (GNUNET_ERROR_TYPE_WARNING, "nat", "kill");
     GNUNET_OS_process_wait (h->server_proc);
-    GNUNET_OS_process_close (h->server_proc);
+    GNUNET_OS_process_destroy (h->server_proc);
     h->server_proc = NULL;
     GNUNET_DISK_pipe_close (h->server_stdout);
     h->server_stdout = NULL;
@@ -795,7 +791,7 @@ nat_server_read (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 #if HAVE_SOCKADDR_IN_SIN_LEN
   sin_addr.sin_len = sizeof (sin_addr);
 #endif
-  if ((NULL == port_start) || (1 != sscanf (port_start, "%d", &port)) ||
+  if ((NULL == port_start) || (1 != SSCANF (port_start, "%d", &port)) ||
       (-1 == inet_pton (AF_INET, mybuf, &sin_addr.sin_addr)))
   {
     /* should we restart gnunet-helper-nat-server? */
@@ -809,10 +805,8 @@ nat_server_read (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
     return;
   }
   sin_addr.sin_port = htons ((uint16_t) port);
-#if DEBUG_NAT
   LOG (GNUNET_ERROR_TYPE_DEBUG, "gnunet-helper-nat-server read: %s:%d\n", mybuf,
        port);
-#endif
   h->reversal_callback (h->callback_cls, (const struct sockaddr *) &sin_addr,
                         sizeof (sin_addr));
   h->server_read_task =
@@ -837,10 +831,8 @@ start_gnunet_nat_server (struct GNUNET_NAT_Handle *h)
        (h->server_stdout =
         GNUNET_DISK_pipe (GNUNET_YES, GNUNET_YES, GNUNET_NO, GNUNET_YES))))
   {
-#if DEBUG_NAT
     LOG (GNUNET_ERROR_TYPE_DEBUG, "Starting `%s' at `%s'\n",
          "gnunet-helper-nat-server", h->internal_address);
-#endif
     /* Start the server process */
     h->server_proc =
         GNUNET_OS_start_process (GNUNET_NO, NULL, h->server_stdout,
@@ -1079,11 +1071,9 @@ GNUNET_NAT_register (const struct GNUNET_CONFIGURATION_Handle *cfg, int is_tcp,
   struct in_addr in_addr;
   unsigned int i;
 
-#if DEBUG_NAT
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        "Registered with NAT service at port %u with %u IP bound local addresses\n",
        (unsigned int) adv_port, num_addrs);
-#endif
   h = GNUNET_malloc (sizeof (struct GNUNET_NAT_Handle));
   h->server_retry_delay = GNUNET_TIME_UNIT_SECONDS;
   h->cfg = cfg;
@@ -1273,7 +1263,7 @@ GNUNET_NAT_unregister (struct GNUNET_NAT_Handle *h)
     if (0 != GNUNET_OS_process_kill (h->server_proc, SIGTERM))
       GNUNET_log_from_strerror (GNUNET_ERROR_TYPE_WARNING, "nat", "kill");
     GNUNET_OS_process_wait (h->server_proc);
-    GNUNET_OS_process_close (h->server_proc);
+    GNUNET_OS_process_destroy (h->server_proc);
     h->server_proc = NULL;
     GNUNET_DISK_pipe_close (h->server_stdout);
     h->server_stdout = NULL;
@@ -1308,50 +1298,51 @@ GNUNET_NAT_unregister (struct GNUNET_NAT_Handle *h)
  * gnunet-helper-nat-client to send dummy ICMP responses to cause
  * that peer to connect to us (connection reversal).
  *
- * @param h NAT handle for us (largely used for configuration)
- * @param sa the address of the peer (IPv4-only)
+ * @return GNUNET_SYSERR on error, GNUNET_NO if nat client is disabled,
+ *         GNUNET_OK otherwise
  */
-void
+int
 GNUNET_NAT_run_client (struct GNUNET_NAT_Handle *h,
                        const struct sockaddr_in *sa)
+
+
 {
   char inet4[INET_ADDRSTRLEN];
   char port_as_string[6];
   struct GNUNET_OS_Process *proc;
 
   if (GNUNET_YES != h->enable_nat_client)
-    return;                     /* not permitted / possible */
+    return GNUNET_NO;                     /* not permitted / possible */
 
   if (h->internal_address == NULL)
   {
     LOG (GNUNET_ERROR_TYPE_WARNING, "nat",
          _
          ("Internal IP address not known, cannot use ICMP NAT traversal method\n"));
-    return;
+    return GNUNET_SYSERR;
   }
   GNUNET_assert (sa->sin_family == AF_INET);
   if (NULL == inet_ntop (AF_INET, &sa->sin_addr, inet4, INET_ADDRSTRLEN))
   {
     GNUNET_log_from_strerror (GNUNET_ERROR_TYPE_WARNING, "nat", "inet_ntop");
-    return;
+    return GNUNET_SYSERR;
   }
   GNUNET_snprintf (port_as_string, sizeof (port_as_string), "%d", h->adv_port);
-#if DEBUG_NAT
   LOG (GNUNET_ERROR_TYPE_DEBUG,
        _("Running gnunet-helper-nat-client %s %s %u\n"), h->internal_address,
        inet4, (unsigned int) h->adv_port);
-#endif
   proc =
       GNUNET_OS_start_process (GNUNET_NO,
 			       NULL, NULL, "gnunet-helper-nat-client",
                                "gnunet-helper-nat-client", h->internal_address,
                                inet4, port_as_string, NULL);
   if (NULL == proc)
-    return;
+    return GNUNET_SYSERR;
   /* we know that the gnunet-helper-nat-client will terminate virtually
    * instantly */
   GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_close (proc);
+  GNUNET_OS_process_destroy (proc);
+  return GNUNET_OK;
 }
 
 

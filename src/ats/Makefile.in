@@ -38,7 +38,8 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 bin_PROGRAMS = gnunet-service-ats$(EXEEXT)
-check_PROGRAMS = test_ats_api_scheduling$(EXEEXT) $(am__EXEEXT_1) \
+check_PROGRAMS = test_ats_api_scheduling$(EXEEXT) \
+	test_ats_api_reset_backoff$(EXEEXT) $(am__EXEEXT_1) \
 	$(am__EXEEXT_2) $(am__EXEEXT_3)
 subdir = src/ats
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -134,6 +135,13 @@ perf_ats_mlp_OBJECTS = $(am_perf_ats_mlp_OBJECTS)
 @HAVE_LIBGLPK_TRUE@perf_ats_mlp_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 @HAVE_LIBGLPK_TRUE@	$(top_builddir)/src/util/libgnunetutil.la \
 @HAVE_LIBGLPK_TRUE@	$(top_builddir)/src/statistics/libgnunetstatistics.la
+am_test_ats_api_reset_backoff_OBJECTS =  \
+	test_ats_api_reset_backoff.$(OBJEXT)
+test_ats_api_reset_backoff_OBJECTS =  \
+	$(am_test_ats_api_reset_backoff_OBJECTS)
+test_ats_api_reset_backoff_DEPENDENCIES =  \
+	$(top_builddir)/src/util/libgnunetutil.la \
+	$(top_builddir)/src/ats/libgnunetats.la
 am_test_ats_api_scheduling_OBJECTS =  \
 	test_ats_api_scheduling.$(OBJEXT)
 test_ats_api_scheduling_OBJECTS =  \
@@ -187,11 +195,13 @@ AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libgnunetats_la_SOURCES) $(gnunet_service_ats_SOURCES) \
-	$(perf_ats_mlp_SOURCES) $(test_ats_api_scheduling_SOURCES) \
-	$(test_ats_mlp_SOURCES) $(test_ats_mlp_averaging_SOURCES)
+	$(perf_ats_mlp_SOURCES) $(test_ats_api_reset_backoff_SOURCES) \
+	$(test_ats_api_scheduling_SOURCES) $(test_ats_mlp_SOURCES) \
+	$(test_ats_mlp_averaging_SOURCES)
 DIST_SOURCES = $(libgnunetats_la_SOURCES) \
 	$(am__gnunet_service_ats_SOURCES_DIST) \
 	$(am__perf_ats_mlp_SOURCES_DIST) \
+	$(test_ats_api_reset_backoff_SOURCES) \
 	$(test_ats_api_scheduling_SOURCES) \
 	$(am__test_ats_mlp_SOURCES_DIST) \
 	$(am__test_ats_mlp_averaging_SOURCES_DIST)
@@ -256,6 +266,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -289,6 +300,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -427,7 +439,7 @@ libgnunetats_la_LIBADD = \
 
 libgnunetats_la_LDFLAGS = \
  $(GN_LIB_LDFLAGS) \
-  -version-info 1:0:1
+  -version-info 2:0:2
 
 gnunet_service_ats_SOURCES = \
  gnunet-service-ats.c gnunet-service-ats.h\
@@ -471,12 +483,19 @@ gnunet_service_ats_LDADD = \
 @HAVE_LIBGLPK_TRUE@perf_ats_mlp_LDADD = \
 @HAVE_LIBGLPK_TRUE@  $(GN_LIBGLPK) \
 @HAVE_LIBGLPK_TRUE@  $(top_builddir)/src/util/libgnunetutil.la \
-@HAVE_LIBGLPK_TRUE@  $(top_builddir)/src/statistics/libgnunetstatistics.la  
+@HAVE_LIBGLPK_TRUE@  $(top_builddir)/src/statistics/libgnunetstatistics.la
 
 test_ats_api_scheduling_SOURCES = \
  test_ats_api_scheduling.c
 
 test_ats_api_scheduling_LDADD = \
+  $(top_builddir)/src/util/libgnunetutil.la \
+  $(top_builddir)/src/ats/libgnunetats.la  
+
+test_ats_api_reset_backoff_SOURCES = \
+ test_ats_api_reset_backoff.c
+
+test_ats_api_reset_backoff_LDADD = \
   $(top_builddir)/src/util/libgnunetutil.la \
   $(top_builddir)/src/ats/libgnunetats.la  
 
@@ -500,7 +519,7 @@ test_ats_api_scheduling_LDADD = \
 #  $(top_builddir)/src/ats/libgnunetats.la  
 EXTRA_DIST = \
   ats.h \
-  test_ats_api.conf 
+  test_ats_api.conf
 
 all: all-am
 
@@ -629,6 +648,9 @@ gnunet-service-ats$(EXEEXT): $(gnunet_service_ats_OBJECTS) $(gnunet_service_ats_
 perf_ats_mlp$(EXEEXT): $(perf_ats_mlp_OBJECTS) $(perf_ats_mlp_DEPENDENCIES) 
 	@rm -f perf_ats_mlp$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(perf_ats_mlp_OBJECTS) $(perf_ats_mlp_LDADD) $(LIBS)
+test_ats_api_reset_backoff$(EXEEXT): $(test_ats_api_reset_backoff_OBJECTS) $(test_ats_api_reset_backoff_DEPENDENCIES) 
+	@rm -f test_ats_api_reset_backoff$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_ats_api_reset_backoff_OBJECTS) $(test_ats_api_reset_backoff_LDADD) $(LIBS)
 test_ats_api_scheduling$(EXEEXT): $(test_ats_api_scheduling_OBJECTS) $(test_ats_api_scheduling_DEPENDENCIES) 
 	@rm -f test_ats_api_scheduling$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_ats_api_scheduling_OBJECTS) $(test_ats_api_scheduling_LDADD) $(LIBS)
@@ -654,6 +676,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-ats_reservations.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnunet-service-ats_scheduling.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/perf_ats_mlp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_ats_api_reset_backoff.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_ats_api_scheduling.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_ats_mlp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_ats_mlp_averaging.Po@am__quote@

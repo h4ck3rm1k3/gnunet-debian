@@ -37,7 +37,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@MINGW_FALSE@noinst_PROGRAMS = timeout_watchdog$(EXEEXT)
+noinst_PROGRAMS = timeout_watchdog$(EXEEXT)
 check_PROGRAMS = test_gnunet_prefix$(EXEEXT)
 subdir = contrib
 DIST_COMMON = $(dist_pkgdata_DATA) $(srcdir)/Makefile.am \
@@ -64,15 +64,41 @@ CONFIG_CLEAN_VPATH_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
 am_test_gnunet_prefix_OBJECTS = test_gnunet_prefix.$(OBJEXT)
 test_gnunet_prefix_OBJECTS = $(am_test_gnunet_prefix_OBJECTS)
-test_gnunet_prefix_LDADD = $(LDADD)
+am__DEPENDENCIES_1 =
+test_gnunet_prefix_DEPENDENCIES = $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
-am__timeout_watchdog_SOURCES_DIST = timeout_watchdog.c
+am__timeout_watchdog_SOURCES_DIST = timeout_watchdog.c \
+	timeout_watchdog_w32.c
 @MINGW_FALSE@am_timeout_watchdog_OBJECTS = timeout_watchdog.$(OBJEXT)
+@MINGW_TRUE@am_timeout_watchdog_OBJECTS =  \
+@MINGW_TRUE@	timeout_watchdog_w32.$(OBJEXT)
 timeout_watchdog_OBJECTS = $(am_timeout_watchdog_OBJECTS)
 timeout_watchdog_LDADD = $(LDADD)
-SCRIPTS = $(noinst_SCRIPTS)
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkgdatadir)"
+SCRIPTS = $(bin_SCRIPTS) $(noinst_SCRIPTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -102,28 +128,6 @@ am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(test_gnunet_prefix_SOURCES) $(timeout_watchdog_SOURCES)
 DIST_SOURCES = $(test_gnunet_prefix_SOURCES) \
 	$(am__timeout_watchdog_SOURCES_DIST)
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
-am__install_max = 40
-am__nobase_strip_setup = \
-  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
-am__nobase_strip = \
-  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
-am__nobase_list = $(am__nobase_strip_setup); \
-  for p in $$list; do echo "$$p $$p"; done | \
-  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
-  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
-    if (++n[$$2] == $(am__install_max)) \
-      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
-    END { for (dir in files) print dir, files[dir] }'
-am__base_list = \
-  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
-  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(pkgdatadir)"
 DATA = $(dist_pkgdata_DATA)
 ETAGS = etags
 CTAGS = ctags
@@ -183,6 +187,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+JAVAPORT = @JAVAPORT@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
@@ -216,6 +221,7 @@ LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MONKEYPREFIX = @MONKEYPREFIX@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -336,26 +342,39 @@ INCLUDES = -I$(top_srcdir)/src/include -I$(top_builddir)/src/include
 @MINGW_FALSE@timeout_watchdog_SOURCES = \
 @MINGW_FALSE@ timeout_watchdog.c 
 
+@MINGW_TRUE@timeout_watchdog_SOURCES = \
+@MINGW_TRUE@ timeout_watchdog_w32.c
+
 noinst_SCRIPTS = \
  gnunet_pyexpect.py \
  gnunet_janitor.py
 
+bin_SCRIPTS = \
+ gnunet-gns-import.sh
+
 dist_pkgdata_DATA = \
- gnunet-logo-color.png 
+ gnunet-logo-color.png \
+ testing_hostkeys.dat
 
 EXTRA_DIST = \
  coverage.sh \
  hostlist.cgi \
  hostlist.php \
  report.sh \
- testing_hostkeys.dat \
  gnunet_pyexpect.py.in \
- gnunet_janitor.py.in
+ gnunet_janitor.py.in \
+ gnunet-gns-import.sh
 
 do_subst = $(SED) -e 's,[@]PYTHON[@],$(PYTHON),g'
 test_gnunet_prefix_SOURCES = \
  test_gnunet_prefix.c
 
+test_gnunet_prefix_LDADD = \
+  $(GCLIBADD) $(WINLIB) \
+  $(LTLIBICONV) \
+  -lltdl -lunistring $(XLIB) 
+
+pkghellodir = $(pkgdatadir)/hellos
 all: all-am
 
 .SUFFIXES:
@@ -414,6 +433,40 @@ test_gnunet_prefix$(EXEEXT): $(test_gnunet_prefix_OBJECTS) $(test_gnunet_prefix_
 timeout_watchdog$(EXEEXT): $(timeout_watchdog_OBJECTS) $(timeout_watchdog_DEPENDENCIES) 
 	@rm -f timeout_watchdog$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(timeout_watchdog_OBJECTS) $(timeout_watchdog_LDADD) $(LIBS)
+install-binSCRIPTS: $(bin_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
+	@list='$(bin_SCRIPTS)'; test -n "$(bindir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f "$$d$$p"; then echo "$$d$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n' \
+	    -e 'h;s|.*|.|' \
+	    -e 'p;x;s,.*/,,;$(transform)' | sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1; } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) { files[d] = files[d] " " $$1; \
+	      if (++n[d] == $(am__install_max)) { \
+		print "f", d, files[d]; n[d] = 0; files[d] = "" } } \
+	    else { print "f", d "/" $$4, $$1 } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	     test -z "$$files" || { \
+	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	     } \
+	; done
+
+uninstall-binSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(bin_SCRIPTS)'; test -n "$(bindir)" || exit 0; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	       sed -e 's,.*/,,;$(transform)'`; \
+	test -n "$$list" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(bindir)" && rm -f $$files
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -423,6 +476,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_gnunet_prefix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeout_watchdog.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeout_watchdog_w32.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -556,12 +610,15 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 check: check-am
 all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -612,13 +669,13 @@ info: info-am
 
 info-am:
 
-install-data-am: install-dist_pkgdataDATA
+install-data-am: install-data-local install-dist_pkgdataDATA
 
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am:
+install-exec-am: install-binSCRIPTS
 
 install-html: install-html-am
 
@@ -658,16 +715,17 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-dist_pkgdataDATA
+uninstall-am: uninstall-binSCRIPTS uninstall-dist_pkgdataDATA
 
 .MAKE: check-am install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean \
 	clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstPROGRAMS ctags distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dist_pkgdataDATA \
+	clean-noinstPROGRAMS ctags dist-hook distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-binSCRIPTS install-data \
+	install-data-am install-data-local install-dist_pkgdataDATA \
 	install-dvi install-dvi-am install-exec install-exec-am \
 	install-html install-html-am install-info install-info-am \
 	install-man install-pdf install-pdf-am install-ps \
@@ -675,12 +733,31 @@ uninstall-am: uninstall-dist_pkgdataDATA
 	installdirs maintainer-clean maintainer-clean-generic \
 	mostlyclean mostlyclean-compile mostlyclean-generic \
 	mostlyclean-libtool pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-dist_pkgdataDATA
+	uninstall-am uninstall-binSCRIPTS uninstall-dist_pkgdataDATA
 
 
 %.py: %.py.in Makefile
 	$(do_subst) < $< > $@
 	chmod +x $@
+
+install-data-local:
+	$(mkinstalldirs) $(DESTDIR)$(pkghellodir)
+	@$(NORMAL_INSTALL)
+	for hello in $(srcdir)/hellos/*; do \
+	  if test -f $$hello; then \
+	    $(INSTALL_DATA) $$hello $(DESTDIR)$(pkghellodir)/ ; \
+	  fi \
+	done
+
+dist-hook:
+	if test -d $(srcdir)/hellos; then \
+	  mkdir -p $(distdir)/hellos; \
+	  for hello in $(srcdir)/hellos/*; do \
+	    if test -f $$hello; then \
+	      cp -p $$hello $(distdir)/hellos; \
+	    fi \
+	  done \
+	fi
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

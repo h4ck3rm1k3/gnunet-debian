@@ -34,6 +34,7 @@
 #define GNUNET_GNS_SERVICE_H
 
 #include "gnunet_util_lib.h"
+#include "gnunet_dnsparser_lib.h"
 #include "gnunet_namestore_service.h"
 
 #ifdef __cplusplus
@@ -56,36 +57,40 @@ struct GNUNET_GNS_Handle;
 struct GNUNET_GNS_LookupHandle;
 
 /**
+ * Handle to control a shorten operation
+ */
+
+/**
  * Record types
  * Based on GNUNET_DNSPARSER_TYPEs (standard DNS)
  */
 enum GNUNET_GNS_RecordType
 {
   /* Standard DNS */
-  GNUNET_GNS_RECORD_TYPE_A = 1,
-  GNUNET_GNS_RECORD_TYPE_NS = 2,
-  GNUNET_GNS_RECORD_TYPE_CNAME = 5,
-  GNUNET_GNS_RECORD_TYPE_SOA = 6,
-  GNUNET_GNS_RECORD_TYPE_PTR = 12,
-  GNUNET_GNS_RECORD_MX = 15,
-  GNUNET_GNS_RECORD_TXT = 16,
-  GNUNET_GNS_RECORD_AAAA = 28,
+  GNUNET_GNS_RECORD_TYPE_A = GNUNET_DNSPARSER_TYPE_A,
+  GNUNET_GNS_RECORD_TYPE_NS = GNUNET_DNSPARSER_TYPE_NS,
+  GNUNET_GNS_RECORD_TYPE_CNAME = GNUNET_DNSPARSER_TYPE_CNAME,
+  GNUNET_GNS_RECORD_TYPE_SOA = GNUNET_DNSPARSER_TYPE_SOA,
+  GNUNET_GNS_RECORD_TYPE_PTR = GNUNET_DNSPARSER_TYPE_PTR,
+  GNUNET_GNS_RECORD_MX = GNUNET_DNSPARSER_TYPE_MX,
+  GNUNET_GNS_RECORD_TXT = GNUNET_DNSPARSER_TYPE_TXT,
+  GNUNET_GNS_RECORD_AAAA = GNUNET_DNSPARSER_TYPE_AAAA,
 
   /* GNS specific */
-  GNUNET_GNS_RECORD_PKEY = 256
+  GNUNET_GNS_RECORD_PKEY = GNUNET_NAMESTORE_TYPE_PKEY,
+  GNUNET_GNS_RECORD_PSEU = GNUNET_NAMESTORE_TYPE_PSEU,
+  GNUNET_GNS_RECORD_ANY  = GNUNET_NAMESTORE_TYPE_ANY
 };
 
 /**
  * Initialize the connection with the GNS service.
- * FIXME: Do we need the ht_len?
  *
  * @param cfg configuration to use
- * @param ht_len size of the internal hash table to use for parallel lookups
- * @return NULL on error
+ *
+ * @return handle to the GNS service, or NULL on error
  */
 struct GNUNET_GNS_Handle *
-GNUNET_GNS_connect (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                    unsigned int ht_len);
+GNUNET_GNS_connect (const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
@@ -100,56 +105,135 @@ GNUNET_GNS_disconnect (struct GNUNET_GNS_Handle *handle);
 /* *************** Standard API: lookup ******************* */
 
 /**
- * Iterator called on each result obtained for a GNS
+ * Iterator called on obtained result for a GNS
  * lookup
  *
  * @param cls closure
  * @param name "name" of the original lookup
- * @param record the records in reply
- * @param num_records the number of records in reply
+ * @param rd_count number of records
+ * @param rd the records in reply
  */
-typedef void (*GNUNET_GNS_LookupIterator) (void *cls,
-                                        const char * name,
-                                        const struct GNUNET_NAMESTORE_RecordData *record,
-                                        unsigned int num_records);
+typedef void (*GNUNET_GNS_LookupResultProcessor) (void *cls,
+                                 uint32_t rd_count,
+                                 const struct GNUNET_NAMESTORE_RecordData *rd);
 
 
 
 /**
- * Perform an asynchronous lookup operation on the GNS.
+ * Perform an asynchronous lookup operation on the GNS
+ * in the default zone.
  *
  * @param handle handle to the GNS service
- * @param timeout how long to wait for transmission of this request to the service
- * // FIXME: what happens afterwards?
- * @param handle handle to the GNS service
- * @param timeout timeout of request
  * @param name the name to look up
  * @param type the GNUNET_GNS_RecordType to look for
- * @param iter function to call on each result
- * @param iter_cls closure for iter
+ * @param proc function to call on result
+ * @param proc_cls closure for processor
  *
- * @return handle to stop the async lookup
+ * @return handle to the queued request
  */
-struct GNUNET_GNS_LookupHandle *
-GNUNET_GNS_lookup_start (struct GNUNET_GNS_Handle *handle,
-                         struct GNUNET_TIME_Relative timeout,
+struct GNUNET_GNS_QueueEntry *
+GNUNET_GNS_lookup (struct GNUNET_GNS_Handle *handle,
                          const char * name,
                          enum GNUNET_GNS_RecordType type,
-                         GNUNET_GNS_LookupIterator iter,
-                         void *iter_cls);
+                         GNUNET_GNS_LookupResultProcessor proc,
+                         void *proc_cls);
+
+/**
+ * Perform an asynchronous lookup operation on the GNS
+ * in the zone specified by 'zone'.
+ *
+ * @param handle handle to the GNS service
+ * @param name the name to look up
+ * @param zone the zone to start the resolution in
+ * @param type the GNUNET_GNS_RecordType to look for
+ * @param proc function to call on result
+ * @param proc_cls closure for processor
+ *
+ * @return handle to the queued request
+ */
+struct GNUNET_GNS_QueueEntry *
+GNUNET_GNS_lookup_zone (struct GNUNET_GNS_Handle *handle,
+                         const char * name,
+                         struct GNUNET_CRYPTO_ShortHashCode *zone,
+                         enum GNUNET_GNS_RecordType type,
+                         GNUNET_GNS_LookupResultProcessor proc,
+                         void *proc_cls);
+
+/* *************** Standard API: shorten ******************* */
 
 
 /**
- * Stop async GNS lookup.  Frees associated resources.
+ * Processor called on for a name shortening result
+ * called only once
  *
- * @param lookup_handle lookup operation to stop.
- *
- * On return lookup_handle will no longer be valid, caller
- * must not use again!!!
+ * @param cls closure
+ * @param short_name the shortened name or NULL if no result
  */
-void
-GNUNET_GNS_lookup_stop (struct GNUNET_GNS_LookupHandle *lookup_handle);
+typedef void (*GNUNET_GNS_ShortenResultProcessor) (void *cls,
+                                        const char* short_name);
 
+
+/**
+ * Perform a name shortening operation on the GNS.
+ *
+ * @param handle handle to the GNS service
+ * @param name the name to look up
+ * @param proc function to call on result
+ * @param proc_cls closure for processor
+ * @return handle to the operation
+ */
+struct GNUNET_GNS_QueueEntry *
+GNUNET_GNS_shorten (struct GNUNET_GNS_Handle *handle,
+                    const char * name,
+                    GNUNET_GNS_ShortenResultProcessor proc,
+                    void *proc_cls);
+
+
+/**
+ * Perform a name shortening operation on the GNS.
+ *
+ * @param handle handle to the GNS service
+ * @param name the name to look up
+ * @param zone the zone to start the resolution in
+ * @param proc function to call on result
+ * @param proc_cls closure for processor
+ * @return handle to the operation
+ */
+struct GNUNET_GNS_QueueEntry *
+GNUNET_GNS_shorten_zone (struct GNUNET_GNS_Handle *handle,
+                    const char * name,
+                    struct GNUNET_CRYPTO_ShortHashCode *zone,
+                    GNUNET_GNS_ShortenResultProcessor proc,
+                    void *proc_cls);
+
+/* *************** Standard API: get authority ******************* */
+
+
+/**
+ * Processor called on for a name shortening result
+ * called only once
+ *
+ * @param cls closure
+ * @param auth_name the name of the auhtority or NULL
+ */
+typedef void (*GNUNET_GNS_GetAuthResultProcessor) (void *cls,
+                                        const char* short_name);
+
+
+/**
+ * Perform an authority lookup for a given name.
+ *
+ * @param handle handle to the GNS service
+ * @param name the name to look up authority for
+ * @param proc function to call on result
+ * @param proc_cls closure for processor
+ * @return handle to the operation
+ */
+struct GNUNET_GNS_QueueEntry *
+GNUNET_GNS_get_authority (struct GNUNET_GNS_Handle *handle,
+                    const char * name,
+                    GNUNET_GNS_GetAuthResultProcessor proc,
+                    void *proc_cls);
 
 #if 0                           /* keep Emacsens' auto-indent happy */
 {

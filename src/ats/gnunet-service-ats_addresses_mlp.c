@@ -505,7 +505,9 @@ mlp_add_constraints_all_addresses (struct GAS_MLP_Handle *mlp, struct GNUNET_CON
    * c 10) obey network specific quota
    */
 
+  /* Row for c4) minimum connection */
   int min = mlp->n_min;
+  /* Number of minimum connections is min(|Peers|, n_min) */
   if (mlp->n_min > mlp->c_p)
     min = mlp->c_p;
 
@@ -565,6 +567,7 @@ mlp_add_constraints_all_addresses (struct GAS_MLP_Handle *mlp, struct GNUNET_CON
   mlp->ci++;
 
   struct ATS_Peer * peer = mlp->peer_head;
+  /* For all peers */
   while (peer != NULL)
   {
     struct ATS_Address *addr = peer->head;
@@ -590,16 +593,15 @@ mlp_add_constraints_all_addresses (struct GAS_MLP_Handle *mlp, struct GNUNET_CON
     /* Set -r */
     ia[mlp->ci] = peer->r_c9;
     ja[mlp->ci] = mlp->c_r;
-    ar[mlp->ci] = -1;
+    ar[mlp->ci] = -peer->f;
     mlp->ci++;
 #endif
-
+    /* For all addresses of this peer */
     while (addr != NULL)
     {
       mlpi = (struct MLP_information *) addr->mlp_information;
 
       /* coefficient for c 2) */
-
       ia[mlp->ci] = peer->r_c2;
       ja[mlp->ci] = mlpi->c_n;
       ar[mlp->ci] = 1;
@@ -625,8 +627,6 @@ mlp_add_constraints_all_addresses (struct GAS_MLP_Handle *mlp, struct GNUNET_CON
   }
 
   /* c 7) For all quality metrics */
-
-
   for (c = 0; c < mlp->m_q; c++)
   {
     struct ATS_Peer *tp;
@@ -640,7 +640,7 @@ mlp_add_constraints_all_addresses (struct GAS_MLP_Handle *mlp, struct GNUNET_CON
     glp_set_row_name (mlp->prob, mlp->r_q[c], name);
     GNUNET_free (name);
     /* Set row bound == 0 */
-    glp_set_row_bnds (mlp->prob, mlp->r_q[c], GLP_LO, 0.0, 0.0);
+    glp_set_row_bnds (mlp->prob, mlp->r_q[c], GLP_FX, 0.0, 0.0);
 
     ia[mlp->ci] = mlp->r_q[c];
     ja[mlp->ci] = mlp->c_q[c];
@@ -657,7 +657,7 @@ mlp_add_constraints_all_addresses (struct GAS_MLP_Handle *mlp, struct GNUNET_CON
 
           ia[mlp->ci] = mlp->r_q[c];
           ja[mlp->ci] = mlpi->c_b;
-          ar[mlp->ci] = tp->f * value;
+          ar[mlp->ci] = tp->f_q[c] * value;
           mlp->ci++;
         }
   }
@@ -747,7 +747,6 @@ mlp_create_problem (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_MultiHas
   /* Adding invariant columns */
 
   /* Diversity d column  */
-
   col = glp_add_cols (mlp->prob, 1);
   mlp->c_d = col;
   /* Column name */
@@ -758,7 +757,6 @@ mlp_create_problem (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_MultiHas
   glp_set_col_bnds (mlp->prob, col, GLP_LO, 0.0, 0.0);
 
   /* Utilization u column  */
-
   col = glp_add_cols (mlp->prob, 1);
   mlp->c_u = col;
   /* Column name */
@@ -806,14 +804,16 @@ mlp_create_problem (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_MultiHas
   return res;
 }
 
+
 /**
  * Solves the LP problem
  *
  * @param mlp the MLP Handle
+ * @param s_ctx context to return results
  * @return GNUNET_OK if could be solved, GNUNET_SYSERR on failure
  */
 static int
-mlp_solve_lp_problem (struct GAS_MLP_Handle *mlp)
+mlp_solve_lp_problem (struct GAS_MLP_Handle *mlp, struct GAS_MLP_SolutionContext *s_ctx)
 {
   int res;
   struct GNUNET_TIME_Relative duration;
@@ -867,12 +867,12 @@ lp_solv:
   duration = GNUNET_TIME_absolute_get_difference (start, end);
   mlp->lp_solved++;
   mlp->lp_total_duration =+ duration.rel_value;
+  s_ctx->lp_duration = duration;
 
   GNUNET_STATISTICS_update (mlp->stats,"# LP problem solved", 1, GNUNET_NO);
-  GNUNET_STATISTICS_set (mlp->stats,"# LP execution time", duration.rel_value, GNUNET_NO);
-  GNUNET_STATISTICS_set (mlp->stats,"# LP execution time average",
+  GNUNET_STATISTICS_set (mlp->stats,"# LP execution time (ms)", duration.rel_value, GNUNET_NO);
+  GNUNET_STATISTICS_set (mlp->stats,"# LP execution time average (ms)",
                          mlp->lp_total_duration / mlp->lp_solved,  GNUNET_NO);
-
 
   /* Analyze problem status  */
   res = glp_get_status (mlp->prob);
@@ -903,10 +903,11 @@ lp_solv:
  * Solves the MLP problem
  *
  * @param mlp the MLP Handle
+ * @param s_ctx context to return results
  * @return GNUNET_OK if could be solved, GNUNET_SYSERR on failure
  */
 int
-mlp_solve_mlp_problem (struct GAS_MLP_Handle *mlp)
+mlp_solve_mlp_problem (struct GAS_MLP_Handle *mlp, struct GAS_MLP_SolutionContext *s_ctx)
 {
   int res;
   struct GNUNET_TIME_Relative duration;
@@ -943,10 +944,11 @@ mlp_solve_mlp_problem (struct GAS_MLP_Handle *mlp)
   duration = GNUNET_TIME_absolute_get_difference (start, end);
   mlp->mlp_solved++;
   mlp->mlp_total_duration =+ duration.rel_value;
+  s_ctx->mlp_duration = duration;
 
   GNUNET_STATISTICS_update (mlp->stats,"# MLP problem solved", 1, GNUNET_NO);
-  GNUNET_STATISTICS_set (mlp->stats,"# MLP execution time", duration.rel_value, GNUNET_NO);
-  GNUNET_STATISTICS_set (mlp->stats,"# MLP execution time average",
+  GNUNET_STATISTICS_set (mlp->stats,"# MLP execution time (ms)", duration.rel_value, GNUNET_NO);
+  GNUNET_STATISTICS_set (mlp->stats,"# MLP execution time average (ms)",
                          mlp->mlp_total_duration / mlp->mlp_solved,  GNUNET_NO);
 
   /* Analyze problem status  */
@@ -970,23 +972,24 @@ mlp_solve_mlp_problem (struct GAS_MLP_Handle *mlp)
   return GNUNET_OK;
 }
 
-int GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp);
+int GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp, struct GAS_MLP_SolutionContext *ctx);
+
 
 static void
 mlp_scheduler (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct GAS_MLP_Handle *mlp = cls;
+  struct GAS_MLP_SolutionContext ctx;
 
   mlp->mlp_task = GNUNET_SCHEDULER_NO_TASK;
 
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
 
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Scheduled problem solving\n");
 
   if (mlp->addr_in_problem != 0)
-    GAS_mlp_solve_problem(mlp);
+    GAS_mlp_solve_problem(mlp, &ctx);
 }
 
 
@@ -994,17 +997,34 @@ mlp_scheduler (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
  * Solves the MLP problem
  *
  * @param mlp the MLP Handle
+ * @param ctx solution context
  * @return GNUNET_OK if could be solved, GNUNET_SYSERR on failure
  */
 int
-GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp)
+GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp, struct GAS_MLP_SolutionContext *ctx)
 {
   int res;
+  /* Check if solving is already running */
+  if (GNUNET_YES == mlp->semaphore)
+  {
+    if (mlp->mlp_task != GNUNET_SCHEDULER_NO_TASK)
+    {
+      GNUNET_SCHEDULER_cancel(mlp->mlp_task);
+      mlp->mlp_task = GNUNET_SCHEDULER_NO_TASK;
+    }
+    mlp->mlp_task = GNUNET_SCHEDULER_add_delayed (mlp->exec_interval, &mlp_scheduler, mlp);
+    return GNUNET_SYSERR;
+  }
+  mlp->semaphore = GNUNET_YES;
+
   mlp->last_execution = GNUNET_TIME_absolute_get ();
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Problem solving\n");
+  ctx->lp_result = GNUNET_SYSERR;
+  ctx->mlp_result = GNUNET_SYSERR;
+  ctx->lp_duration = GNUNET_TIME_UNIT_FOREVER_REL;
+  ctx->mlp_duration = GNUNET_TIME_UNIT_FOREVER_REL;
 
-
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Solve LP problem\n");
 #if WRITE_MLP
   char * name;
   static int i;
@@ -1014,7 +1034,14 @@ GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp)
   GNUNET_free (name);
 # endif
 
-  res = mlp_solve_lp_problem (mlp);
+  res = mlp_solve_lp_problem (mlp, ctx);
+  ctx->lp_result = res;
+  if (res != GNUNET_OK)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "LP Problem solving failed\n");
+    mlp->semaphore = GNUNET_NO;
+    return GNUNET_SYSERR;
+  }
 
 #if WRITE_MLP
   GNUNET_asprintf(&name, "problem_%i_lp_solution", i);
@@ -1022,31 +1049,24 @@ GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp)
   GNUNET_free (name);
 # endif
 
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Solve MLP problem\n");
+  res = mlp_solve_mlp_problem (mlp, ctx);
+  ctx->mlp_result = res;
   if (res != GNUNET_OK)
   {
-
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "LP Problem solving failed\n");
-
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "MLP Problem solving failed\n");
+    mlp->semaphore = GNUNET_NO;
     return GNUNET_SYSERR;
   }
-
-  res = mlp_solve_mlp_problem (mlp);
-
 #if WRITE_MLP
   GNUNET_asprintf(&name, "problem_%i_mlp_solution", i);
   glp_print_mip (mlp->prob, name);
   GNUNET_free (name);
 # endif
-  if (res != GNUNET_OK)
-  {
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "MLP Problem solving failed\n");
-
-    return GNUNET_SYSERR;
-  }
-
-
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Problem solved\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Problem solved %s (LP duration %llu / MLP duration %llu)\n",
+      (GNUNET_OK == res) ? "successfully" : "failed", ctx->lp_duration.rel_value, ctx->mlp_duration.rel_value);
   /* Process result */
   struct ATS_Peer *p = NULL;
   struct ATS_Address *a = NULL;
@@ -1082,6 +1102,7 @@ GAS_mlp_solve_problem (struct GAS_MLP_Handle *mlp)
     mlp->mlp_task = GNUNET_SCHEDULER_NO_TASK;
   }
   mlp->mlp_task = GNUNET_SCHEDULER_add_delayed (mlp->exec_interval, &mlp_scheduler, mlp);
+  mlp->semaphore = GNUNET_NO;
   return res;
 }
 
@@ -1105,20 +1126,46 @@ GAS_mlp_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
   double D;
   double R;
   double U;
-  long long unsigned int tmp;
+  unsigned long long tmp;
   unsigned int b_min;
   unsigned int n_min;
   struct GNUNET_TIME_Relative i_exec;
   int c;
+  char * quota_out_str;
+  char * quota_in_str;
 
   /* Init GLPK environment */
-  GNUNET_assert (glp_init_env() == 0);
+  int res = glp_init_env();
+  switch (res) {
+    case 0:
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "GLPK: `%s'\n",
+          "initialization successful");
+      break;
+    case 1:
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "GLPK: `%s'\n",
+          "environment is already initialized");
+      break;
+    case 2:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Could not init GLPK: `%s'\n",
+          "initialization failed (insufficient memory)");
+      GNUNET_free(mlp);
+      return NULL;
+      break;
+    case 3:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Could not init GLPK: `%s'\n",
+          "initialization failed (unsupported programming model)");
+      GNUNET_free(mlp);
+      return NULL;
+      break;
+    default:
+      break;
+  }
 
   /* Create initial MLP problem */
   mlp->prob = glp_create_prob();
   GNUNET_assert (mlp->prob != NULL);
 
-  mlp->BIG_M = (double) (UINT32_MAX) /10;
+  mlp->BIG_M = (double) BIG_M_VALUE;
 
   /* Get diversity coefficient from configuration */
   if (GNUNET_OK == GNUNET_CONFIGURATION_get_value_size (cfg, "ats",
@@ -1231,37 +1278,57 @@ GAS_mlp_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
     if ((entry_in == NULL) || (entry_out == NULL))
       continue;
 
-    if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_size (cfg, "ats", entry_out, &quota_out))
+    if (GNUNET_OK == GNUNET_CONFIGURATION_get_value_string(cfg, "ats", entry_out, &quota_out_str))
+    {
+      if (0 == strcmp(quota_out_str, BIG_M_STRING) ||
+          (GNUNET_SYSERR == GNUNET_STRINGS_fancy_size_to_bytes (quota_out_str, &quota_out)))
+        quota_out = mlp->BIG_M;
+
+      GNUNET_free (quota_out_str);
+      quota_out_str = NULL;
+    }
+    else if (GNUNET_ATS_NET_UNSPECIFIED == quotas[c])
     {
       quota_out = mlp->BIG_M;
     }
-    if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_size (cfg, "ats", entry_in, &quota_in))
+    else
+    {
+      quota_out = mlp->BIG_M;
+    }
+
+    if (GNUNET_OK == GNUNET_CONFIGURATION_get_value_string(cfg, "ats", entry_in, &quota_in_str))
+    {
+      if (0 == strcmp(quota_in_str, BIG_M_STRING) ||
+          (GNUNET_SYSERR == GNUNET_STRINGS_fancy_size_to_bytes (quota_in_str, &quota_in)))
+        quota_in = mlp->BIG_M;
+
+      GNUNET_free (quota_in_str);
+      quota_in_str = NULL;
+    }
+    else if (GNUNET_ATS_NET_UNSPECIFIED == quotas[c])
     {
       quota_in = mlp->BIG_M;
     }
-    /* Check if defined quota could make problem unsolvable */
-    if ((n_min * b_min) > quota_out)
+    else
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Inconsistent quota configuration value `%s': " \
-          "outbound quota (%u Bps) too small for combination of minimum connections and minimum bandwidth per peer (%u * %u Bps = %u)\n", entry_out, quota_out, n_min, b_min, n_min * b_min);
-      unsigned int default_min = ntohl (GNUNET_CONSTANTS_DEFAULT_BW_IN_OUT.value__);
-      if ((quota_out / n_min) > default_min)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,  "Reducing minimum bandwidth per peer to %u Bps\n",
-            (quota_out / n_min));
-        b_min = (quota_out / n_min);
-      }
-      else
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,  "Reducing minimum bandwidth per peer to %u Bps and minimum connections to %u \n",
-            default_min, (quota_out / default_min));
-        b_min = default_min;
-        n_min = (quota_out / default_min);
-      }
+      quota_in = mlp->BIG_M;
+    }
+
+    /* Check if defined quota could make problem unsolvable */
+    if (((n_min * b_min) > quota_out) && (GNUNET_ATS_NET_UNSPECIFIED != quotas[c]))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Inconsistent quota configuration value `%s': " 
+		  "outbound quota (%u Bps) too small for combination of minimum connections and minimum bandwidth per peer (%u * %u Bps = %u)\n", entry_out, quota_out, n_min, b_min, n_min * b_min);
+
+      GAS_mlp_done(mlp);
+      mlp = NULL;
+      return NULL;
     }
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Found `%s' quota %llu and `%s' quota %llu\n",
                 entry_out, quota_out, entry_in, quota_in);
+    GNUNET_STATISTICS_update ((struct GNUNET_STATISTICS_Handle *) stats, entry_out, quota_out, GNUNET_NO);
+    GNUNET_STATISTICS_update ((struct GNUNET_STATISTICS_Handle *) stats, entry_in, quota_in, GNUNET_NO);
     mlp->quota_out[c] = quota_out;
     mlp->quota_in[c] = quota_in;
   }
@@ -1302,7 +1369,7 @@ GAS_mlp_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
 #endif
   mlp->control_param_mlp.tm_lim = max_duration.rel_value;
 
-  mlp->last_execution = GNUNET_TIME_absolute_get_forever();
+  mlp->last_execution = GNUNET_TIME_UNIT_FOREVER_ABS;
 
   mlp->co_D = D;
   mlp->co_R = R;
@@ -1310,7 +1377,7 @@ GAS_mlp_init (const struct GNUNET_CONFIGURATION_Handle *cfg,
   mlp->b_min = b_min;
   mlp->n_min = n_min;
   mlp->m_q = GNUNET_ATS_QualityPropertiesCount;
-
+  mlp->semaphore = GNUNET_NO;
   return mlp;
 }
 
@@ -1320,12 +1387,15 @@ update_quality (struct GAS_MLP_Handle *mlp, struct ATS_Address * address)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Updating quality metrics for peer `%s'\n",
       GNUNET_i2s (&address->peer));
 
+  GNUNET_assert (NULL != address);
+  GNUNET_assert (NULL != address->mlp_information);
+  GNUNET_assert (NULL != address->ats);
+
   struct MLP_information *mlpi = address->mlp_information;
   struct GNUNET_ATS_Information *ats = address->ats;
   GNUNET_assert (mlpi != NULL);
 
   int c;
-
   for (c = 0; c < GNUNET_ATS_QualityPropertiesCount; c++)
   {
     int index = mlp_lookup_ats(address, mlp->q[c]);
@@ -1374,7 +1444,7 @@ update_quality (struct GAS_MLP_Handle *mlp, struct ATS_Address * address)
             c3 ++;
           }
         }
-        if (c3 > 0)
+        if ((c3 > 0) && (avg > 0))
           /* avg = 1 / ((q[0] + ... + q[l]) /c3) => c3 / avg*/
           mlpi->q_averaged[c] = (double) c3 / avg;
         else
@@ -1399,7 +1469,7 @@ update_quality (struct GAS_MLP_Handle *mlp, struct ATS_Address * address)
             c3 ++;
           }
         }
-        if (c3 > 0)
+        if ((c3 > 0) && (avg > 0))
           /* avg = 1 / ((q[0] + ... + q[l]) /c3) => c3 / avg*/
           mlpi->q_averaged[c] = (double) c3 / avg;
         else
@@ -1487,8 +1557,9 @@ GAS_mlp_address_update (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
 {
   int new;
   struct MLP_information *mlpi;
+  struct GAS_MLP_SolutionContext ctx;
 
-  GNUNET_STATISTICS_update (mlp->stats,"# LP address updates", 1, GNUNET_NO);
+  GNUNET_STATISTICS_update (mlp->stats, "# MLP address updates", 1, GNUNET_NO);
 
   /* We add a new address */
   if (address->mlp_information == NULL)
@@ -1514,6 +1585,7 @@ GAS_mlp_address_update (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
 
     address->mlp_information = mlpi;
     mlp->addr_in_problem ++;
+    GNUNET_STATISTICS_update (mlp->stats, "# addresses in MLP", 1, GNUNET_NO);
 
     /* Check for and add peer */
     struct ATS_Peer *peer = mlp_find_peer (mlp, &address->peer);
@@ -1540,6 +1612,7 @@ GAS_mlp_address_update (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
       GNUNET_CONTAINER_DLL_insert (peer->head, peer->tail, address);
       GNUNET_CONTAINER_DLL_insert (mlp->peer_head, mlp->peer_tail, peer);
       mlp->c_p ++;
+      GNUNET_STATISTICS_update (mlp->stats, "# peers in MLP", 1, GNUNET_NO);
     }
     else
     {
@@ -1549,7 +1622,6 @@ GAS_mlp_address_update (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
 
       GNUNET_CONTAINER_DLL_insert (peer->head, peer->tail, address);
     }
-
     update_quality (mlp, address);
   }
   else
@@ -1570,7 +1642,7 @@ GAS_mlp_address_update (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
     mlp->presolver_required = GNUNET_YES;
   }
   if (mlp->auto_solve == GNUNET_YES)
-    GAS_mlp_solve_problem (mlp);
+    GAS_mlp_solve_problem (mlp, &ctx);
 }
 
 /**
@@ -1587,6 +1659,7 @@ void
 GAS_mlp_address_delete (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_MultiHashMap * addresses, struct ATS_Address *address)
 {
   GNUNET_STATISTICS_update (mlp->stats,"# LP address deletions", 1, GNUNET_NO);
+  struct GAS_MLP_SolutionContext ctx;
 
   /* Free resources */
   if (address->mlp_information != NULL)
@@ -1595,6 +1668,7 @@ GAS_mlp_address_delete (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
     address->mlp_information = NULL;
 
     mlp->addr_in_problem --;
+    GNUNET_STATISTICS_update (mlp->stats, "# addresses in MLP", -1, GNUNET_NO);
   }
 
   /* Remove from peer list */
@@ -1613,6 +1687,7 @@ GAS_mlp_address_delete (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
     GNUNET_CONTAINER_DLL_remove (mlp->peer_head, mlp->peer_tail, head);
     GNUNET_free (head);
     mlp->c_p --;
+    GNUNET_STATISTICS_update (mlp->stats, "# peers in MLP", -1, GNUNET_NO);
   }
 
   /* Update problem */
@@ -1626,7 +1701,7 @@ GAS_mlp_address_delete (struct GAS_MLP_Handle *mlp, struct GNUNET_CONTAINER_Mult
     /* Recalculate */
     mlp->presolver_required = GNUNET_YES;
     if (mlp->auto_solve == GNUNET_YES)
-      GAS_mlp_solve_problem (mlp);
+      GAS_mlp_solve_problem (mlp, &ctx);
   }
 }
 
@@ -1705,7 +1780,7 @@ void
 GAS_mlp_done (struct GAS_MLP_Handle *mlp)
 {
   struct ATS_Peer * peer;
-  struct ATS_Peer * tmp;
+  struct ATS_Address *addr;
 
   GNUNET_assert (mlp != NULL);
 
@@ -1719,10 +1794,16 @@ GAS_mlp_done (struct GAS_MLP_Handle *mlp)
   peer = mlp->peer_head;
   while (peer != NULL)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Cleaning up peer `%s'\n", GNUNET_i2s (&peer->id));
     GNUNET_CONTAINER_DLL_remove(mlp->peer_head, mlp->peer_tail, peer);
-    tmp = peer->next;
+    for (addr = peer->head; NULL != addr; addr = peer->head)
+    {
+      GNUNET_CONTAINER_DLL_remove(peer->head, peer->tail, addr);
+      GNUNET_free (addr->mlp_information);
+      addr->mlp_information = NULL;
+    }
     GNUNET_free (peer);
-    peer = tmp;
+    peer = mlp->peer_head;
   }
   mlp_delete_problem (mlp);
 
